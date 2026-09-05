@@ -5,7 +5,6 @@ import SportsRewardsKit
 /// 對齊 design/Tasks.dc.html。
 struct TasksView: View {
     @Environment(\.appEnvironment) private var environment
-    @EnvironmentObject private var sensitiveAuth: SensitiveAuthCoordinator
     @StateObject private var viewModel = TasksViewModel()
     @State private var screenshotPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
@@ -28,14 +27,8 @@ struct TasksView: View {
                         TaskPeriodCard(
                             period: period,
                             isHighlighted: period.index == viewModel.highlightedPeriodIndex,
-                            onRedeemTap: {
-                                // 敏感動作再驗證：進入兌換頁前先過 Face ID（或 fallback）。
-                                Task {
-                                    if await sensitiveAuth.authorize(reason: "驗證身份以進行兌換") {
-                                        redeemPeriod = period
-                                    }
-                                }
-                            },
+                            // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
+                            onRedeemTap: { redeemPeriod = period },
                             onScreenshotTap: { screenshotPeriod = period },
                             onVoucherTap: { voucherPeriod = period },
                             onUploadTap: { uploadPeriod = period }

@@ -5,7 +5,7 @@ import SportsRewardsKit
 /// 對齊 design/Main.dc.html。
 struct HomeView: View {
     @Environment(\.appEnvironment) private var environment
-    @EnvironmentObject private var sensitiveAuth: SensitiveAuthCoordinator
+    @EnvironmentObject private var envStore: AppEnvironmentStore
     @StateObject private var viewModel = HomeViewModel()
     @State private var showProfile = false
 
@@ -27,7 +27,8 @@ struct HomeView: View {
         }
         .task {
             viewModel.configure(auth: environment.auth, tasks: environment.tasks,
-                                 profileStore: environment.profileStore, health: environment.health)
+                                 profileStore: environment.profileStore, health: environment.health,
+                                 envStore: envStore)
             await viewModel.bootstrap()
         }
         .refreshable {
@@ -48,12 +49,7 @@ struct HomeView: View {
             }
             Spacer()
             Button {
-                // 敏感動作再驗證：進入個資設定頁前先過 Face ID（或 fallback）。
-                Task {
-                    if await sensitiveAuth.authorize(reason: "驗證身份以查看個資") {
-                        showProfile = true
-                    }
-                }
+                showProfile = true
             } label: {
                 Image(systemName: "person.fill")
                     .foregroundStyle(Theme.Colors.primary)
@@ -66,52 +62,118 @@ struct HomeView: View {
         }
     }
 
+    /// 今日步數卡：已連結 Apple 健康才顯示真實數字；未連結時整個環與圖案改為
+    /// 淺灰半透明的「未連結」占位，不再顯示任何看起來像真實數據的數字。
     private var stepsRingCard: some View {
         HStack(spacing: 22) {
-            ZStack {
-                Circle()
-                    .stroke(Color(hex: 0xECEEF2), lineWidth: 13)
-                Circle()
-                    .trim(from: 0, to: viewModel.stepsProgress)
-                    .stroke(Theme.Colors.ringGradient, style: StrokeStyle(lineWidth: 13, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 2) {
-                    Text("\(viewModel.todaySteps)")
-                        .font(Theme.displayFont(30, weight: .heavy))
-                    Text("今日步數")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.Colors.muted)
-                }
+            switch viewModel.healthLink {
+            case .linked:
+                connectedRing
+            case .checking, .notLinked:
+                placeholderRing
             }
-            .frame(width: 120, height: 120)
 
             VStack(alignment: .leading, spacing: 12) {
-                if viewModel.hasReachedGoal {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                        Text("已達今日目標")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundStyle(Theme.Colors.success)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 5)
-                    .background(Theme.Colors.successBackground)
-                    .clipShape(Capsule())
-                }
-                Text("目標 \(viewModel.goalSteps) 步\n距離 \(viewModel.distanceText) · 運動 \(viewModel.activeMinutes) 分")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.Colors.muted)
-                if !viewModel.isHealthDataConnected {
-                    Text("尚未連結 Apple 健康，前往「健康」分頁授權")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.Colors.dim)
+                switch viewModel.healthLink {
+                case .linked:
+                    connectedDetail
+                case .checking:
+                    Text("讀取健康資料中…")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.Colors.muted)
+                case .notLinked:
+                    notLinkedDetail
                 }
             }
         }
         // E. 卡片寬度一致：舊版沒有 Spacer/maxWidth，內容較短時會比本週任務卡窄，這裡強制滿版。
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()
+    }
+
+    private var connectedRing: some View {
+        ZStack {
+            Circle()
+                .stroke(Color(hex: 0xECEEF2), lineWidth: 13)
+            Circle()
+                .trim(from: 0, to: viewModel.stepsProgress)
+                .stroke(Theme.Colors.ringGradient, style: StrokeStyle(lineWidth: 13, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 2) {
+                Text("\(viewModel.todaySteps)")
+                    .font(Theme.displayFont(30, weight: .heavy))
+                Text("今日步數")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.Colors.muted)
+            }
+        }
+        .frame(width: 120, height: 120)
+    }
+
+    /// 未連結（或仍在確認授權）時的占位圖案：淺灰虛線環 + 灰色步行圖示，整體半透明，
+    /// 一眼就看得出「這裡還沒有資料」而不是「今天走了 0 步」。
+    private var placeholderRing: some View {
+        ZStack {
+            Circle()
+                .stroke(Color(hex: 0xD8DCE3),
+                        style: StrokeStyle(lineWidth: 13, lineCap: .round, dash: [2, 10]))
+            VStack(spacing: 4) {
+                Image(systemName: "figure.walk")
+                    .font(.system(size: 30, weight: .semibold))
+                if viewModel.healthLink == .notLinked {
+                    Text("未連結")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+            }
+            .foregroundStyle(Theme.Colors.dim)
+        }
+        .frame(width: 120, height: 120)
+        .opacity(0.55)
+        .accessibilityLabel(viewModel.healthLink == .notLinked ? "尚未連結 Apple 健康" : "讀取健康資料中")
+    }
+
+    private var connectedDetail: some View {
+        Group {
+            if viewModel.hasReachedGoal {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("已達今日目標")
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .foregroundStyle(Theme.Colors.success)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 5)
+                .background(Theme.Colors.successBackground)
+                .clipShape(Capsule())
+            }
+            Text("目標 \(viewModel.goalSteps) 步\n距離 \(viewModel.distanceText) · 運動 \(viewModel.activeMinutes) 分")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.Colors.muted)
+        }
+    }
+
+    private var notLinkedDetail: some View {
+        Group {
+            Text("尚未連結 Apple 健康")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Theme.Colors.text)
+            Text("連結後才會顯示今日步數、距離與運動時間。\n健康數據只在本機顯示，不會被送出。")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.Colors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            NavigationLink {
+                HealthView()
+            } label: {
+                HStack(spacing: 4) {
+                    Text("前往連結")
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.Colors.primary)
+            }
+        }
     }
 
     @ViewBuilder
@@ -162,7 +224,7 @@ struct HomeView: View {
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.shield")
                     .foregroundStyle(Theme.Colors.dim)
-                Text("個資只存這支手機 · Face ID 保護")
+                Text("個資只存這支手機 · 不會上傳雲端")
                     .foregroundStyle(Theme.Colors.dim)
             }
             .font(.system(size: 12))
@@ -427,19 +489,19 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoadingSummary = false
     @Published var currentWeekTask: TaskPeriod?
 
-    // 今日健康摘要：已連結 Apple 健康時採真實資料，否則沿用示意占位值。
+    /// 健康連結狀態：`checking` 是還沒問出授權結果（避免冷啟動瞬間閃出「未連結」）。
+    enum HealthLinkState { case checking, linked, notLinked }
+
+    // 今日健康摘要：只有 `.linked` 時才有真實資料，未連結一律不顯示數字。
     @Published private(set) var healthSummary: HealthSummary?
-    @Published private(set) var isHealthDataConnected = false
+    @Published private(set) var healthLink: HealthLinkState = .checking
 
     let goalSteps = 8_000
-    private static let placeholderSteps = 9_688
-    private static let placeholderDistanceMeters = 6_400.0
-    private static let placeholderActiveMinutes = 42
 
-    var todaySteps: Int { healthSummary?.steps ?? Self.placeholderSteps }
-    var activeMinutes: Int { healthSummary?.exerciseMinutes ?? Self.placeholderActiveMinutes }
+    var todaySteps: Int { healthSummary?.steps ?? 0 }
+    var activeMinutes: Int { healthSummary?.exerciseMinutes ?? 0 }
     var distanceText: String {
-        let km = (healthSummary?.distanceMeters ?? Self.placeholderDistanceMeters) / 1_000.0
+        let km = (healthSummary?.distanceMeters ?? 0) / 1_000.0
         return String(format: "%.1f km", km)
     }
     var stepsProgress: Double { min(1.0, Double(todaySteps) / Double(goalSteps)) }
@@ -458,28 +520,37 @@ final class HomeViewModel: ObservableObject {
     private var tasks: TasksServicing?
     private var profileStore: ProfileStoring?
     private var health: HealthReading?
+    private weak var envStore: AppEnvironmentStore?
 
-    func configure(auth: AuthServicing, tasks: TasksServicing, profileStore: ProfileStoring, health: HealthReading) {
+    func configure(auth: AuthServicing, tasks: TasksServicing, profileStore: ProfileStoring,
+                   health: HealthReading, envStore: AppEnvironmentStore) {
         guard self.auth == nil else { return }
         self.auth = auth
         self.tasks = tasks
         self.profileStore = profileStore
         self.health = health
+        self.envStore = envStore
     }
 
-    /// 讀取今日健康摘要（唯讀，需已授權）。未授權或讀取失敗時維持占位值，不視為錯誤。
+    /// 讀取今日健康摘要（唯讀，需已授權）。未授權或讀取失敗都歸類為「未連結」，
+    /// 由 UI 顯示淺灰半透明占位圖案，不視為錯誤、也不顯示假數字。
     func loadHealthSummary() async {
         guard let health else { return }
+        await loadHealthSummary(using: health)
+    }
+
+    /// 剛切進示範模式時，ViewModel 還握著切換前的 reader，因此要能指定用哪一個。
+    func loadHealthSummary(using health: HealthReading) async {
         guard await health.isAuthorized() else {
-            isHealthDataConnected = false
+            healthLink = .notLinked
             healthSummary = nil
             return
         }
         do {
             healthSummary = try await health.summary(for: Date())
-            isHealthDataConnected = true
+            healthLink = .linked
         } catch {
-            isHealthDataConnected = false
+            healthLink = .notLinked
             healthSummary = nil
         }
     }
@@ -566,6 +637,20 @@ final class HomeViewModel: ObservableObject {
             }
 
             let credentials = LoginCredentials(idNo: profile.idNo, birthDate: profile.birthDate, phone: profile.phone)
+
+            // 示範帳號（App Store 審查用）：不連線，改用示範環境的任務資料。已在示範模式時
+            // environment 本來就是 Mock，這裡只處理「從真實環境輸入示範帳號」的情況。
+            if let envStore, envStore.enterDemoIfSentinel(credentials) {
+                hasLoggedIn = true
+                loginResultIsError = false
+                loginResultMessage = silent ? nil : "示範模式已啟用，顯示的是範例資料"
+                if let periods = try? await envStore.environment.tasks.fetchTasks() {
+                    currentWeekTask = Self.highlightedPeriod(in: periods)
+                }
+                await loadHealthSummary(using: envStore.environment.health)
+                return
+            }
+
             let outcome = try await auth.login(credentials)
 
             switch outcome {

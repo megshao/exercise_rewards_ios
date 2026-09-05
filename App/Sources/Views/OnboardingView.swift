@@ -1,5 +1,4 @@
 import SwiftUI
-import LocalAuthentication
 import SportsRewardsKit
 
 /// 首次啟動導覽：
@@ -7,21 +6,20 @@ import SportsRewardsKit
 /// 2. 強制填 3 欄位（身分證、生日、手機——個資最小化到登入必需，姓名/健保卡卡號/email
 ///    皆不在此收集）。
 /// 3. 「送出並驗證」呼叫既有 `AuthServicing.login`（內部就是 `/access` 分流 + login）：
-///    - `.success` → 存 Profile 到 Keychain → 進「是否啟用 Face ID」步驟。
+///    - `.success` → 存 Profile 到 Keychain → 直接完成，進主畫面。
 ///    - `.invalidCredentials` → 停在表單，提示「身分證/生日/手機有誤」。
 ///    - `.notRegistered` → **App 不做註冊**：顯示提示訊息＋「前往官網註冊」按鈕，
 ///      用外部 Safari 開官網 `https://500.gov.tw/registrant/access`；App 內完全不實作
 ///      任何註冊步驟、不碰健保卡。使用者需自行到官網完成註冊後回來重新登入。
-/// 4. 是否啟用 Face ID（可略過）→ 完成，進主畫面。
 ///
-/// **Onboarding 完成前完全不碰 Face ID**：只有使用者在最後一步主動按「啟用」才會觸發
-/// LocalAuthentication 權限詢問並把 `biometricLockEnabled` 設成 true；按「略過」則維持
-/// 預設 false，`BiometricGate` 因此不會在下次冷啟動彈生物辨識。
+/// App 不使用任何生物辨識：個資本來就只存在這支手機，手機本身的鎖屏已經是同一層保護，
+/// 再加一層 Face ID 只是重複擋自己人。
 struct OnboardingView: View {
     var onFinish: () -> Void
 
     @Environment(\.appEnvironment) private var environment
     @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var envStore: AppEnvironmentStore
     @StateObject private var viewModel = OnboardingViewModel()
 
     var body: some View {
@@ -31,13 +29,12 @@ struct OnboardingView: View {
                 welcomeStep
             case .form:
                 formStep
-            case .faceID:
-                faceIDStep
             }
         }
         .background(Theme.Colors.background)
         .task {
-            viewModel.configure(auth: environment.auth, profileStore: environment.profileStore, onFinish: onFinish)
+            viewModel.configure(auth: environment.auth, profileStore: environment.profileStore,
+                                 envStore: envStore, onFinish: onFinish)
         }
     }
 
@@ -155,48 +152,6 @@ struct OnboardingView: View {
 
     private static let registerURL = URL(string: "https://500.gov.tw/registrant/access")!
 
-    // MARK: - Step 3：是否啟用 Face ID
-
-    private var faceIDStep: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            Image(systemName: "faceid")
-                .font(.system(size: 56))
-                .foregroundStyle(Theme.Colors.primary)
-            Text("啟用 Face ID？")
-                .font(Theme.displayFont(22, weight: .heavy))
-            Text("啟用後，App 啟動與個資設定、儲存、兌換等敏感動作都會用 Face ID 保護；\n未啟用則改以手機號碼驗證身份。")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.Colors.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 12)
-
-            if let message = viewModel.biometricErrorMessage {
-                Text(message)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.Colors.danger)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 12)
-            }
-
-            Spacer()
-
-            Button {
-                Task { await viewModel.enableBiometricTapped() }
-            } label: {
-                Text("啟用 Face ID")
-            }
-            .buttonStyle(PrimaryButtonStyle(isLoading: viewModel.isRequestingBiometric))
-
-            Button {
-                viewModel.skipBiometricTapped()
-            } label: {
-                Text("略過")
-            }
-            .buttonStyle(.huihanSecondary)
-        }
-        .padding(24)
-    }
 }
 
 // MARK: - ViewModel
@@ -206,7 +161,6 @@ final class OnboardingViewModel: ObservableObject {
     enum Step: Equatable {
         case welcome
         case form
-        case faceID
     }
 
     @Published var step: Step = .welcome
@@ -215,20 +169,21 @@ final class OnboardingViewModel: ObservableObject {
     @Published var draft = Profile()
     @Published var isSubmitting = false
     @Published var formErrorMessage: String?
-    @Published var isRequestingBiometric = false
-    @Published var biometricErrorMessage: String?
 
     /// `.notRegistered` 分支：App 不做註冊，只顯示提示＋「前往官網註冊」外部連結。
     @Published var isNotRegistered = false
 
     private var auth: AuthServicing?
     private var profileStore: ProfileStoring?
+    private weak var envStore: AppEnvironmentStore?
     private var onFinish: (() -> Void)?
 
-    func configure(auth: AuthServicing, profileStore: ProfileStoring, onFinish: @escaping () -> Void) {
+    func configure(auth: AuthServicing, profileStore: ProfileStoring,
+                   envStore: AppEnvironmentStore, onFinish: @escaping () -> Void) {
         guard self.auth == nil else { return }
         self.auth = auth
         self.profileStore = profileStore
+        self.envStore = envStore
         self.onFinish = onFinish
     }
 
@@ -267,16 +222,24 @@ final class OnboardingViewModel: ObservableObject {
         }
         formErrorMessage = nil
         isNotRegistered = false
-        isSubmitting = true
-        defer { isSubmitting = false }
 
         let credentials = LoginCredentials(idNo: draft.idNo, birthDate: draft.birthDate, phone: draft.phone)
+
+        // 示範帳號（App Store 審查用）：不連線、不寫 Keychain，直接切進示範環境。
+        // 哨兵值與理由見 DemoMode。
+        if let envStore, envStore.enterDemoIfSentinel(credentials) {
+            finish()
+            return
+        }
+
+        isSubmitting = true
+        defer { isSubmitting = false }
         do {
             let outcome = try await auth.login(credentials)
             switch outcome {
             case .success:
                 try profileStore.save(draft)
-                step = .faceID
+                finish()
             case .invalidCredentials:
                 formErrorMessage = "身分證號、出生日期或手機號碼有誤，請確認後再試一次"
             case .notRegistered:
@@ -288,38 +251,6 @@ final class OnboardingViewModel: ObservableObject {
         }
     }
 
-    /// 使用者按「啟用 Face ID」：實際觸發一次生物辨識權限詢問，成功才把
-    /// `biometricLockEnabled` 設成 true 並完成 Onboarding。
-    func enableBiometricTapped() async {
-        isRequestingBiometric = true
-        biometricErrorMessage = nil
-        defer { isRequestingBiometric = false }
-
-        let context = LAContext()
-        var evalError: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &evalError) else {
-            biometricErrorMessage = "此裝置尚未設定 Face ID / 裝置密碼，暫時無法啟用，可先「略過」"
-            return
-        }
-        do {
-            let ok = try await context.evaluatePolicy(.deviceOwnerAuthentication,
-                                                       localizedReason: "啟用 Face ID 保護你的個人資料")
-            if ok {
-                UserDefaults.standard.set(true, forKey: "biometricLockEnabled")
-                finish()
-            } else {
-                biometricErrorMessage = "驗證未通過，請再試一次，或選擇「略過」"
-            }
-        } catch {
-            // 使用者取消或驗證失敗：不記錄任何細節，停在此步驟讓使用者可重試或略過。
-            biometricErrorMessage = "驗證未通過，請再試一次，或選擇「略過」"
-        }
-    }
-
-    /// 略過：維持預設 `biometricLockEnabled = false`，直接完成 Onboarding。
-    func skipBiometricTapped() {
-        finish()
-    }
 
     private func finish() {
         onFinish?()

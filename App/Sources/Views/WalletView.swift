@@ -3,11 +3,10 @@ import SportsRewardsKit
 
 /// 我的券夾：列出已兌換（可使用）的加碼券與任務完成待兌換的期別。
 /// - 已兌換 → 點「檢視券碼」開 VoucherView（每次都要 OTP 驗證後才顯示條碼）。
-/// - 待兌換 → 點「去兌換」開 RedeemView（先過 Face ID 敏感動作守門）。
+/// - 待兌換 → 點「去兌換」開 RedeemView（兌換的二次確認在 RedeemView 內）。
 /// 對齊 design/Wallet.dc.html。
 struct WalletView: View {
     @Environment(\.appEnvironment) private var environment
-    @EnvironmentObject private var sensitiveAuth: SensitiveAuthCoordinator
     @StateObject private var viewModel = WalletViewModel()
     @State private var voucherPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
@@ -58,12 +57,10 @@ struct WalletView: View {
         .sheet(item: $voucherPeriod) { period in
             NavigationStack { VoucherView(taskID: period.id) }
                 .environment(\.appEnvironment, environment)
-                .environmentObject(sensitiveAuth)
         }
         .sheet(item: $redeemPeriod) { period in
             NavigationStack { RedeemView(taskID: period.id, periodIndex: period.index) }
                 .environment(\.appEnvironment, environment)
-                .environmentObject(sensitiveAuth)
         }
     }
 
@@ -104,7 +101,7 @@ struct WalletView: View {
         .cardStyle()
     }
 
-    /// 任務完成待兌換：去兌換（先過 Face ID 守門）。
+    /// 任務完成待兌換：去兌換。
     private func redeemableCard(_ period: TaskPeriod) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -119,11 +116,8 @@ struct WalletView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.Colors.muted)
             Button {
-                Task {
-                    if await sensitiveAuth.authorize(reason: "驗證身份以兌換加碼券") {
-                        redeemPeriod = period
-                    }
-                }
+                // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
+                redeemPeriod = period
             } label: {
                 HStack {
                     Image(systemName: "gift.fill")

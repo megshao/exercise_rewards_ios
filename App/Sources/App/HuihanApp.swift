@@ -3,16 +3,22 @@ import SportsRewardsKit
 
 @main
 struct HuihanApp: App {
-    /// 正式環境：DefaultAppEnvironment() 已接真實 AuthService/TasksService/KeychainStore/HealthKitReader。
-    private let environment: AppEnvironment = DefaultAppEnvironment()
+    /// 目前生效的環境。正式為 `DefaultAppEnvironment()`（真實 AuthService/TasksService/
+    /// KeychainStore/HealthKitReader）；審查員輸入示範帳號後切成 `DemoMode.makeEnvironment()`。
+    @StateObject private var envStore = AppEnvironmentStore()
 
     var body: some Scene {
         WindowGroup {
-            BiometricGate {
+            // 用 VStack 讓橫幅真的佔版面（safeAreaInset 會蓋在 TabView 內容上，把首頁問候語壓掉）。
+            VStack(spacing: 0) {
+                if envStore.isDemo { DemoModeBanner() }
                 RootView()
             }
-            .environment(\.appEnvironment, environment)
+            .environment(\.appEnvironment, envStore.environment)
+            .environmentObject(envStore)
             .preferredColorScheme(.light) // 設計為白底單一主題，鎖淺色避免深色模式白底白字
+            // 全 App 鎖繁體中文（台灣）：系統提供的元件與數字/日期格式不會跟著裝置語系跑掉。
+            .environment(\.locale, Locale(identifier: "zh_Hant_TW"))
         }
     }
 }
@@ -35,13 +41,7 @@ struct RootView: View {
 
 /// 主要 4 個分頁：首頁、任務、健康、券夾（對齊 design/Main.dc.html 的 tabbar）。
 ///
-/// `SensitiveAuthCoordinator` 在此建立單一實例並透過 `.environmentObject` 往下傳給所有分頁
-/// （進個資設定、儲存個資、兌換前的「敏感動作再驗證」共用同一個 coordinator），
-/// fallback（email+手機）表單也只在這裡掛一次，蓋在整個 TabView 之上。
 struct RootTabView: View {
-    @Environment(\.appEnvironment) private var environment
-    @StateObject private var sensitiveAuth = SensitiveAuthCoordinator()
-
     var body: some View {
         TabView {
             NavigationStack {
@@ -72,15 +72,11 @@ struct RootTabView: View {
                 Label("券夾", systemImage: "ticket.fill")
             }
         }
-        .environmentObject(sensitiveAuth)
-        .sensitiveAuthFallback(sensitiveAuth)
-        .task {
-            sensitiveAuth.configure(profileStore: environment.profileStore)
-        }
     }
 }
 
 #Preview {
     RootTabView()
         .environment(\.appEnvironment, DefaultAppEnvironment())
+        .environmentObject(AppEnvironmentStore())
 }
