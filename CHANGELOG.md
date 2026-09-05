@@ -46,7 +46,7 @@
 - **唯一的第三方相依：firebase-ios-sdk 12.18.0**（Analytics + Crashlytics）。SPM 會解析 **13 個套件**，但**實際連進 App 二進位的只有 6 個**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises`。其餘仍只用 Foundation / SwiftUI / HealthKit。
 - **選 `FirebaseAnalyticsCore` 而非 `FirebaseAnalytics`**：底層為 `GoogleAppMeasurementCore`，**結構上不含 IDFA 收集能力**。Release 二進位已驗證未連結 `AdSupport`、`AppTrackingTransparency`、`AdServices`，因此不會出現 ATT 追蹤提示，`PrivacyInfo.xcprivacy` 的 `NSPrivacyTracking` 為 `false`、追蹤網域清單為空。
 - **遙測預設關閉（opt-in）**：理由是 `FirebaseApp.configure()` 一執行就會產生 app instance ID 並送出 `first_open`——預設開的話，使用者在看到開關之前資料就已經送出去了。
-- **遙測只有一個出口 `Telemetry.swift`**：其他檔案禁止 `import FirebaseAnalytics` / `FirebaseCrashlytics`。事件名與參數值全是封閉列舉（自由字串在編譯期就送不出去），**完全不設任何使用者屬性**。送出前再過六道閘門——示範模式、截圖模式、使用者未同意、Firebase 未初始化、參數命中 `Redact` 敏感樣式、整數值域檢查（敏感樣式那道在 DEBUG build 直接 `assertionFailure`）。非致命錯誤**不接受 `Error` 物件**，只收已經分類完成的 `TelemetryIssue` 列舉與狀態碼，所以伺服器原文與 `userInfo` 結構上就送不出去。
+- **遙測只有一個出口 `Telemetry.swift`**：其他檔案禁止 `import FirebaseAnalytics` / `FirebaseCrashlytics`。事件名與參數值全來自封閉列舉：`AnalyticsValue` 的底層儲存是 `private`，唯一能產生字串參數的建構子只收封閉列舉的 rawValue，自由字串**值**在編譯期就構造不出來（參數的**鍵**與 Crashlytics breadcrumb 仍是字串，由送出前的樣式掃描把關），**完全不設任何使用者屬性**。送出前再過六道閘門——示範模式、截圖模式、使用者未同意、Firebase 未初始化、參數命中 `Redact` 敏感樣式、整數值域檢查（最後兩道在 DEBUG build 直接 `assertionFailure`）。非致命錯誤**不接受 `Error` 物件**，只收已經分類完成的 `TelemetryIssue` 列舉與狀態碼，所以伺服器原文與 `userInfo` 結構上就送不出去。
 - **個資與健康資料一律不進遙測**：身分證號、出生日期、手機號碼的任何形式（原文、雜湊、截斷、拼接）都不送；HealthKit 衍生值也全部不送，**連「今日是否達標」這種由步數推導的布林值都不送**（Apple 禁止把健康資料分享給第三方）。唯一沾到健康的是 `health_link_tap`——只記錄「使用者按了前往連結的按鈕」這個 UI 動作，連授權結果都不送。
 - **新增 `PrivacyInfo.xcprivacy`**：宣告 `NSPrivacyTracking = false`、無追蹤網域、UserDefaults 使用理由 `CA92.1`，以及 CrashData／OtherDiagnosticData／ProductInteraction 三類資料（皆 not linked、not tracking）。
 - **`GoogleService-Info.plist` 不進版控**：本 repo 公開，真檔一律排除，只附 `.template`。真檔不存在時 `Telemetry.configure()` 直接跳過初始化，遙測全程 no-op 且不 crash，clone 下來就能 build。
@@ -54,7 +54,7 @@
 - **ATS 強制 HTTPS**：`NSAllowsArbitraryLoads=false`，`500.gov.tw` 要求 TLS 1.2 以上與 forward secrecy，不開放任何明文例外。
 - **修正官網 http 降級 redirect**：官網 302 的 `Location` 為 `http://`，client 一律正規化回 `https://` 再送，避免 Secure cookie 遺失與明文傳輸。
 - **個資只存 iOS Keychain**：`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`，不同步 iCloud、不隨備份轉移；絕不寫入 `UserDefaults`、plist 或明文檔案。
-- **Cookie 存在 App 沙盒容器、不外流**：`LBSCookie` / `JSESSIONID` 由 `URLSessionHTTPClient`（`persistCookies: true`）保存以維持登入狀態，僅限本 App 容器可讀；登出與「立即清除本機資料」都會呼叫 `resetSession()` 清空。cookie 的 domain scope 為 `500.gov.tw`，不會被送往其他網域。
+- **Cookie 存在 App 沙盒容器、不外流**：`LBSCookie` / `JSESSIONID` 由 `URLSessionHTTPClient`（`persistCookies: true`）保存以維持登入狀態，僅限本 App 容器可讀；**重新登入前**（`AuthService` 登入流程開頭）與「立即清除本機資料」時都會呼叫 `resetSession()` 清空。cookie 的 domain scope 為 `500.gov.tw`，不會被送往其他網域。
 - **統一日誌出口 `SecureLog` + `Redact`**：身分證、生日、手機、Email、健保卡號、cookie、`_csrf`、OTP、presigned URL 一律遮罩；debug 層級只在 DEBUG build 輸出。
 - **HealthKit 唯讀**：只要求 `stepCount`、`distanceWalkingRunning`、`appleExerciseTime` 的讀取權限，從不寫入，資料也不離開裝置——**包含不進遙測**，即使使用者開啟了匿名統計也一樣。
 - **不繞過任何身分驗證**：戶役政、健保卡、簡訊 OTP 皆為真實驗證，App 設計上不提供繞過路徑，也不提供任何可竄改運動數據的入口。

@@ -562,7 +562,7 @@ final class HomeViewModel: ObservableObject {
     /// 本地優先 + 節流：先秀快取；距上次更新未滿 60 秒（且已有資料）就不發 request。
     ///
     /// `force == true` 只發生在「剛登入成功」之後，因此遙測來源標成 `post_login`——
-    /// 這是 analytics-plan §2.4 用來分辨「官網改版」與「session 過期」的關鍵：
+    /// 這是用來分辨「官網改版」與「session 過期」的關鍵：
     /// 剛登入完還解析失敗，就不可能是 session 過期了。
     func loadWeeklySummary(force: Bool = false) async {
         guard let tasks else { return }

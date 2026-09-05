@@ -740,7 +740,6 @@ final class ProfileViewModel: ObservableObject {
 
     var maskedIdNo: String { Self.mask(draft.idNo, prefix: 1, suffix: 2) }
     var maskedPhone: String { Self.mask(draft.phone, prefix: 4, suffix: 3) }
-    var maskedNHICardNo: String { Self.mask(draft.nhiCardNo, prefix: 4, suffix: 4) }
 
     private static func mask(_ value: String, prefix: Int, suffix: Int) -> String {
         guard !value.isEmpty else { return "" }

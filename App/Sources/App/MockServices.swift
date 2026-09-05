@@ -145,7 +145,6 @@ public final class MockRedeemService: RedeemServicing, @unchecked Sendable {
 
 /// 假的檢視加碼券服務，供 UI 開發與 Preview 使用。可設定 OTP 情境（一次驗證成功／錯誤幾次／
 /// 傳送失敗），`fetchVoucher` 回傳範例券碼（比照 Fixtures/voucher_view.html 的萊爾富兩段式券）。
-/// // TODO: wire real SportsRewardsKit implementations — 換成 VoucherService(http:)。
 public final class MockVoucherService: VoucherServicing, @unchecked Sendable {
     public enum OtpScenario: Sendable {
         /// 任何 6 碼都驗證成功。
@@ -223,7 +222,6 @@ public final class MockVoucherService: VoucherServicing, @unchecked Sendable {
 }
 
 /// 假的健康資料讀取器，回傳範例的今日健康摘要，供 UI 開發與 Preview 使用。
-/// // TODO: wire real SportsRewardsKit implementations — 換成 HealthKitReader()。
 public final class MockHealthReader: HealthReading, @unchecked Sendable {
     public enum Scenario: Sendable, Equatable {
         case authorized

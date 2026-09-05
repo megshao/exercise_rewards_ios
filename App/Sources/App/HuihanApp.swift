@@ -12,7 +12,7 @@ struct HuihanApp: App {
     ///
     /// **這裡刻意不送任何「App 啟動了」事件**：Firebase 自己就有 `first_open` 與
     /// `session_start`（同意前不會產生），再自己補一個 `app_launched` 只是把同一件事
-    /// 數兩次，`docs/analytics-plan.md` §3 的事件表也沒有它。
+    /// 數兩次。
     init() {
         Telemetry.configure()
     }

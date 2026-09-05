@@ -11,7 +11,7 @@ final class TasksServiceTests: XCTestCase {
     func testScreenshotImageURLReturnsRedirectLocationVerbatim() async throws {
         // Arrange
         let mock = MockHTTPClient()
-        let s3URL = "https://s3.hicloud.net.tw/bucket/uploads/photo123.jpg?X-Amz-Signature=abc123"
+        let s3URL = "https://example-bucket.s3.example.com/uploads/photo123.jpg?X-Amz-Signature=abc123"
         mock.redirectLocationByPath[screenshotPath] = s3URL
         let sut = TasksService(http: mock)
 

@@ -12,8 +12,8 @@ import FirebaseCrashlytics
 // 比照 `SecureLog` 的設計哲學：呼叫端不能直接碰 SDK，只能透過這裡的型別安全 API。
 // 全 App 禁止 `import FirebaseAnalytics` / `import FirebaseCrashlytics`，只有這個檔案可以。
 //
-// 事件清單、參數、觸發時機與「刻意不埋」的判斷依據都在 `docs/analytics-plan.md`。
-// 本檔案的列舉就是那份規格的可執行版本：規格說不能送的東西，這裡在型別上就構造不出來。
+// 事件清單、參數、觸發時機與「刻意不埋」的判斷依據，就是本檔案的列舉本身：
+// 不能送的東西，這裡在型別上就構造不出來，不必仰賴另一份文件說明。
 //
 // **哪些資料絕對不准進來**（新增事件前請逐條對照）：
 //   1. 個資：身分證號、出生日期、手機號碼、姓名、email、健保卡號——這三欄是 App 唯一收集的
@@ -38,7 +38,7 @@ import FirebaseCrashlytics
 // （`Redact.sensitiveKinds`）。`.bool(true)` 與 `.int(8000)` 是掃不到的——所以「不埋」
 // 必須發生在寫下 `case` 的那一刻，而不是指望送出前被攔下來。
 
-// MARK: - 值域列舉（analytics-plan §3.1）
+// MARK: - 值域列舉
 //
 // 這一整區的存在理由只有一個：**遙測參數的值只能來自封閉集合**。
 // 任何「從官網字串轉成分類」的動作都在這裡做完，之後的 API 就再也收不到自由字串。
@@ -61,20 +61,35 @@ enum ScreenName: String, Sendable, CaseIterable {
 
     /// GA4 的 `screen_class`。固定為對應的 Swift 型別名（**常數，不是變數**）：
     /// 手動送 `screen_view` 時 Firebase 不會自己填，留空會讓報表上全部併成一列。
-    var screenClass: String {
+    var screenClass: ScreenClass {
         switch self {
-        case .onboardingWelcome, .onboardingForm: return "OnboardingView"
-        case .home: return "HomeView"
-        case .tasks: return "TasksView"
-        case .health: return "HealthView"
-        case .wallet: return "WalletView"
-        case .profile: return "ProfileView"
-        case .upload: return "UploadView"
-        case .screenshot: return "ScreenshotView"
-        case .redeem: return "RedeemView"
-        case .voucher: return "VoucherView"
+        case .onboardingWelcome, .onboardingForm: return .onboarding
+        case .home: return .home
+        case .tasks: return .tasks
+        case .health: return .health
+        case .wallet: return .wallet
+        case .profile: return .profile
+        case .upload: return .upload
+        case .screenshot: return .screenshot
+        case .redeem: return .redeem
+        case .voucher: return .voucher
         }
     }
+}
+
+/// GA4 `screen_class` 的值域。與 `ScreenName` 是多對一（onboarding 的兩個畫面共用同一個 View）。
+/// **也做成封閉列舉**，好讓 `AnalyticsValue.code(_:)` 成為本檔案唯一能產生字串參數的路徑。
+enum ScreenClass: String, Sendable {
+    case onboarding = "OnboardingView"
+    case home = "HomeView"
+    case tasks = "TasksView"
+    case health = "HealthView"
+    case wallet = "WalletView"
+    case profile = "ProfileView"
+    case upload = "UploadView"
+    case screenshot = "ScreenshotView"
+    case redeem = "RedeemView"
+    case voucher = "VoucherView"
 }
 
 /// 登入是從哪裡觸發的。
@@ -168,7 +183,11 @@ enum Vendor: String, Sendable {
 }
 
 /// 被擋下的連線目的地分類。`AppError.blockedEgress(host)` 的 host 字串**不送**——
-/// 它可能是 S3 presigned host，內含 bucket 名。
+/// 它可能是 presigned URL 的 host，內含 bucket 名。
+///
+/// `amazonaws` 這一類是**依實際觀察到的行為**寫的：官方網站目前把截圖的 presigned URL
+/// 指向 AWS S3。官方站若換掉儲存供應商，那些 host 會落到 `.other`——不影響隱私
+/// （host 字串本來就不送），只影響這個分類的精度。
 enum HostClass: String, Sendable {
     case govTw = "gov_tw"
     case amazonaws
@@ -312,7 +331,7 @@ enum SiteErrorKind: String, Sendable {
 
 /// 同意是從哪個介面給的。
 enum ConsentSource: String, Sendable {
-    /// 首頁的同意卡（尚未實作，見 analytics-plan §6.2）。
+    /// 首頁的同意卡（尚未實作；目前只有「我的資料 › 安全與隱私」的開關）。
     case prompt
     /// 「我的資料 › 安全與隱私」的開關。
     case settings
@@ -365,25 +384,46 @@ enum VoucherStage: String, Sendable {
 
 /// 遙測參數的值。限制成三種純量，讓「參數裡塞了一個結構化的個資物件」在編譯期就不可能發生。
 ///
-/// **沒有 `case string(String)`**——`enumCase` 雖然底層也是字串，但唯一的建構路徑是
-/// `AnalyticsValue.code(_:)`，它只收 `RawRepresentable where RawValue == String`，
-/// 也就是本檔案上面那一整區封閉列舉的 rawValue。想送自由字串就得先去定義一個列舉，
-/// 而定義列舉的當下，就是「這個值域是不是封閉的」被 review 的時候。
-enum AnalyticsValue: Sendable {
-    /// 某個封閉列舉的 rawValue。請用 `AnalyticsValue.code(_:)` 建構。
-    case enumCase(String)
-    case int(Int)
-    case bool(Bool)
+/// **刻意做成 struct 而不是 enum**：底層的 `Storage` 是 `private`，所以檔案外面
+/// **沒有**「直接包一個任意字串」那條路。能產生字串值的建構子只有 `code(_:)`，
+/// 它只收 `RawRepresentable where RawValue == String`，也就是本檔案上面那一整區封閉
+/// 列舉的 rawValue。想送自由字串就得先去定義一個列舉，而定義列舉的當下，就是「這個
+/// 值域是不是封閉的」被 review 的時候。
+///
+/// **型別擋得住的到這裡為止**，剩下的由送出前的閘門接手，不要把這件事講得比實際更強：
+/// 參數的**鍵**仍然是自由字串（見 `recordNonFatal(extras:)`），Crashlytics 的
+/// breadcrumb 也是字串。那兩處靠的是 `Redact` 的敏感樣式掃描與整數值域白名單。
+struct AnalyticsValue: Sendable {
+    /// `private` 是這個型別的全部重點：外部構造不出 `.enumCase("任意字串")`。
+    private enum Storage: Sendable {
+        case enumCase(String)
+        case int(Int)
+        case bool(Bool)
+    }
 
-    /// 唯一該用的建構子：從封閉列舉取 rawValue。
+    private let storage: Storage
+
+    private init(_ storage: Storage) {
+        self.storage = storage
+    }
+
+    /// 唯一能把字串放進參數的建構子：從封閉列舉取 rawValue。
     static func code<E: RawRepresentable & Sendable>(_ value: E) -> AnalyticsValue
     where E.RawValue == String {
-        .enumCase(value.rawValue)
+        AnalyticsValue(.enumCase(value.rawValue))
+    }
+
+    static func int(_ value: Int) -> AnalyticsValue {
+        AnalyticsValue(.int(value))
+    }
+
+    static func bool(_ value: Bool) -> AnalyticsValue {
+        AnalyticsValue(.bool(value))
     }
 
     /// 轉成 Firebase 收得的型別。
     var firebaseValue: Any {
-        switch self {
+        switch storage {
         case .enumCase(let value): return value
         case .int(let value): return value
         case .bool(let value): return value ? 1 : 0
@@ -392,19 +432,19 @@ enum AnalyticsValue: Sendable {
 
     /// 只有字串需要過敏感樣式偵測。
     var stringPayload: String? {
-        if case .enumCase(let value) = self { return value }
+        if case .enumCase(let value) = storage { return value }
         return nil
     }
 
     /// Int 的值域檢查用。
     var intPayload: Int? {
-        if case .int(let value) = self { return value }
+        if case .int(let value) = storage { return value }
         return nil
     }
 
     /// breadcrumb 用的簡短表示。
     var breadcrumbText: String {
-        switch self {
+        switch storage {
         case .enumCase(let value): return value
         case .int(let value): return String(value)
         case .bool(let value): return value ? "true" : "false"
@@ -416,8 +456,9 @@ enum AnalyticsValue: Sendable {
 
 /// 全 App 允許送出的事件。要接新事件，**只擴充這個 enum**，不要在別處直接呼叫 SDK。
 ///
-/// 編號對應 `docs/analytics-plan.md` §3.2 的事件表。表上有、這裡沒有的事件都是
-/// **刻意不實作**的，理由寫在對應位置的註解裡——不要因為「規格上有」就補回來。
+/// E1–E28 是本檔案自己的內部編號，方便別處的註解指名某個事件。編號中斷的地方
+/// （例如 E10）是**刻意不實作**的事件，理由就寫在該編號的位置上——那些說明刻意
+/// 留著，避免後人重新想一次同樣的問題、又得出不同的答案。
 enum AnalyticsEvent: Sendable {
     // E1
     /// 畫面瀏覽。只帶封閉列舉的畫面名，不帶任何畫面上的資料。
@@ -471,14 +512,13 @@ enum AnalyticsEvent: Sendable {
     case healthLinkTap
 
     // ⛔️ E10 `health_link_result`（授權流程的結果）**刻意不實作**。
-    // 規格把它列為「邊界案例，需明知而為」，但本 App 的判準更嚴：健康相關只埋
-    // **流程動作**，不埋授權結果。理由：
+    // 這裡的判準是：健康相關只埋**流程動作**，不埋授權結果。理由：
     //   1. `completed` / `unavailable` / `error` 三選一就是在描述 HealthKit 授權流程的
     //      結果，即使 Apple 設計上不揭露「使用者按了允許還是不允許」，這仍然是
     //      「從 HealthKit API 取得的資訊」，屬 5.1.3(i) 要保護的範圍。
     //   2. `unavailable`（`isHealthDataAvailable() == false`）雖然只是裝置能力，
     //      但混在同一個事件裡就無法在資料端切乾淨。
-    //   3. G4（有多少人願意連結健康）用 E9 的次數就估得出來，不值得為它踩灰色地帶。
+    //   3. E9 的次數已足以估算「多少人願意連結健康」，不需要這個事件。
 
     // E11
     /// 從相簿選圖的結果。只送二元結果。
@@ -551,8 +591,8 @@ enum AnalyticsEvent: Sendable {
     // E28
     /// 使用者開啟匿名統計。**唯一一個「同意後的第一個事件」。**
     ///
-    /// 沒有對應的 `consent_revoked`：使用者剛說「不要」，再送一筆等於沒聽到。
-    /// 舊版外殼曾經用 `bypassingUserPreference` 在關閉時補送一筆，那條路已經整個拆掉。
+    /// 沒有對應的 `consent_revoked`：關閉時不補送任何事件。使用者剛按下「不要」，
+    /// 再送一筆出去等於沒聽到。
     case consentGranted(source: ConsentSource)
 
     /// Firebase 事件名。snake_case、字母開頭、≤ 40 字元、不用 `firebase_`／`google_`／`ga_` 前綴。
@@ -593,7 +633,7 @@ enum AnalyticsEvent: Sendable {
         case .screenViewed(let screen):
             return [
                 AnalyticsParameterScreenName: .code(screen),
-                AnalyticsParameterScreenClass: .enumCase(screen.screenClass),
+                AnalyticsParameterScreenClass: .code(screen.screenClass),
             ]
 
         case .tutorialBegin, .registerRedirect, .tutorialComplete, .healthLinkTap, .localDataClear:
@@ -729,17 +769,16 @@ enum AnalyticsEvent: Sendable {
 ///
 /// - user property 會**附加在往後所有事件上**，是最容易不小心變成準識別碼的地方：
 ///   幾個布林的組合就足以把裝置切成很小的群，跟「匿名」的承諾方向相反。
-/// - 舊版外殼有 `healthAuthorizationGranted(Bool)`。那是**HealthKit 授權結果**，
-///   還會被黏在每一個事件上，等於把健康資料的一個位元散佈到整個資料集，
-///   直接踩 Guideline 5.1.3(i)。已移除，不要以任何形式加回來。
-/// - 舊版另有 `onboardingCompleted(Bool)`。它本身無害，但 analytics-plan §2.3 是
-///   「不設定任何 user property」，而漏斗用 `tutorial_begin` / `tutorial_complete`
-///   兩個事件就算得出來，不需要常駐屬性。
+/// - **不要為 HealthKit 授權結果設 user property**：user property 會黏在往後每一個
+///   事件上，等於把健康資料的一個位元散佈到整個資料集，直接踩 Guideline 5.1.3(i)。
+/// - 連看起來無害的旗標（例如「onboarding 完成了沒」）也不要設：漏斗用
+///   `tutorial_begin` / `tutorial_complete` 兩個事件就算得出來，不需要常駐屬性。
+///   開了第一個先例之後，後面每一個都會有它自己的理由。
 enum UserProperty: Sendable {}
 
 // MARK: - 當機報告
 
-/// 當機報告上的自訂鍵（analytics-plan §5.2）。同樣封閉，避免有人拿 crash key
+/// 當機報告上的自訂鍵。同樣封閉，避免有人拿 crash key
 /// 當成「順手記一下使用者是誰」的地方。
 ///
 /// **禁止成為 custom key 的東西**（列出來讓後人不用再想一次）：`Profile` 任何欄位、
@@ -801,7 +840,7 @@ enum CrashKey: Sendable {
     }
 }
 
-/// 非致命錯誤的網域（analytics-plan §5.4）。
+/// 非致命錯誤的網域。
 enum TelemetryDomain: String, Sendable {
     /// 官網改版訊號。
     case siteDrift = "SiteDrift"
@@ -813,11 +852,11 @@ enum TelemetryDomain: String, Sendable {
 
 /// 非致命錯誤的具體項目。`code` 就是這裡的 `intCode`，Crashlytics 用 (domain, code) 分群。
 ///
-/// **N2 `SiteDrift.tasks_partial` 的 `raw_state` 沒有實作**：規格把它列為
-/// 「唯一放行的非 enum 字串」（由 regex `[A-Z_]+` 約束），但那需要讓 `TelemetryError`
-/// 的 userInfo 接受 `String`，等於在唯一的出口上開一個字串洞。本 App 的判準是
-/// 「官網回傳的原文一律不送」，沒有例外；改用 `unknown_states` 計數與 `missing_id`
-/// 布林達到同樣的警報效果（知道「官網出現了我們不認得的狀態」就夠觸發人工去看一眼）。
+/// **N2 `SiteDrift.tasks_partial` 刻意不帶 `raw_state`**：要附上官網的原始狀態字串
+/// （就算用 regex `[A-Z_]+` 約束）就得讓 `TelemetryError` 的 userInfo 接受 `String`，
+/// 等於在唯一的出口上開一個字串洞。這裡的判準是「官網回傳的原文一律不送」，沒有例外；
+/// 改用 `unknown_states` 計數與 `missing_id` 布林達到同樣的警報效果
+/// （知道「官網出現了我們不認得的狀態」就夠觸發人工去看一眼）。
 enum TelemetryIssue: String, Sendable {
     // SiteDrift
     case tasksNoCards = "tasks_no_cards"
@@ -941,7 +980,7 @@ enum Telemetry {
     ///
     /// 為什麼是 lazy（這不是效能考量，是承諾的結構性基礎）：
     ///
-    /// 1. `site/privacy.html` §5 寫的是「App 安裝好之後，這項功能是關閉的，**一個位元組都
+    /// 1. 隱私權政策第 5 節寫的是「App 安裝好之後，這項功能是關閉的，**一個位元組都
     ///    不會送出去**」。要讓這句話為真，不能只靠「有 configure，但兩個 collection 旗標
     ///    都關著」——`FirebaseApp.configure()` 一旦執行，Firebase Installations 就會去要
     ///    一組 installation ID，**即使 Analytics 與 Crashlytics 的收集旗標都是 false**
@@ -957,8 +996,7 @@ enum Telemetry {
     /// 要接受的代價：Crashlytics 只抓得到 opt-in 之後的當機，同意之前的當機永遠看不到。
     /// 這本來就是 opt-in 的語意，不為了多幾筆當機報告去妥協。
     static func configure() {
-        // 示範模式（App Store 審查員走的路）也一併擋掉：審查員從未同意，
-        // 而且「送審版本在示範模式下對 Google 零連線」是 Review Notes 寫得出來的一句話。
+        // 示範模式也一併擋掉：走示範模式的人從未對遙測表示同意。
         guard isUserEnabled, !isDemoModeActive else {
             log.debug("遙測未同意或處於示範模式，完全不初始化 Firebase（一行 SDK 程式碼都不執行）")
             return
@@ -1023,9 +1061,8 @@ enum Telemetry {
 
     /// 使用者在「我的資料 › 安全與隱私」切換開關時呼叫。
     ///
-    /// **關閉時不送任何事件。** 舊版外殼會在關閉那一刻用 `bypassingUserPreference`
-    /// 補送一筆 `telemetry_preference_changed(false)`，理由是「否則拿不到 opt-out 率」。
-    /// 那條路已經整個移除：使用者剛按下「不要」，還硬送一筆出去，等於沒聽到。
+    /// **關閉時不補送任何事件**，`bypassingUserPreference` 之類的旁路也不要加。
+    /// 使用者剛按下「不要」，再送一筆出去等於沒聽到——就算是為了拿到 opt-out 率也一樣。
     /// 對一支把隱私當賣點的 App 來說，這個數字不值得用「違背同意」去換。
     ///
     /// **「打開」是這支 App 第一次接觸 Firebase 的時刻**（見 `configure()` 的說明）：
@@ -1068,8 +1105,8 @@ enum Telemetry {
 
     /// 「立即清除本機資料」時呼叫：把偏好重設回預設值（opt-in ⇒ 關閉）並立刻停止收集。
     ///
-    /// 呼叫端必須**先送 E26 `local_data_clear`**（在偏好還開著的時候）再呼叫這裡，
-    /// 順序見 analytics-plan §6.4。
+    /// 呼叫端必須**先送 E26 `local_data_clear`**（在偏好還開著的時候）再呼叫這裡。
+    /// 順序不能反：偏好一旦關掉，那筆事件就送不出去了。
     static func resetPreference() {
         UserDefaults.standard.removeObject(forKey: preferenceKey)
         applyCollectionFlags(enabled: defaultEnabled)
@@ -1148,14 +1185,15 @@ enum Telemetry {
         }
     }
 
-    /// 送出前的四道閘門：初始化 → 開關（示範模式／截圖模式／使用者偏好）→ 內容掃描 → 值域檢查。
+    /// 送出前的六道閘門：示範模式 → 截圖模式 → 使用者關閉 → 未初始化 →
+    /// 參數命中 `Redact` 敏感樣式 → 整數超出登記值域。
     /// 這是**機制**而不是自律：呼叫端沒有繞過它的路。
     private static func gate(
         eventName: String,
         parameters: [String: AnalyticsValue]
     ) -> Block? {
         // 順序有意義：**先問「該不該送」，再問「送得出去嗎」**。
-        // 四道都必須通過，所以順序不影響安全性，但影響 debug log 的資訊量——
+        // 六道都必須通過，所以順序不影響安全性，但影響 debug log 的資訊量——
         // 把 `configured` 放最前面的話，沒有 GoogleService-Info.plist 的開發／CI 環境會讓
         // 每一筆都回報「Firebase 未初始化」，於是「同意閘門到底有沒有在擋」就永遠驗不到。
         // 現在的順序讓 `SecureLog` 直接說出是哪一道擋下來的。
@@ -1343,7 +1381,7 @@ enum Telemetry {
         Int((DispatchTime.now().uptimeNanoseconds &- start.uptimeNanoseconds) / 1_000_000)
     }
 
-    // MARK: 官網改版訊號（analytics-plan §2.4 / §5.4）
+    // MARK: 官網改版訊號
 
     /// 把一個失敗分類，並在該送的時候送出 E27 `site_error` ＋ 對應的 Crashlytics 非致命錯誤。
     ///
@@ -1485,10 +1523,9 @@ enum TasksTelemetry {
     /// N2：頁面解析得出來，但**內容跟我們認得的不一樣**——官網新增狀態常數，或本該有
     /// UUID 的卡片抓不到。這是官網改版最早的警報，比「整頁解析失敗」早好幾週出現。
     ///
-    /// 規格允許在這裡附上官網的原始狀態字串（`raw_state`，由 regex `[A-Z_]+` 約束）作為
-    /// 「唯一放行的非 enum 字串」。**本 App 不用那個例外**：官網回傳的原文一律不送，
-    /// 沒有特例。知道「出現了不認得的狀態、有幾張」就足以觸發人工去看一眼官網，
-    /// 不需要把字串本身送到第三方。
+    /// 這裡刻意**不附上官網的原始狀態字串**，即使用 regex `[A-Z_]+` 約束也一樣：
+    /// 官網回傳的原文一律不送，沒有特例。知道「出現了不認得的狀態、有幾張」就足以
+    /// 觸發人工去看一眼官網，不需要把字串本身送到第三方。
     private static func reportPartialDrift(_ periods: [TaskPeriod]) {
         let unknownStates = periods.filter { $0.state == .unknown }.count
         // 非 `notStarted` 的卡片理應都帶得到期別 UUID；抓不到代表兌換／截圖連結的結構變了。

@@ -34,7 +34,7 @@
 | 網域 | 什麼時候出現 |
 |---|---|
 | `500.gov.tw` | 登入、抓任務、上傳、兌換、券碼 |
-| `*.amazonaws.com` | 只在你點開「查看已上傳的截圖」時 |
+| 官方網站存放截圖的圖片網域（實測為 `*.amazonaws.com`） | 只在你點開「查看已上傳的截圖」時 |
 
 看到任何 Google 網域（`googleapis.com`、`crashlytics.com`、`app-analytics-services.com`、`google-analytics.com`……）就是我們違反承諾，請截圖回報。
 
@@ -70,14 +70,14 @@ mitmweb                       # 啟動，預設監聽 8080，瀏覽器介面在 
 ~d 500.gov.tw | ~d amazonaws.com | ~d google | ~d crashlytics | ~d firebase
 ```
 
-先只看這些。iPhone 上其他 App 與系統服務的流量也會經過 proxy（其中不少 Apple 服務有做 pinning，會顯示成握手失敗，那是正常噪音，跟本 App 無關）。
+先只看這些（`amazonaws.com` 那一條是依目前實測的截圖圖片網域寫的；若官方網站換了儲存供應商，改成你在 302 `Location` 看到的網域）。iPhone 上其他 App 與系統服務的流量也會經過 proxy（其中不少 Apple 服務有做 pinning，會顯示成握手失敗，那是正常噪音，跟本 App 無關）。
 
 ## 2. 預期會看到的網域
 
 | 網域 | 誰發的 | 什麼時候 | 開關關著時會出現嗎 |
 |---|---|---|---|
 | `500.gov.tw` | App 自己的網路程式碼 | 登入、抓任務、上傳、兌換、券碼 | 會 |
-| `*.amazonaws.com` | iOS 的系統圖片載入器（`AsyncImage`） | 只在點開「查看已上傳的截圖」時 | 會（只在那一刻） |
+| 官方網站存放截圖的圖片網域（實測為 `*.amazonaws.com`） | iOS 的系統圖片載入器（`AsyncImage`） | 只在點開「查看已上傳的截圖」時 | 會（只在那一刻） |
 | `firebaseinstallations.googleapis.com` | Firebase SDK | 打開統計開關那一刻（要一組安裝編號） | **不會** |
 | `app-analytics-services.com` | Firebase SDK | 開關開著時，事件批次上傳 | **不會** |
 | `firebase-settings.crashlytics.com` | Firebase SDK | 開關開著時，啟動後抓設定 | **不會** |
@@ -86,11 +86,13 @@ mitmweb                       # 啟動，預設監聽 8080，瀏覽器介面在 
 
 以上五個 Google 網域是從送審版本的二進位裡直接撈出來的字串。Google 可能改網域，所以判準不是「只有這五個」，而是**開關關著時，任何 Google 網域都不該出現**。
 
+圖片網域是**官方網站**決定的，不是本 App 決定的：截圖網址由官網以 302 回傳，App 只是照著載入。官方站若換掉儲存供應商，你看到的會是另一個網域，那不是本 App 的異常——判準是「不帶 cookie、只在點開截圖時出現」，不是網域名稱本身。
+
 除了這張表上的東西，本 App 不該連任何地方。
 
 ## 3. 每個操作預期的請求
 
-所有 `500.gov.tw` 的請求都在 `https://500.gov.tw/registrant/...` 底下。官方網站沒有 API，全部是一般的網頁表單，所以 App 送出的 `User-Agent` 是 iPhone Safari 的字串——不是要隱藏什麼，是官網只認瀏覽器。
+所有 `500.gov.tw` 的請求都在 `https://500.gov.tw/registrant/...` 底下。官方網站沒有 API，全部是一般的網頁表單；App 以一般瀏覽器的身分提交同一份表單，因此 `User-Agent` 是 iPhone Safari 的字串。
 
 ### 登入（首次設定、「重新登入」、冷啟動自動登入）
 
@@ -134,12 +136,12 @@ POST /registrant/member/upload                  multipart/form-data
 
 ```
 GET  /registrant/member/screenshot/<期別 UUID>
-     → 302 Location: https://<某個 bucket>.s3.<區域>.amazonaws.com/...?X-Amz-...簽章...
+     → 302 Location: https://<官方網站的圖片儲存網域>/...?...簽章...（實測是 AWS S3 的 presigned URL）
 
 GET  https://<同上>                              ← 這一筆是 iOS 系統圖片載入器發的
 ```
 
-**要看的重點**：往 `amazonaws.com` 的那筆請求**不該帶 `Cookie` 標頭**（登入 cookie 的範圍是 `500.gov.tw`，不會跟過去），也不該帶 `Authorization`。它能讀是因為網址裡自帶簽章，而那個網址是官網給的。
+**要看的重點**：往那個圖片網域的請求**不該帶 `Cookie` 標頭**（登入 cookie 的範圍是 `500.gov.tw`，不會跟過去），也不該帶 `Authorization`。它能讀是因為網址裡自帶簽章，而那個網址是官網給的。
 
 ### 兌換
 
@@ -162,14 +164,14 @@ GET  /registrant/member/voucher/<期別 UUID>/view         → 200 HTML，內含
 
 **要看的重點**：簡訊驗證碼只出現在往 `500.gov.tw` 的那一筆 POST。券碼只出現在 `/view` 的回應裡，之後不會再被送到任何地方。
 
-### 登出、「立即清除本機資料」
+### 「立即清除本機資料」
 
-```
-GET  /registrant/member/tasks（或 /login）        ← 抓 _csrf
-POST /registrant/logout                          _csrf=<token>
-```
+App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logout`。cookie 會在兩個時機被清掉，兩者都不發任何額外請求：
 
-之後 App 會清空 cookie。清除本機資料時**不會**有任何東西送到 Google（就算開關本來是開的：清除會先把開關關回預設）。
+- **重新登入時**：登入流程一開始就先清空舊 cookie，再走 `access` → `login` 握手。
+- **「立即清除本機資料」時**：直接清空本機 cookie 與 Keychain 欄位。
+
+清除本機資料時**不會**有任何東西送到 Google（就算開關本來是開的：清除會先把開關關回預設）。
 
 ## 4. 遙測打開後會多出什麼
 
@@ -191,11 +193,11 @@ POST /registrant/logout                          _csrf=<token>
 
 五條判準，任何一條不成立都請回報：
 
-1. **開關關著、且 App 已完全關閉重開之後**：除了 `500.gov.tw` 與 `amazonaws.com`，本 App 不該連任何地方。
+1. **開關關著、且 App 已完全關閉重開之後**：除了 `500.gov.tw` 與官方網站回傳的圖片儲存網域，本 App 不該連任何地方。
 2. **往 `500.gov.tw` 的表單欄位只有這幾個**：`_csrf`、`idNo`、`birthDate`、`phone`、`screenshot`（檔案）、`vendorId`、`item`、`otp`。多出任何欄位——尤其像步數、距離、裝置識別碼——就是異常。
-3. **往 `amazonaws.com` 的請求**：不帶 `Cookie`、不帶 `Authorization`，而且只在你點開截圖時發生。
+3. **往圖片儲存網域的請求**：不帶 `Cookie`、不帶 `Authorization`，而且只在你點開截圖時發生。
 4. **遙測開著時，往 Google 的請求裡搜不到**你的身分證號、生日、手機號碼、步數，也搜不到任務的 UUID 與券碼。
-5. **每一筆都是 `https://`**。官網的 302 `Location` 其實是 `http://`（官網的問題），但 App 會改回 https 再送，所以你看到的實際請求全部應該是 https。看到任何一筆 `http://` 就是異常。
+5. **每一筆都是 `https://`**。官方站 302 的 `Location` 是 `http://`，client 一律正規化回 https 再送，所以你看到的實際請求全部應該是 https。看到任何一筆 `http://` 就是異常。
 
 ## 6. 驗完之後
 
