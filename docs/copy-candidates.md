@@ -1,4 +1,8 @@
-> **命名已定案（2026-09-05）**：技術名 **SportsRewards**（SPM SportsRewardsKit／bundle com.megshao.sportsrewards）；App 顯示名沿用 **揮汗有禮**。以下為當初的命名發想紀錄（含已淘汰的「颯步 Sabo」候選），保留作歷史參考。
+> **命名已定案（2026-09-05，1.0 送審版）**：技術名 **SportsRewards**（SPM SportsRewardsKit／bundle
+> `com.megshao.sportsrewards`）；**App Store 上架顯示名 = `Sports Rewards`**（`CFBundleDisplayName`）。
+> 「揮汗有禮」**不再作為 App 名稱**，只能出現在說明文字裡描述所參加的活動——理由見
+> `docs/app-review-risk.md` 風險 #5（以官方活動名命名會踩 guideline 4.1(b) impersonation 與 5.2.1）。
+> 以下為當初的命名發想紀錄（含已淘汰的「颯步 Sabo」與「揮汗有禮」候選），保留作歷史參考。
 
 # 品牌命名與介面文案候選
 
@@ -91,6 +95,9 @@
 > 短版（「我的資料」頁一行）：本機儲存・不上雲・不寫 log・全程開源。
 
 ### 5.1 已採用版本（「我的資料」頁首，實裝文案）
+
+> ⚠️ **1.0 校正**：個資已最小化到登入必需的**身分證號／出生日期／手機**三欄，
+> 姓名、email、健保卡卡號不再收集。下方第 2、3 點提到的「以下資料」即指這三欄。
 
 標題：**本 App 不蒐集、不外傳你的個資**
 

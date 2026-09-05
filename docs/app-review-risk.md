@@ -1,4 +1,4 @@
-# App Store 審查風險評估（揮汗有禮 非官方 App）
+# App Store 審查風險評估（Sports Rewards・非官方 App）
 
 研究基礎：Apple App Review Guidelines（2026-06 現行版）、Apple 開發者論壇判例、WebKit 官方部落格、活動辦法媒體轉述。
 
@@ -69,3 +69,32 @@
 
 （未查得：500.gov.tw/sports.gov.tw 活動辦法原文因 cookie/403 無法抓，「自動化工具」條款依康健等媒體轉述。）
 </content>
+
+---
+
+## 1.0 送審版落實狀態（2026-09-05 自審）
+
+對照上面「具體降險清單」逐項：
+
+| # | 降險項目 | 1.0 狀態 | 依據 |
+|---|---|---|---|
+| 1 | 改名為中性工具名 | ✅ 已做 | `CFBundleDisplayName = Sports Rewards`；「揮汗有禮」只當活動說明用語（`App/project.yml`、README） |
+| 2 | 組織帳號提交 | ❌ 未做 | 仍為個人開發者帳號（`DEVELOPMENT_TEAM: 8DVXA389TX`）——**5.1.1(ix) 殘餘風險最高的一項** |
+| 3 | 身分證/健保卡/生日不落 Keychain | ⚠️ 部分 | 個資已最小化到登入必需三欄（身分證／生日／手機）；姓名／email／**健保卡卡號完全不收集**；idNo 與 birthDate 為登入必需仍存 Keychain |
+| 4 | HealthKit 只讀不傳 | ⚠️ 部分 | `requestAuthorization(toShare: [], read:)` 確為唯讀；但仍保留「以 HealthKit 數據產生上傳圖卡」路徑（同時提供 `PhotosPicker` 自選截圖） |
+| 5 | 移除 WebView JS 注入 | ✅ 已做 | 全專案無 `WKWebView`／`WebKit`（`grep` 零命中），註冊改以外部 Safari 開官網 → 等同上表方案 **D** |
+| 6 | Demo Mode + 示範影片 | ⚠️ 部分 | `App/Sources/App/DemoMode.swift` 已實作（哨兵三碼、全 Mock、常駐橫幅、個資只在記憶體）；示範影片與 Review Notes 文字待補 |
+| 7 | 聯繫運動部取得「知悉不反對」 | ❌ 未做 | 5.2.2 授權文件仍拿不出 |
+| 8 | 隱私權政策 + 隱私標籤如實勾 | ❌ 待辦 | 需在 App Store Connect 填；Health 應為 Not Collected（不傳給開發者），身分資料屬「與第三方（500.gov.tw）分享」 |
+
+### Review Notes 必須主動揭露的三件事（2.3.1）
+1. **示範模式**：入口就是登入表單，輸入 `A000000000` / `1990-01-01` / `0900000000` 即進入；
+   全程不連線官方網站、資料為範例。（此三碼須同步填進 App Store Connect 的示範帳號欄位。）
+2. **本 App 為非官方工具**，以一般 HTTP client 操作使用者本人在 `500.gov.tw` 的帳號，
+   不繞過任何身分驗證，開發者不營運任何伺服器（開源連結一併附上）。
+3. **`WKAppBoundDomains` 的宣告用意**：本 App 目前完全不使用 WKWebView，該鍵是前瞻性防護宣告
+   而非既有 WebView 的設定；若審查員質疑，可直接說明並移除。
+4. **看截圖畫面會連到 AWS S3**：`GET /member/screenshot/{uuid}` 由官方站 302 到 S3 presigned URL，
+   App 用 `AsyncImage` 顯示該圖。這是白名單（`500.gov.tw`）唯一的刻意例外，只讀取使用者本人
+   上傳的圖片，URL 自帶簽章、不夾帶任何帳號憑證。
+

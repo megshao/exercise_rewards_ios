@@ -9,7 +9,7 @@
 | 欄位 | 內容 |
 |---|---|
 | 文件名稱 | 揮汗有禮 PRD |
-| 版本 | v0.1（Draft，待確認） |
+| 版本 | v1.0（送審版，已對齊實作） |
 | 撰寫日期 | 2026-09-05 |
 | 產品代號 | SportsRewards（技術名）／揮汗有禮（顯示名） |
 | 平台 | iOS 原生（SwiftUI，最低 iOS 16） |
@@ -21,6 +21,7 @@
 | 版本 | 日期 | 變更 |
 |---|---|---|
 | v0.1 | 2026-09-05 | 初版草稿，涵蓋 MVP 全流程與安全架構 |
+| v1.0 | 2026-09-05 | 對齊送審版實作：**移除生物辨識鎖與敏感動作再驗證**（`BiometricGate` / `SensitiveAuth` 已刪除）、個資最小化到登入三欄（不再收姓名／Email／健保卡號）、App 不做註冊（導外部 Safari）、加入送審示範模式（`DemoMode`）、上架名定為 Sports Rewards |
 
 ---
 
@@ -54,22 +55,22 @@
 ### 3.2 主要使用情境
 1. **每週例行（核心）**：週間運動 → 打開 App 看到「本週已達標」→ 產生圖卡 → 一鍵登入並上傳 → 收到「待審核」。
 2. **審核通過後兌換**：某期狀態變 REDEEMABLE → 選商店 → 收簡訊 OTP → 出示 QR 到超商折抵。
-3. **首次註冊**：尚未有帳號者，App 自動填妥註冊三步欄位，人只需完成健保卡驗證與 OTP。
-4. **換機／重裝**：重新輸入個資（因不上雲、不備份到 iCloud，屬預期行為），FaceID 保護後恢復使用。
+3. **首次註冊**：~~App 自動填妥註冊三步欄位~~ → **v1.0 不做註冊**。尚未有帳號者由 App 以外部 Safari 開啟官網 `https://500.gov.tw/registrant/access` 自行完成註冊，App 完全不碰健保卡／戶役政／OTP。
+4. **換機／重裝**：重新輸入登入三碼（因不上雲、不備份到 iCloud，屬預期行為）即可恢復使用；舊裝置上的資料留在該裝置的 Keychain，不會跟著轉移。
 
 ---
 
 ## 4. 範圍（Scope）
 
 ### 4.1 MVP（本期交付）
-- Profile 本機儲存（Keychain）＋生物辨識鎖。
+- Profile 本機儲存（Keychain，`WhenUnlockedThisDeviceOnly`）。**v1.0 不含生物辨識鎖**（見 §8.1）。
 - 一鍵登入（access → login，無 OTP）。
 - 任務儀表板（14 期，狀態、倒數、本週置頂）。
 - HealthKit 讀取步數／距離／運動時間＋達標判定＋產生上傳圖卡。
 - 上傳流程（圖卡或相簿選圖 → 一鍵上傳）。
 - 兌換流程（商店選擇 → OTP → QR 券）。
 - 券夾。
-- 安全與隱私（併入「我的資料」頁：本機資料檢視、生物鎖、一鍵清除、隱私說明；不另開「資安中心」子頁）。
+- 安全與隱私（併入「我的資料」頁：本機資料檢視、一鍵清除、隱私說明；不另開「資安中心」子頁，也不再有生物鎖開關）。
 
 ### 4.2 後續（Non-MVP，先不做）
 - 首次「註冊」全自動填單（MVP 先支援已註冊者登入；註冊流程列為 Phase 2，因牽涉健保卡／戶役政驗證與 OTP 自動帶入的複雜度）。
@@ -100,7 +101,8 @@
 
 ### 5.2 Profile 設定（App 內稱「我的資料」）
 - **目的**：一次輸入活動所需個資並存入 Keychain。
-- **輸入**：姓名、身分證號（`[A-Z][12]\d{8}`）、出生日期、手機（`09\d{8}`）、Email、健保卡卡號（供未來註冊/兌換備用）。
+- **輸入（v1.0 個資最小化）**：只收登入必需的三欄——身分證號（`[A-Z][12]\d{8}`）、出生日期、手機（`09\d{8}`）。
+  - **姓名、Email、健保卡卡號一律不收集**：這三欄只有註冊流程才需要，而 v1.0 不做註冊。`Profile` model 保留這三個欄位（供未來 Phase 2 使用）但 UI 從不寫入，實際存進 Keychain 的值恆為空字串。
 - **出生日期輸入**：不用系統日曆式 `DatePicker`，改為欄位點擊 → 開啟自製 sheet（`BirthDatePickerSheet`）：
   - 「年／月／日」三欄滾輪；年份範圍 1912–2009（民國元年起）。
   - 可切換 **民國／西元**（預設民國）；底部固定顯示雙年份確認字串（例「1990 年 5 月 20 日（民國 79 年）」）。
@@ -116,7 +118,7 @@
 - **驗收**：
   - Given 身分證格式錯誤，When 儲存，Then 阻擋並提示，不寫入。
   - Given 全部合法，When 儲存，Then 寫入 Keychain（`WhenUnlockedThisDeviceOnly`、不同步 iCloud），且**任何 log 不得出現欄位值**。
-  - Given 已存 Profile，When 重開 App 讀取，Then 需通過 FaceID/Touch ID 才顯示明文。
+  - Given 已存 Profile，When 重開 App 讀取，Then 直接讀出並以遮罩顯示（點擊欄位才展開明文）；**不再要求 Face ID／Touch ID**——裝置上鎖時 Keychain 的 `WhenUnlockedThisDeviceOnly` 已使本 App 讀不到資料，那才是裝置遺失時的實際界線。
   - Given 在出生日期欄位，When 點擊，Then 開啟三欄滾輪 sheet（非系統日曆），預設以民國年顯示且定位在目前已存日期。
   - Given 滾輪停在民國 79 年 5 月 20 日，When 檢視底部確認列，Then 同時顯示「1990 年 5 月 20 日（民國 79 年）」。
   - Given 已選 3 月 31 日，When 把月份轉到 2 月，Then 日期自動夾為當月最後一天，不會出現不存在的日期。
@@ -193,10 +195,12 @@
 ### 5.9 安全與隱私（併入「我的資料」頁，不另開子頁）
 - **目的**：讓使用者掌控自己的資料與信任本 App。
 - **位置**：原「設定 — 資安中心」子頁已移除，內容直接展開在「我的資料」（§5.2）頁的「安全與隱私」區塊，少一層導覽即可操作。
-- **輸入/功能**：Face ID 解鎖開關、本機資料說明（明列存了哪些欄位）、「立即清除本機資料」（含確認 alert，清除後回到 Onboarding）、頁首隱私說明（§5.2）；區塊底部固定版本與非官方聲明。
+- **輸入/功能**：本機資料說明（明列存了哪些欄位）、「立即清除本機資料」（含確認 alert，清除後回到 Onboarding）、頁首隱私說明（§5.2）；區塊底部固定版本與非官方聲明。
+  - **已於 1.0 移除**：原「Face ID 解鎖開關」隨生物辨識鎖一併刪除（見 §8.1 決策紀錄）。
   - **待補**：開源 repo 連結、重看導覽兩項尚未實作，補做時一併放在本區塊。
 - **驗收**：
-  - Given 使用者，When 點「立即清除本機資料」並在確認 alert 按下確定，Then 清空 Keychain 與所有本機快取／cookie，回到初始狀態（Onboarding）。
+  - Given 使用者，When 點「立即清除本機資料」並在確認 alert 按下確定，Then 清空 Keychain 個資、任務快取、健康授權旗標與 HTTP cookie jar，回到初始狀態（Onboarding）。
+    - ⚠️ **現況落差（待修）**：`ProfileView.clearLocalData()` 目前只清 Keychain／`TasksCache`／健康旗標，**未呼叫 `HTTPClienting.resetSession()`**，官方站的 session cookie 會殘留到下次登出。需補上才符合本驗收條件。
   - Given 進「我的資料」頁的「安全與隱私」區塊，When 檢視，Then 明列「儲存於 Keychain 的欄位清單」與「本 App 不含後端、不對外傳個資」聲明。
   - Given 使用者想調整安全設定，When 瀏覽 App，Then 不存在獨立的「資安中心」入口或子頁，所有項目都在「我的資料」同一頁完成。
 
@@ -294,9 +298,11 @@ flowchart TD
 > 本專案將開源，安全性須可被第三方完整稽核。原則：**本 App 無後端、個資只留本機、絕不寫 log、只連 `500.gov.tw`。**
 
 ### 8.1 個資儲存
-- 敏感個資（姓名、身分證號、出生日期、手機、Email、健保卡卡號）只存 **iOS Keychain**。
+- 敏感個資只存 **iOS Keychain**。v1.0 實際寫入的只有**身分證號、出生日期、手機**三欄（姓名／Email／健保卡卡號不收集，見 §5.2）。
 - Keychain 屬性：`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`（裝置解鎖時可用、**不同步 iCloud、不隨備份轉移**）。
-- 存取前需通過 **FaceID / Touch ID**（`LAContext` / `kSecAccessControl` biometryCurrentSet）。
+- **不使用生物辨識**（無 `LocalAuthentication`／`LAContext`，Keychain item 也不掛 `kSecAccessControl` biometry）。
+  - **決策紀錄（1.0 移除）**：原設計要求存取前通過 Face ID／Touch ID，並在「進個資頁／存個資／兌換」三處做敏感動作再驗證（`BiometricGate`、`SensitiveAuthCoordinator`）。1.0 全數移除，理由：(a) 登入三碼是使用者本人記得、且官方網站登入本身也只驗這三碼的資料，App 內再擋一次不改變裝置遺失時的實際暴露面；(b) 裝置遺失的真正界線是 **iOS 鎖屏 + `WhenUnlockedThisDeviceOnly`**——裝置上鎖時連本 App 都讀不到 Keychain；(c) 移除後 `NSFaceIDUsageDescription` 也一併拿掉，減少送審時需要解釋的權限面。
+  - 替代防線：iOS 裝置鎖屏、`WhenUnlockedThisDeviceOnly`（不同步 iCloud、不隨備份轉移）、「立即清除本機資料」。
 - 絕不寫入 `UserDefaults`、plist、明文檔案或 iCloud。
 
 ### 8.2 日誌遮罩規則（絕不落 log）
@@ -308,7 +314,7 @@ flowchart TD
 ### 8.3 網路安全
 - **網域白名單**：只允許連 `500.gov.tw`（含其 CDN/S3 presigned 圖片網域，需明列於允許清單）。
 - **ATS 強制 https**：`NSAllowsArbitraryLoads=false`；針對官網 redirect 的 http 降級由 App 層改寫為 https，而非放寬 ATS。
-- Cookie 僅存於記憶體或受保護儲存；**登出即清**；一鍵清除會一併移除。
+- Cookie 存於 App 沙盒容器（受 iOS 檔案保護，不進 iCloud），讓登入 session 可跨啟動續用；**登出 `resetSession()` 即清空 cookie/cache/憑證**。（`URLSessionHTTPClient(persistCookies: false)` 可退回純記憶體 ephemeral，供測試使用。）
 - 不硬編碼任何密鑰／token（本 App 本就無需伺服器密鑰）。
 
 ### 8.4 STRIDE 威脅模型（簡表）
@@ -317,7 +323,7 @@ flowchart TD
 | **S**poofing 假冒 | 中間人假冒官網 | ATS + https、網域白名單；官網為政府憑證 |
 | **T**ampering 竄改 | 竄改運動數據上傳 | 數據唯讀取自 HealthKit，無竄改入口；忠實呈現 |
 | **R**epudiation 否認 | 使用者否認操作 | 本機無需審計；官網端自有紀錄 |
-| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏 | Keychain + 生物鎖、遮罩規則、無後端、無第三方 SDK |
+| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏 | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無後端、無第三方 SDK |
 | **D**oS 阻斷 | 過度打 OTP / 官網 | 尊重官網每日 OTP 上限與 resend 倒數，不自動重試轟炸 |
 | **E**levation 提權 | 越權存取他人資料 | 只操作本機使用者自己的帳號；不支援批量／代操 |
 
@@ -331,20 +337,20 @@ flowchart TD
 
 ## 9. 資料模型（本機儲存欄位）
 
-### 9.1 Keychain — Profile（敏感，生物鎖保護）
+### 9.1 Keychain — Profile（敏感；由裝置鎖屏 + `WhenUnlockedThisDeviceOnly` 保護，無生物辨識層）
 | 欄位 | 型別 | 格式/驗證 | 用途 |
 |---|---|---|---|
-| `name` | String | 非空 | 註冊 |
+| `name` | String | 非空 | 註冊（**v1.0 不收集，恆為空字串**） |
 | `idNo` | String | `[A-Z][12]\d{8}` | 登入/註冊 |
 | `birthDate` | Date | 送出轉 ISO `yyyy-MM-dd` | 登入/註冊 |
 | `phone` | String | `09\d{8}` | 登入/註冊 |
-| `email` | String | Email 格式 | 註冊 |
-| `nhiCardNo` | String | 健保卡卡號 | 註冊/兌換（備用） |
+| `email` | String | Email 格式 | 註冊（**v1.0 不收集，恆為空字串**） |
+| `nhiCardNo` | String | 健保卡卡號 | 註冊/兌換備用（**v1.0 不收集，恆為空字串**） |
 
-### 9.2 記憶體（session 生命週期，登出即清）
+### 9.2 Session 狀態（登出即清）
 | 欄位 | 說明 |
 |---|---|
-| cookie jar | `LBSCookie`、`JSESSIONID` |
+| cookie jar | `LBSCookie`、`JSESSIONID`；存於 App 沙盒容器（跨啟動續用），`resetSession()` 清空 |
 | `_csrf` | 每頁最新 token |
 | 登入狀態 | 是否已進入 member 區 |
 
@@ -353,7 +359,7 @@ flowchart TD
 |---|---|
 | 任務儀表板快照 | 14 期狀態（不含個資），供離線顯示 |
 | 券夾 | 已兌換券的通路/期限/QR（評估是否列敏感） |
-| App 設定 | 生物鎖開關、是否看過導覽 |
+| App 設定 | 是否看過導覽（`hasCompletedOnboarding`）、健康授權旗標、示範模式旗標（`demoModeEnabled`）；**生物鎖開關已於 1.0 移除** |
 
 ---
 
