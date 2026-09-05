@@ -125,8 +125,8 @@ Google 官方的 App Store 資料揭露對照表對 Analytics／Crashlytics 的�
 | 健康資料有沒有離開裝置？ | **沒有**。只在 `HomeView` 步數環與 `HealthView` 摘要卡上顯示 | `HealthView.swift`：「健康數據只在裝置本機顯示，不會被送出」 |
 | 上傳的圖片是不是用健康資料產生的？ | **不是**。v1.0.0 **已移除**「以 HealthKit 數據產生上傳圖卡」的設計，上傳一律由使用者從相簿自選截圖 | `UploadView.swift` 只有 `PhotosPicker`，無 `ImageRenderer` 圖卡產生路徑；對應 `docs/app-review-risk.md` 降險第 4 條 |
 | 網路層有沒有可能把它送出去？ | 沒有。App 自己的出口只有 `500.gov.tw`，且送出的是使用者自選的圖片檔，不含任何 HealthKit 欄位 | `URLSessionHTTPClient` 網域白名單 |
-| **加了 Firebase 之後，健康資料有沒有可能進遙測？** | **沒有。** `AnalyticsEvent` 是封閉列舉，三個事件（`app_launched`、`screen_view`、`telemetry_preference_changed`）都不帶任何健康數值；`UserProperty` 也是封閉列舉，只有兩個布林。**連「今日是否達標」這種由步數推導的布林值都刻意不送**——`Telemetry.swift` 檔頭把它列為禁止項第 2 條，理由就是 Apple 禁止把 HealthKit 資料分享給第三方 | `App/Sources/App/Telemetry.swift`（封閉列舉 + 四道閘門 + DEBUG `assertionFailure`）|
-| 那 `health_auth_granted` 呢？ | 它是**授權狀態**（使用者有沒有按同意），不是健康資料，Apple 的 Health & Fitness 類別指的是 HealthKit 讀到的量測值。這一筆歸在 Usage Data / Diagnostics 的範圍，不影響 Health 這一格。**若日後有人把它改成帶數值（步數、達標與否），Health 就立刻變成 Collected，並直接踩 5.1.3(i)** | `Telemetry.UserProperty` |
+| **加了 Firebase 之後，健康資料有沒有可能進遙測？** | **沒有。** `AnalyticsEvent` 是封閉列舉（26 個事件），逐一檢視過**沒有任何一個帶健康數值**；唯一沾到健康的是 `health_link_tap`，記錄的是「使用者按了前往連結的按鈕」這個 UI 動作，**連授權結果都不送**。`UserProperty` 是**不可建構的空列舉**（完全不設任何使用者屬性）。**連「今日是否達標」這種由步數推導的布林值都刻意不送**——理由是 Apple 禁止把 HealthKit 資料分享給第三方 | `App/Sources/App/Telemetry.swift`（封閉列舉 + 六道閘門 + DEBUG `assertionFailure`）|
+| 那「有沒有授權讀步數」這種狀態呢？ | **實作上根本不送。** 曾評估過送授權結果（`health_link_result`），最後刻意不做——授權結果仍是「從 HealthKit API 取得的資訊」，即使只是三選一的列舉。實際只送 `health_link_tap`（按鈕被按了），那是純 UI 動作。**若日後有人把授權結果或任何數值加回遙測，Health 就立刻變成 Collected，並直接踩 5.1.3(i)** | `Telemetry.swift` 的 `AnalyticsEvent`；`UserProperty` 為空列舉 |
 
 → **依前提 A（未傳出裝置＝未蒐集），Health 與 Fitness 兩項都填 Not Collected。**
 
@@ -207,7 +207,7 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
 | 使用者屬性 | 封閉列舉 `UserProperty`，只有兩個布林：`health_auth_granted`、`onboarding_completed` | 同上 |
 | Crash custom keys | 封閉列舉 `CrashKey`：`is_demo_mode`、`last_screen` | 同上 |
 | `setUserID` | **從不呼叫** | 全專案 grep 零命中 |
-| 四道閘門 | 未初始化 → 示範模式（無 bypass）→ 使用者關閉 → 參數命中 `Redact` 敏感樣式（DEBUG 直接 `assertionFailure`） | `Telemetry.gate(...)` |
+| 六道閘門 | 示範模式 → 截圖模式 → 使用者關閉 → 未初始化 → 參數命中 `Redact` 敏感樣式 → 整數值域白名單（最後兩道在 DEBUG 直接 `assertionFailure`） | `Telemetry.gate(...)` |
 | 設定檔 | `GoogleService-Info.plist` **不進版控**（repo 公開），只附 `.template`；真檔不存在時全程 no-op 且不 crash | `.gitignore`、`Telemetry.configure()` 的 `guard Bundle.main.path(...)` |
 | SDK 連往的網域 | `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、`crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com` | `strings` Release 二進位 |
 

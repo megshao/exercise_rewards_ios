@@ -332,7 +332,7 @@ flowchart TD
      理由不是偏好，是 Apple Guideline 5.1.3 明文禁止把 HealthKit 資料分享給第三方。
   4. **單一出口 + 封閉列舉**。全 App 只有一個檔案（`App/Sources/App/Telemetry.swift`）可以 import 遙測 SDK；
      事件名、參數值、使用者屬性、crash key 全部是封閉列舉，自由字串在編譯期就送不出去。
-  5. **四道閘門**：未初始化 → 示範模式（無 bypass）→ 使用者關閉 → 參數命中 `Redact` 敏感樣式
+  5. **六道閘門**：示範模式 → 截圖模式 → 使用者關閉 → 未初始化 → 參數命中 `Redact` 敏感樣式 → 整數值域白名單（最後兩道在 DEBUG 直接 `assertionFailure`）
      （最後一道在 DEBUG build 直接 `assertionFailure`，讓錯誤在開發期爆出來而不是在正式版靜靜被丟掉）。
   6. **不得引入廣告識別能力**。使用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`）而非 `FirebaseAnalytics`，
      二進位不得連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`。
@@ -369,7 +369,7 @@ flowchart TD
 | **S**poofing 假冒 | 中間人假冒官網 | ATS + https、網域白名單；官網為政府憑證 |
 | **T**ampering 竄改 | 竄改運動數據上傳 | 數據唯讀取自 HealthKit，無竄改入口；忠實呈現 |
 | **R**epudiation 否認 | 使用者否認操作 | 本機無需審計；官網端自有紀錄 |
-| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏、**個資誤入遙測** | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無自建後端；遙測方面：單一出口 + 封閉列舉（型別限制優先於遮罩）+ 四道閘門 + DEBUG `assertionFailure`，且預設關閉（見 §8.2） |
+| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏、**個資誤入遙測** | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無自建後端；遙測方面：單一出口 + 封閉列舉（型別限制優先於遮罩）+ 六道閘門 + DEBUG `assertionFailure`，且預設關閉（見 §8.2） |
 | **D**oS 阻斷 | 過度打 OTP / 官網 | 尊重官網每日 OTP 上限與 resend 倒數，不自動重試轟炸 |
 | **E**levation 提權 | 越權存取他人資料 | 只操作本機使用者自己的帳號；不支援批量／代操 |
 
