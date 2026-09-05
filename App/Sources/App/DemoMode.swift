@@ -62,6 +62,28 @@ enum DemoMode {
     }
 }
 
+/// 截圖模式：只用來在擷取上架素材時隱藏示範模式橫幅。
+///
+/// **為什麼這不是 Guideline 2.3.1 的「未揭露隱藏功能」**：唯一的開關是**行程啟動參數**
+/// （`ProcessInfo.processInfo.arguments`），而啟動參數只有 XCUITest／偵錯工具在啟動 App 時
+/// 才給得出來。從 App Store 安裝的使用者不論怎麼操作（手勢、設定、輸入任何值）都無法讓
+/// 這支 App 帶著這個參數啟動，所以它不是「使用者可觸發但未揭露的功能」，而是 fastlane
+/// snapshot 那類截圖工具的標準做法。
+///
+/// **界線在哪（日後改動請守住）**：
+/// - 只讀 `ProcessInfo.arguments`，**不可以**改讀 UserDefaults／Keychain／檔案等任何
+///   使用者寫得進去的地方（`-uiTestScreenshotMode` 沒有配對的值，也不會進 NSArgumentDomain）。
+/// - 只能影響「畫面上要不要畫示範橫幅」，**不可以**拿來改資料來源、跳過驗證或解鎖任何功能。
+/// - 審查員實際輸入示範帳號操作時不會帶啟動參數，因此橫幅一定照常出現。
+enum ScreenshotMode {
+    /// 啟動參數名稱。XCUITest 端寫在 `App/UITests/ScreenshotTests.swift`。
+    static let launchArgument = "-uiTestScreenshotMode"
+
+    static var isEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains(launchArgument)
+    }
+}
+
 /// 示範模式專用的個資儲存：只在記憶體，App 一關就沒了，**絕不寫入 Keychain**。
 /// 預先塞好示範個資，讓審查員一進入就有完整資料可看，不必再填一次表單。
 final class InMemoryProfileStore: ProfileStoring, @unchecked Sendable {

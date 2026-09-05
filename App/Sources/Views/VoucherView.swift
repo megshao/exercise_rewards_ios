@@ -128,6 +128,8 @@ struct VoucherView: View {
                     Text("檢視券碼")
                 }
             }
+            // 券夾列表的卡片按鈕同樣叫「檢視券碼」，加上 id 讓截圖用 UI 測試能明確指到這一顆。
+            .accessibilityIdentifier("voucherRevealButton")
             .buttonStyle(.huihanPrimary)
             .disabled(viewModel.otp.count != 6 || viewModel.isVerifying || viewModel.isLoadingVoucher)
         }

@@ -11,7 +11,10 @@ struct HuihanApp: App {
         WindowGroup {
             // 用 VStack 讓橫幅真的佔版面（safeAreaInset 會蓋在 TabView 內容上，把首頁問候語壓掉）。
             VStack(spacing: 0) {
-                if envStore.isDemo { DemoModeBanner() }
+                // 截圖模式（只有 XCUITest 的啟動參數能開，見 ScreenshotMode）會把橫幅收起來，
+                // 讓上架素材的畫面上緣乾淨。真機使用者與 App Store 審查員都不可能帶啟動參數，
+                // 他們進示範模式時橫幅一定照常出現。
+                if envStore.isDemo && !ScreenshotMode.isEnabled { DemoModeBanner() }
                 RootView()
             }
             .environment(\.appEnvironment, envStore.environment)

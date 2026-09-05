@@ -17,6 +17,8 @@ struct OtpCodeField: View {
             }
 
             TextField("", text: $code)
+                // 截圖用 UI 測試以此 id 定位 OTP 輸入框（見 App/UITests/ScreenshotTests.swift）。
+                .accessibilityIdentifier("otpCodeField")
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .focused(isFocused)
