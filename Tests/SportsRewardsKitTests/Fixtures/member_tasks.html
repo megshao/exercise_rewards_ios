@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<!--
+  任務頁：每一期一張卡片。
+
+  卡片上顯示什麼由後端算好的 PeriodTaskView.state() 決定，不在這裡用一串 th:if 拼狀態——
+  七種狀態互斥，寫在樣板上沒有任何東西保證它們真的互斥，改一個就得重讀全部。
+-->
+<html lang="zh-TW">
+<head>
+	<meta charset="utf-8">
+	<title>我的任務｜揮汗有禮・全民動起來</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<link rel="icon" type="image/png" sizes="64x64"
+		href="/registrant/images/sportscoin/sabo-icon.png">
+
+	
+	<!-- Global site tag (gtag.js) - Google Analytics（活動方提供的現行追蹤 ID，唯一來源） -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZT3BSJ50TW"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() { dataLayer.push(arguments); }
+		gtag('js', new Date());
+		gtag('config', 'G-ZT3BSJ50TW');
+	</script>
+
+
+	<!--
+	  先掛上 js class，CSS 才知道可以啟用導覽列收合。寫成 inline 是為了避免
+	  手機版在 nav.js 載入前先閃一次展開的選單
+	-->
+	<script>document.documentElement.className += ' js';</script>
+
+	<link rel="stylesheet" href="/registrant/css/sportscoin/tokens.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/base.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/layout.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/components.css?v=20260901-roc-date">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/pages.css?v=20260903-registration-pause">
+	<!-- 個別頁面的額外樣式（目前只有 register-nhi-mock 用到） -->
+	<!-- extraCss 加版本號，避免部署新版會員頁樣式後被瀏覽器沿用舊 CSS 快取 -->
+	<link rel="stylesheet"
+		href="/registrant/css/sportscoin/member.css?v=20260830-upload-flow2">
+
+	<script src="/registrant/vendor/alpinejs/alpine-3.15.12.min.js" defer></script>
+	<script src="/registrant/js/sportscoin/nav.js?v=20260830-id-uppercase" defer></script>
+	<script src="/registrant/js/sportscoin/registration-opening.js?v=20260831-1000" defer></script>
+</head>
+<body>
+
+	<div>
+
+	<!-- 頁內錨點，不能用 @{/}——那會跳回首頁而不是本頁的主要內容 -->
+	<a class="skip-link" href="#main">跳至主要內容</a>
+
+	<noscript>
+		<p class="notice notice--warning" style="margin: 8px 16px 0; text-align: center;">
+			本網站的部分功能（選單收合、驗證碼倒數）在 JavaScript 未啟用時無法使用，
+			但所有頁面與表單仍可正常瀏覽與送出。
+		</p>
+	</noscript>
+
+	<header class="site-header">
+		<div class="shell">
+			<a class="site-logo" href="/registrant/">
+				<img src="/registrant/images/sportscoin/homeicon.png"
+					width="420" height="123" alt="揮汗有禮・全民動起來 活動首頁" decoding="async">
+			</a>
+
+			<button type="button" class="menu-btn" id="menuBtn"
+				aria-label="開啟主選單" aria-expanded="false" aria-controls="siteNav">
+				<span></span>
+			</button>
+
+			<nav class="site-nav" id="siteNav" aria-label="主要導覽">
+				<ul>
+					<!-- 值為 null 時 Thymeleaf 會整個拿掉該屬性，所以非目前頁就不會有 aria-current -->
+					<li><a href="/registrant/">活動首頁</a></li>
+					<li><a href="https://500.gov.tw/news/115/運動幣全民運動加碼方案規劃-懶人包08261609_300dpi.pdf"
+						target="_blank" rel="noopener">懶人包</a></li>
+					<li><a href="/registrant/activity-rules">任務辦法</a></li>
+					<li><a href="https://500.gov.tw/news/115/115年揮汗有禮加碼活動使用說明_0831V4.pdf"
+						target="_blank" rel="noopener">操作手冊</a></li>
+					<!--
+					  已登入就換成「我的任務」，否則顯示「立即參加/登入「我的任務」」。loggedIn 由
+					  GlobalModelAttributes（@ControllerAdvice）帶進來，每一頁都有——
+					  這個 fragment 是全站共用的，靠各 controller 自己 addAttribute 遲早會漏。
+					  登出是 POST（見 LoginController.logout），不能做成導覽列的連結。
+					-->
+					<li><a href="/registrant/member/tasks" aria-current="page">我的任務</a></li>
+					
+				</ul>
+			</nav>
+		</div>
+	</header>
+</div>
+
+	<main id="main" tabindex="-1">
+		<div class="shell">
+			<div class="card card--wide">
+				<div class="member-bar">
+					<h1>我的任務</h1>
+					<form action="/registrant/logout" method="post" class="logout-form">
+						<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
+						<button type="submit" class="btn btn--link">登出</button>
+					</form>
+				</div>
+				<p class="lead">
+					每一期七天，完成一次運動紀錄上傳並通過審核，即可兌換一張加碼券。
+				</p>
+				<p class="lead">如以冒用、偽造或其他不正當方式參與活動，經運動部查證屬實，將取消活動資格及後續運動幣活動參加權益。</p>
+
+				
+				
+
+				
+
+				<ul class="period-list">
+					<li class="period-card period-card--current">
+
+						<div class="period-head">
+							<span class="period-no">第 1 期</span>
+							<span class="period-range">2026/09/01 ~ 2026/09/06</span>
+							<span class="period-remaining">剩 1 天 22 小時</span>
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--REDEEMABLE">
+							
+							
+							
+							
+							
+							<span>任務完成，可兌換</span>
+							
+							
+						</p>
+
+						<p class="period-detail">
+							<span>上傳時間：2026/09/03 21:42</span>
+							<span>／審核時間：2026/09/04 20:10</span>
+						</p>
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							<a href="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
+								class="btn btn--primary">立即兌換</a>
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							<a href="/registrant/member/screenshot/9f746d24-213d-43c8-b291-5183cab4c64f"
+								class="btn btn--secondary" target="_blank" rel="noopener">檢視我的截圖</a>
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 2 期</span>
+							<span class="period-range">2026/09/07 ~ 2026/09/13</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 3 期</span>
+							<span class="period-range">2026/09/14 ~ 2026/09/20</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 4 期</span>
+							<span class="period-range">2026/09/21 ~ 2026/09/27</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 5 期</span>
+							<span class="period-range">2026/09/28 ~ 2026/10/04</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 6 期</span>
+							<span class="period-range">2026/10/05 ~ 2026/10/11</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 7 期</span>
+							<span class="period-range">2026/10/12 ~ 2026/10/18</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 8 期</span>
+							<span class="period-range">2026/10/19 ~ 2026/10/25</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 9 期</span>
+							<span class="period-range">2026/10/26 ~ 2026/11/01</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 10 期</span>
+							<span class="period-range">2026/11/02 ~ 2026/11/08</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 11 期</span>
+							<span class="period-range">2026/11/09 ~ 2026/11/15</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 12 期</span>
+							<span class="period-range">2026/11/16 ~ 2026/11/22</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 13 期</span>
+							<span class="period-range">2026/11/23 ~ 2026/11/29</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+					<li class="period-card">
+
+						<div class="period-head">
+							<span class="period-no">第 14 期</span>
+							<span class="period-range">2026/11/30 ~ 2026/11/30</span>
+							
+						</div>
+
+						<!-- 狀態徽章。文字與 class 綁同一個 state，不會出現「寫著待審核、顏色是通過」 -->
+						<p class="period-state period-state--NOT_STARTED">
+							<span>尚未開始</span>
+							
+							
+							
+							
+							
+							
+							
+						</p>
+
+						
+
+						
+						
+
+						<div class="period-actions">
+							
+
+							<!-- 兌換窗是這一期自己的，與上傳窗無關：上傳窗已關的往期，
+							     只要還沒兌就照樣給按鈕（可兌到活動結束）。
+							     redeemable 由後端算好，不在這裡用 phase 拼條件 -->
+							
+
+							<!-- 已兌換才有券可看。點進去要再驗一次 OTP——券碼不在這一頁上 -->
+							
+
+							
+						</div>
+
+						<!-- 已兌換：這裡只講兌到了什麼，**不顯示券碼**——券碼要另外驗一次 OTP
+						     才看得到（設計文件八），這一頁沒驗過 -->
+						
+					</li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<footer class="site-footer">
+	<div class="shell">
+		<div class="footer-row">
+			<div>客服電話：<a href="tel:0277523658">02-7752-3658</a></div>
+			<div>客服時間：週一至週日 0900 - 1800（12:00-13:00 暫停服務）</div>
+		</div>
+		<div class="footer-row">
+			<div>本網站支援 Edge、Google Chrome、Firefox 與 Safari 瀏覽器</div>
+			<div>最佳解析度：1920*1080</div>
+		</div>
+		<div class="footer-row">
+			<div>地址：10489 臺北市中山區朱崙街20號</div>
+		</div>
+
+		<div class="footer-badges">
+			<a href="https://accessibility.moda.gov.tw/Applications/Detail?category=20220622172837"
+				target="_blank" rel="noopener">
+				<img src="/registrant/images/sportAdmin/無障礙標章2.0AA級圖示.png"
+					width="88" height="31" alt="通過AA無障礙網頁檢測">
+				<span class="sr-only">（另開新視窗）</span>
+			</a>
+			<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener">
+				<img src="/registrant/images/sportAdmin/service.svg"
+					width="30" height="30" alt="">線上客服<span class="sr-only">（另開新視窗）</span>
+			</a>
+		</div>
+
+		<p class="copyright">運動部 2026©版權所有（所有圖資未經本部同意不得轉載及重製）</p>
+	</div>
+
+	<!-- 運動幣既有的文字客服小幫手：固定在右下角，點圖開啟客服；× 可暫時收起。 -->
+	<aside id="customerServiceHelper" class="customer-service-helper" aria-label="線上客服小幫手">
+	<button type="button" class="customer-service-helper__close" aria-label="收起線上客服小幫手"
+		onclick="document.getElementById('customerServiceHelper').classList.toggle('is-collapsed')">×</button>
+	<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener"
+		aria-label="開啟線上客服">
+		<img src="/registrant/images/sportscoin/customer-service-helper.webp" width="294" height="320"
+			alt="有問題請點我" decoding="async">
+	</a>
+</aside>
+</footer>
+</body>
+</html>

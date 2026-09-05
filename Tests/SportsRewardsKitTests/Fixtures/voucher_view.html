@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!--
+  券碼頁：給店員掃的那一頁。
+
+  四件事是刻意的：
+
+  1. **圖與可讀的碼兩個都出。** 掃不過是常態不是例外（螢幕反光、亮度不足、機台老舊），
+     底下那串字讓店員可以手動輸入。圖產不出來時也只剩它。
+  2. **圖由前端 JS 產**（2026-08-21 團隊裁示，見 docs/評估-券碼條碼改前端產製.md）。
+     每一段碼的 markup 抽在 fragments/voucher-code.html，與示範頁 demo-qrcode.html 共用——
+     示範頁只有在跟這一頁長得一模一樣時才有意義。
+     後端只交出「碼是什麼」與「該畫成哪一種符號集」，畫由 voucher-code.js 負責。
+     套件（JsBarcode／node-qrcode）自己 bundle 在 /vendor 底下，沒有違反
+     「不得引用外部網域」那條規約。
+     **失敗一律是可見的**：「條碼無法顯示」那行預設就在畫面上，畫成功了才被 JS 藏起來。
+     順序不能反過來——反過來寫的話 vendor 檔 404 或腳本拋例外就是一片空白，
+     而使用者與店員都不會知道還有一串碼可以手動輸入。
+     ⚠️ 本頁原本在「關鍵路徑關掉 JS 要能用」清單上，這個改動把它移出清單；
+     docs/前端資產與樣式規範.md 五已同步。
+  3. **最上方是該廠商自己的廣告圖。** 圖與 alt 文字都放在 static 底下，
+     有沒有那兩個檔案就是這一塊出不出現的唯一開關（VendorBanners）。
+     目前每個合作通路都有自己的圖，檔名以群組代表廠商代碼區分。
+  4. **已核銷只是提示，不擋顯示。** status=3 來自可能延遲或漏送的廠商 callback；
+     拿它當閘門會讓還沒被核銷的券被自家系統擋下來（設計文件八）。
+
+  券碼的字面值走 th:attr 進 data 屬性，由 Thymeleaf 跳脫；這一頁已經沒有 th:utext。
+
+  重新整理這一頁會被導回 OTP 頁重驗——那是規格，不是壞掉。
+-->
+<html lang="zh-TW">
+<head>
+	<meta charset="utf-8">
+	<title>我的加碼券｜揮汗有禮・全民動起來</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<link rel="icon" type="image/png" sizes="64x64"
+		href="/registrant/images/sportscoin/sabo-icon.png">
+
+	
+	<!-- Global site tag (gtag.js) - Google Analytics（活動方提供的現行追蹤 ID，唯一來源） -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZT3BSJ50TW"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() { dataLayer.push(arguments); }
+		gtag('js', new Date());
+		gtag('config', 'G-ZT3BSJ50TW');
+	</script>
+
+
+	<!--
+	  先掛上 js class，CSS 才知道可以啟用導覽列收合。寫成 inline 是為了避免
+	  手機版在 nav.js 載入前先閃一次展開的選單
+	-->
+	<script>document.documentElement.className += ' js';</script>
+
+	<link rel="stylesheet" href="/registrant/css/sportscoin/tokens.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/base.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/layout.css">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/components.css?v=20260901-roc-date">
+	<link rel="stylesheet" href="/registrant/css/sportscoin/pages.css?v=20260903-registration-pause">
+	<!-- 個別頁面的額外樣式（目前只有 register-nhi-mock 用到） -->
+	<!-- extraCss 加版本號，避免部署新版會員頁樣式後被瀏覽器沿用舊 CSS 快取 -->
+	<link rel="stylesheet"
+		href="/registrant/css/sportscoin/member.css?v=20260830-upload-flow2">
+
+	<script src="/registrant/vendor/alpinejs/alpine-3.15.12.min.js" defer></script>
+	<script src="/registrant/js/sportscoin/nav.js?v=20260830-id-uppercase" defer></script>
+	<script src="/registrant/js/sportscoin/registration-opening.js?v=20260831-1000" defer></script>
+</head>
+<body>
+
+	<div>
+
+	<!-- 頁內錨點，不能用 @{/}——那會跳回首頁而不是本頁的主要內容 -->
+	<a class="skip-link" href="#main">跳至主要內容</a>
+
+	<noscript>
+		<p class="notice notice--warning" style="margin: 8px 16px 0; text-align: center;">
+			本網站的部分功能（選單收合、驗證碼倒數）在 JavaScript 未啟用時無法使用，
+			但所有頁面與表單仍可正常瀏覽與送出。
+		</p>
+	</noscript>
+
+	<header class="site-header">
+		<div class="shell">
+			<a class="site-logo" href="/registrant/">
+				<img src="/registrant/images/sportscoin/homeicon.png"
+					width="420" height="123" alt="揮汗有禮・全民動起來 活動首頁" decoding="async">
+			</a>
+
+			<button type="button" class="menu-btn" id="menuBtn"
+				aria-label="開啟主選單" aria-expanded="false" aria-controls="siteNav">
+				<span></span>
+			</button>
+
+			<nav class="site-nav" id="siteNav" aria-label="主要導覽">
+				<ul>
+					<!-- 值為 null 時 Thymeleaf 會整個拿掉該屬性，所以非目前頁就不會有 aria-current -->
+					<li><a href="/registrant/">活動首頁</a></li>
+					<li><a href="https://500.gov.tw/news/115/運動幣全民運動加碼方案規劃-懶人包08261609_300dpi.pdf"
+						target="_blank" rel="noopener">懶人包</a></li>
+					<li><a href="/registrant/activity-rules">任務辦法</a></li>
+					<li><a href="https://500.gov.tw/news/115/115年揮汗有禮加碼活動使用說明_0831V4.pdf"
+						target="_blank" rel="noopener">操作手冊</a></li>
+					<!--
+					  已登入就換成「我的任務」，否則顯示「立即參加/登入「我的任務」」。loggedIn 由
+					  GlobalModelAttributes（@ControllerAdvice）帶進來，每一頁都有——
+					  這個 fragment 是全站共用的，靠各 controller 自己 addAttribute 遲早會漏。
+					  登出是 POST（見 LoginController.logout），不能做成導覽列的連結。
+					-->
+					<li><a href="/registrant/member/tasks" aria-current="page">我的任務</a></li>
+					
+				</ul>
+			</nav>
+		</div>
+	</header>
+</div>
+
+	<main id="main" tabindex="-1">
+		<div class="shell">
+			<div class="card">
+				<!--
+				  合作通路提供的 Logo 或活動圖。若資產缺漏，這一段整個不存在，不顯示破圖。
+
+				  alt 一定有內容：這是文字轉圖，優惠條件（53 元、折抵 50 元、限折健康系列商品）
+				  只存在於圖裡，alt 空掉等於把那些條件對讀屏使用者藏起來（前端資產與樣式規範三）。
+				  後端保證這裡拿到的 alt 不是空字串，缺 alt 檔的圖根本不會被收進來。
+
+				  這是全站唯一沒有「th:src ＋ 純 src 兩份」的 <img>——路徑逐廠商不同，
+				  靜態預覽本來就寫不出一個對的值。**@{...} 不能省**：context-path 是
+				  /registrant，直接輸出 ${...} 會少掉那一段而 404。
+				-->
+				<img class="voucher-banner"
+					src="/registrant/images/sportscoin/voucher-banner-3.webp"
+					alt="萊爾富 Hi-Life 標誌。"
+					width="768" height="769">
+
+				<!-- 已核銷：告訴他別白跑一趟，但碼照樣顯示 -->
+				
+
+				<div class="voucher-meta">
+					<p><strong class="voucher-meta__item">超值商品券</strong></p>
+					<p class="voucher-meta__channel">
+						兌換通路：<span>萊爾富</span>
+					</p>
+					<p>兌換期限：115年12月31日</p>
+				</div>
+
+				<!-- 兩段式（目前只有萊爾富）：店員要分別掃兩支，缺一不可 -->
+				<div class="notice notice--warning">
+					這是兩段式加碼券，請店員<strong>分別掃描下方兩個條碼</strong>，缺一不可。
+				</div>
+
+				<!--
+				  th:if 一定要在**外層的 th:block**，不能跟 th:replace 掛在同一個元素上。
+				  Thymeleaf 的屬性優先序裡 th:replace（100）比 th:if（300）先跑，
+				  寫在一起的話條件根本不會被評估，單段券也會多出一格空的「① 商品條碼」——
+				  畫面上是一塊空白外加一行紅字「條碼無法顯示」，而使用者手上那張券本來就只有一段。
+				-->
+				
+					<section class="voucher-figure">
+	<h2 class="voucher-figure__caption">① 商品條碼</h2>
+	<div class="voucher-figure__code" data-voucher-code aria-hidden="true" data-format="CODE_128" data-value="00000000"></div>
+	<p class="voucher-figure__fallback">
+		條碼無法顯示，請店員手動輸入下方號碼。
+	</p>
+	<p class="voucher-code">00000000</p>
+</section>
+				
+
+				<section class="voucher-figure">
+	<h2 class="voucher-figure__caption">② 券號條碼</h2>
+	<div class="voucher-figure__code" data-voucher-code aria-hidden="true" data-format="CODE_128" data-value="AAAA0000BBBB1111"></div>
+	<p class="voucher-figure__fallback">
+		條碼無法顯示，請店員手動輸入下方號碼。
+	</p>
+	<p class="voucher-code">AAAA0000BBBB1111</p>
+</section>
+
+				<p class="hint">
+					離開此頁後，如需再次查看券碼，請至「我的任務」頁面點選「檢視加碼券」，並完成簡訊驗證後即可開啟。
+				</p>
+
+				<section class="voucher-notices">
+					<h2>注意事項</h2>
+					<ol>
+						<li>加碼券使用期限自取得後起至115年12月31日24時止，逾期視同放棄，恕不補發、展延、折換現金或更換其他等值商品。</li>
+						<li>抵用時應開啟本人帳號之有效加碼券頁面，並依合作店家現場流程完成抵用，不得以紙本列印、手機截圖、翻拍或其他非活動網站即時畫面方式抵用。</li>
+						<li>每張加碼券限使用1次，完成抵用後即失效；每筆消費限使用1張加碼券，不得重複使用。</li>
+						<li>各合作店家之兌換品項、適用門市、商品庫存、不可抵用品項及相關規範可能有所不同，實際兌換內容以活動官網及各合作店家最新公告為準。</li>
+					</ol>
+				</section>
+
+				<div class="actions">
+					<a href="/registrant/member/tasks" class="btn btn--secondary">回我的任務</a>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<footer class="site-footer">
+	<div class="shell">
+		<div class="footer-row">
+			<div>客服電話：<a href="tel:0277523658">02-7752-3658</a></div>
+			<div>客服時間：週一至週日 0900 - 1800（12:00-13:00 暫停服務）</div>
+		</div>
+		<div class="footer-row">
+			<div>本網站支援 Edge、Google Chrome、Firefox 與 Safari 瀏覽器</div>
+			<div>最佳解析度：1920*1080</div>
+		</div>
+		<div class="footer-row">
+			<div>地址：10489 臺北市中山區朱崙街20號</div>
+		</div>
+
+		<div class="footer-badges">
+			<a href="https://accessibility.moda.gov.tw/Applications/Detail?category=20220622172837"
+				target="_blank" rel="noopener">
+				<img src="/registrant/images/sportAdmin/無障礙標章2.0AA級圖示.png"
+					width="88" height="31" alt="通過AA無障礙網頁檢測">
+				<span class="sr-only">（另開新視窗）</span>
+			</a>
+			<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener">
+				<img src="/registrant/images/sportAdmin/service.svg"
+					width="30" height="30" alt="">線上客服<span class="sr-only">（另開新視窗）</span>
+			</a>
+		</div>
+
+		<p class="copyright">運動部 2026©版權所有（所有圖資未經本部同意不得轉載及重製）</p>
+	</div>
+
+	<!-- 運動幣既有的文字客服小幫手：固定在右下角，點圖開啟客服；× 可暫時收起。 -->
+	<aside id="customerServiceHelper" class="customer-service-helper" aria-label="線上客服小幫手">
+	<button type="button" class="customer-service-helper__close" aria-label="收起線上客服小幫手"
+		onclick="document.getElementById('customerServiceHelper').classList.toggle('is-collapsed')">×</button>
+	<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener"
+		aria-label="開啟線上客服">
+		<img src="/registrant/images/sportscoin/customer-service-helper.webp" width="294" height="320"
+			alt="有問題請點我" decoding="async">
+	</a>
+</aside>
+</footer>
+
+	
+	<script src="/registrant/vendor/jsbarcode/JsBarcode-3.12.3.all.min.js"></script>
+	<script src="/registrant/vendor/node-qrcode/qrcode-1.5.4.min.js"></script>
+	<script src="/registrant/js/sportscoin/voucher-code.js"></script>
+
+</body>
+</html>
