@@ -14,7 +14,7 @@
 |---|---|---|
 | `README.md:56` | 「零第三方相依 … **無任何 analytics 或 crash SDK**」 | 直接相反 |
 | `docs/PRD.md §8.2` | 「**禁用**會外傳個資的第三方 analytics / crash SDK；若需 crash 收集，須本機化且不含個資」 | 直接相反 |
-| `docs/TASKS.md:5` | 硬約束「不上雲、不寫 log、**只連 500.gov.tw**」 | Firebase 會連 `app-measurement.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com` 等 |
+| `docs/TASKS.md:5` | 硬約束「不上雲、不寫 log、**只連 500.gov.tw**」 | Firebase 會連 `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com` 等（網域以 Release 二進位內實際出現者為準） |
 | `App/Sources/Views/ProfileView.swift:80` | 「不會上傳雲端、不會同步 iCloud、不會寫入紀錄檔，也**不會提供給任何第三方**」 | Crashlytics／Analytics 就是第三方 |
 | `App/Sources/Views/ProfileView.swift:267` | 頁尾「個資不上雲 · 不寫紀錄檔 · **只連 500.gov.tw**」 | 同上 |
 | `App/Sources/Views/HomeView.swift:227`、`OnboardingView.swift:113` | 「個資只存這支手機 · 不會上傳雲端」「不會寫入紀錄檔」 | 個資確實不會，但「不寫紀錄檔」在 Crashlytics 存在時語意變模糊 |
