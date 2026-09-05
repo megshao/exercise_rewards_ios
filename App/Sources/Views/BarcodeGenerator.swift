@@ -3,7 +3,7 @@ import CoreImage.CIFilterBuiltins
 import UIKit
 
 /// 用 CoreImage 依 `data-format` 即時生成券碼圖。官網前端本身是用 JsBarcode/node-qrcode
-/// 依 `data-value`/`data-format` 產生（見 docs/redeem-flow-capture.md 步驟 8），App 端沒有
+/// 依 `data-value`/`data-format` 產生，App 端沒有
 /// 那兩個套件，改用系統內建的 CoreImage 濾鏡在本機重畫同一組資料——**條碼是純粹依號碼值算出
 /// 的圖形**，不是官網資產，本地重畫並不違反「不得引用外部網域」的限制。
 ///

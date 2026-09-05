@@ -24,7 +24,7 @@ targets:
     info:
       path: Generated/Info.plist
       properties:
-        # 上架名稱定案為 Sports Rewards（活動名「揮汗有禮」會踩 guideline 4.1／5.2.1）。
+        # 上架名稱為 Sports Rewards：刻意不使用活動名「揮汗有禮」，避免與官方活動混淆。
         CFBundleDisplayName: Sports Rewards
         # 只使用系統 TLS（HTTPS），屬出口管制豁免；宣告後上傳 build 不必在 App Store Connect 手動回答加密問卷。
         ITSAppUsesNonExemptEncryption: false
@@ -43,8 +43,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         # 讀取步數以協助判斷是否達標（HealthKit，唯讀，never transmitted，不會被上傳）
         NSHealthShareUsageDescription: 讀取步數以判斷今日是否達標
-        # Apple 上傳檢查（ITMS-90683）強制要求：只要帶 HealthKit entitlement，即使唯讀也必須有
-        # 寫入用途字串。本 App 從不寫入健康資料，字串照實說明。
+        # HealthKit entitlement 要求同時提供寫入用途字串（即使唯讀）。
+        # 本 App 從不寫入健康資料，字串照實說明。
         NSHealthUpdateUsageDescription: 本 App 不會寫入任何健康資料，只讀取步數判斷今日是否達標
         # App Transport Security：只允許連線到官方網站 500.gov.tw（https），其餘一律禁止任意 http。
         NSAppTransportSecurity:
@@ -125,4 +125,4 @@ schemes:
         - SportsRewardsUITests
       environmentVariables:
         # 測試會把 PNG 直接寫到這個 host 目錄；$(SRCROOT) 是 App/。
-        SCREENSHOT_OUTPUT_DIR: $(SRCROOT)/../design/screenshots/raw
+        SCREENSHOT_OUTPUT_DIR: $(SRCROOT)/../docs/screenshots/raw

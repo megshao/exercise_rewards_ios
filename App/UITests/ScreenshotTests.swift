@@ -15,7 +15,7 @@ import XCTest
 ///     -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'
 /// ```
 /// 輸出目錄由 scheme（`project.yml` 的 `SportsRewardsScreenshots` test action）帶的環境變數
-/// `SCREENSHOT_OUTPUT_DIR` 決定，預設是 `design/screenshots/raw`；要換路徑就在指令尾端加
+/// `SCREENSHOT_OUTPUT_DIR` 決定，預設是 `docs/screenshots/raw`；要換路徑就在指令尾端加
 /// `TEST_RUNNER_SCREENSHOT_OUTPUT_DIR=<絕對路徑>` 覆蓋。無論寫檔成不成功，每張截圖都會
 /// 以 `XCTAttachment`（`.keepAlways`）附進 `.xcresult`，可用
 /// `xcrun xcresulttool export attachments --path <.xcresult> --output-path <dir>` 事後匯出。
@@ -27,7 +27,7 @@ import XCTest
 ///    `xcrun simctl status_bar <udid> override --time 9:41 --wifiBars 3 --cellularBars 4 \
 ///     --batteryState charged --batteryLevel 100`
 ///
-/// 已驗證：模擬器可以直接寫檔到 host 的絕對路徑，所以 PNG 會直接落在 design/screenshots/raw，
+/// 已驗證：模擬器可以直接寫檔到 host 的絕對路徑，所以 PNG 會直接落在 docs/screenshots/raw，
 /// 不需要再從 .xcresult 匯出（附件仍會保留當備援）。
 @MainActor
 final class ScreenshotTests: XCTestCase {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 共用 6 格 OTP 輸入元件（樣式對齊 design/Redeem.dc.html）。
+/// 共用 6 格 OTP 輸入元件（樣式對齊設計稿）。
 /// `VoucherView`（加碼券出示）使用本元件。底層蓋一個透明的 `TextField` 承接鍵盤輸入與 focus，
 /// 上層畫出對齊設計稿的方格樣式；只允許數字、最多 6 碼。
 struct OtpCodeField: View {

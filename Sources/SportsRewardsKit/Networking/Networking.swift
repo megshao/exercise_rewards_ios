@@ -1,6 +1,6 @@
 import Foundation
 
-/// HTTP 抽象層介面。實作須：只允許 https 到 500.gov.tw、記憶體 cookie、
+/// HTTP 抽象層介面。實作須：只允許 https 到 500.gov.tw、cookie 只存在 App 沙盒容器、
 /// 修正官方站 http:// 降級 redirect、絕不 log 敏感內容。
 public protocol HTTPClienting: Sendable {
     /// GET 一個頁面，回傳 HTML 字串（自動處理 LBSCookie 握手）。

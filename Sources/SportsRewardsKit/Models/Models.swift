@@ -89,7 +89,7 @@ public struct RedeemOption: Identifiable, Equatable, Sendable {
 }
 
 /// 送出兌換申請的結果。best-effort：官網送出兌換表單後還要走一次簡訊 OTP 才會出示券碼，
-/// 該流程目前未知/未實測（PRD R2），因此這裡只能回報表單是否成功送出、附上友善訊息。
+/// 該流程由 `VoucherServicing` 另行處理，因此這裡只能回報表單是否成功送出、附上友善訊息。
 public struct RedeemResult: Equatable, Sendable {
     public let submitted: Bool
     public let message: String

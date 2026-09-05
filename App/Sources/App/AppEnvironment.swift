@@ -2,7 +2,7 @@ import Foundation
 import SportsRewardsKit
 
 /// App 端依賴注入容器。ViewModel 只依賴 SportsRewardsKit 的 protocol（AuthServicing / TasksServicing /
-/// ProfileStoring），不依賴具體實作，方便同事平行開發真正的網路層時互不阻塞。
+/// ProfileStoring），不依賴具體實作，方便平行開發真正的網路層時互不阻塞。
 public protocol AppEnvironment: Sendable {
     var auth: AuthServicing { get }
     var tasks: TasksServicing { get }
@@ -17,7 +17,7 @@ public protocol AppEnvironment: Sendable {
     func resetSession() async
 }
 
-/// 預設環境：接真實的 SportsRewardsKit 實作。單一 `URLSessionHTTPClient`（記憶體 cookie，
+/// 預設環境：接真實的 SportsRewardsKit 實作。單一 `URLSessionHTTPClient`（cookie 持久化於 App 沙盒容器，
 /// 白名單只認 500.gov.tw）同時供 Auth 與 Tasks 共用，確保登入後的 session cookie 一路帶著。
 /// profileStore 為真實 KeychainStore（WhenUnlockedThisDeviceOnly、不同步 iCloud）。
 /// Preview／測試可透過帶參數的 init 傳入 Mock*Service。
@@ -36,7 +36,7 @@ public struct DefaultAppEnvironment: AppEnvironment {
 
     /// 正式環境：共用一個 HTTP client 串起 Auth / Tasks / Redeem / Voucher，確保登入後的
     /// session cookie 一路帶著；健康資料唯讀接 HealthKit（never transmitted）；上傳接真實
-    /// UploadService（multipart POST /member/upload，file 欄位 screenshot；R1 已實測）。
+    /// UploadService（multipart POST /member/upload，file 欄位 screenshot）。
     public init() {
         let http = URLSessionHTTPClient()
         self.auth = AuthService(http: http)

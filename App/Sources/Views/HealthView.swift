@@ -1,10 +1,10 @@
 import SwiftUI
 import SportsRewardsKit
 
-/// 健康數據（design/Health.dc.html）。串接 HealthKit（唯讀）：
+/// 健康數據。串接 HealthKit（唯讀）：
 /// 未授權時顯示「連結 Apple 健康」CTA；已授權顯示今日健康摘要與達標徽章。
 ///
-/// App Store 審查降險（見 docs/app-review-risk.md §具體降險清單 4）：HealthKit 數值只在本機
+/// HealthKit 數值只在本機
 /// 顯示/判斷達標，**絕不離開裝置**——這裡沒有任何把健康數據送出網路、或用健康數據產生上傳
 /// 圖卡的路徑。達標後只顯示一句文字導引使用者去「我的任務」用相簿截圖上傳
 /// （HealthKit read-only, never transmitted）。

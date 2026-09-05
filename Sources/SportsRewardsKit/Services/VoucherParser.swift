@@ -2,7 +2,7 @@ import Foundation
 
 /// 解析檢視加碼券相關頁面的 HTML。純函式、無副作用、無網路呼叫。
 ///
-/// 兩個入口對應官網實測到的兩種頁面（見 docs/redeem-flow-capture.md 步驟 6-8）：
+/// 兩個入口對應官網的兩種頁面：
 /// - `parseView(html:)`：正確 OTP 通過後 302 到 `/member/voucher/{uuid}/view` 的券碼頁，
 ///   內含 `.voucher-banner`/`.voucher-meta`（通路／品項／兌換期限）與一或多個
 ///   `.voucher-figure`（`data-format`/`data-value`/caption）。

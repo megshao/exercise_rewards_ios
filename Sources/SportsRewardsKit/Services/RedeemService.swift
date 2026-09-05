@@ -4,8 +4,7 @@ import Foundation
 ///
 /// ⚠️ `redeem(taskID:vendorId:item:)` 會實際消耗使用者的兌換次數且送出後不可更換。
 /// 官網送出表單後該期即進入 state=REDEEMED；要看券碼還需再走一次簡訊 OTP 驗證，
-/// 該流程由 `VoucherServicing`/`VoucherService` 負責（見 docs/redeem-flow-capture.md
-/// 步驟 6-8），這裡只能 best-effort 判斷兌換表單是否送出成功，回一段友善訊息。
+/// 該流程由 `VoucherServicing`/`VoucherService` 負責，這裡只能 best-effort 判斷兌換表單是否送出成功，回一段友善訊息。
 /// 呼叫端（UI）必須先讓使用者二次確認過警語，才可以呼叫這支方法。
 public final class RedeemService: RedeemServicing {
     private let http: HTTPClienting

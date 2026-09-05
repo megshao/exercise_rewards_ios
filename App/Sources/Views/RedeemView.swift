@@ -1,7 +1,7 @@
 import SwiftUI
 import SportsRewardsKit
 
-/// 兌換好禮（design/Redeem.dc.html）：列出可兌換的商家品項，點「兌換」需先二次確認
+/// 兌換好禮：列出可兌換的商家品項，點「兌換」需先二次確認
 /// 警語（兌換後不可更換、需簡訊驗證出示券碼）才會真的送出表單。
 ///
 /// 兌換成功（`RedeemResult.submitted == true`）後導向 `VoucherView(taskID:)`——該期已經是
@@ -146,7 +146,7 @@ struct RedeemView: View {
     }
 }
 
-/// 單一商家品項列：logo 色塊、品項名、兌換鈕（對齊 design/Redeem.dc.html 的 `.store`）。
+/// 單一商家品項列：logo 色塊、品項名、兌換鈕（對齊設計稿的 `.store`）。
 private struct VendorRow: View {
     let option: RedeemOption
     let isSubmitting: Bool
@@ -188,7 +188,7 @@ private struct VendorRow: View {
     }
 }
 
-/// 商家色塊 logo，依商家名稱對應 design/Redeem.dc.html 的品牌色；辨識不出的商家用中性灰底。
+/// 商家色塊 logo，依商家名稱對應設計稿的品牌色；辨識不出的商家用中性灰底。
 private struct VendorLogo: View {
     let vendorName: String
 

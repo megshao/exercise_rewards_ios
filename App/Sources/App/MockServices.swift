@@ -2,7 +2,7 @@ import Foundation
 import SportsRewardsKit
 
 /// 假的登入服務，供 UI 開發與 Preview 使用。
-/// // TODO: wire real SportsRewardsKit implementations — 換成同事實作的 AuthService(http:)。
+/// 正式環境由 `AppEnvironment` 換成真實的 `AuthService(http:)`。
 public final class MockAuthService: AuthServicing, @unchecked Sendable {
     public enum Scenario: Sendable {
         case success
@@ -35,7 +35,7 @@ public final class MockAuthService: AuthServicing, @unchecked Sendable {
 }
 
 /// 假的任務服務，回傳範例的 14 期任務資料，供 UI 開發與 Preview 使用。
-/// // TODO: wire real SportsRewardsKit implementations — 換成同事實作的 TasksService(http:)。
+/// 正式環境由 `AppEnvironment` 換成真實的 `TasksService(http:)`。
 public final class MockTasksService: TasksServicing, @unchecked Sendable {
     private let sample: [TaskPeriod]
     private let delayNanoseconds: UInt64
@@ -115,7 +115,7 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
 }
 
 /// 假的兌換服務，回傳範例商家品項清單，供 UI 開發與 Preview 使用。
-/// // TODO: wire real SportsRewardsKit implementations — 換成同事實作的 RedeemService(http:)。
+/// 正式環境由 `AppEnvironment` 換成真實的 `RedeemService(http:)`。
 public final class MockRedeemService: RedeemServicing, @unchecked Sendable {
     private let sample: [RedeemOption]
     private let delayNanoseconds: UInt64
@@ -272,7 +272,6 @@ public final class MockHealthReader: HealthReading, @unchecked Sendable {
 }
 
 /// 假的上傳服務，供 UI 開發與 Preview 使用。
-/// // TODO: R1 upload file 欄位名待實測 — 換成真正的 UploadService（見 UploadService.swift）。
 public final class MockUploadService: UploadServicing, @unchecked Sendable {
     public enum Scenario: Sendable {
         case success

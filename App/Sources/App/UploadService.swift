@@ -13,22 +13,21 @@ public struct UploadResult: Equatable, Sendable {
 }
 
 /// 上傳運動紀錄服務介面：把使用者從相簿自選的截圖送給官網
-/// `multipart POST /member/upload`（見 docs/PRD.md §5.6、§6.2）。
+/// `multipart POST /member/upload`。
 ///
 /// 隱私注意：`imageData` 只會是使用者主動從相簿選取的截圖（`PhotosPicker`），
 /// **絕不是** HealthKit 讀出的數值——HealthKit 步數/距離/運動分鐘只在 HealthView/HomeView
-/// 本機顯示用來判斷達標，never leaves the device（見 docs/app-review-risk.md §具體降險清單 4，
-/// Guideline 5.1.3(i)）。
+/// 本機顯示用來判斷達標，never leaves the device。
 public protocol UploadServicing: Sendable {
     /// - Parameters:
     ///   - taskID: 目前所在期別的 id（僅供 UI 顯示用；後端 `/member/upload` 會自動綁「當前可
-    ///     上傳期」，不需帶 UUID，見 docs/PRD.md §6.2）。
+    ///     上傳期」，不需帶 UUID）。
     ///   - imageData: 使用者從相簿選取的截圖二進位內容。
     ///   - fileName: 送出時使用的檔名。
     func upload(taskID: String?, imageData: Data, fileName: String) async throws -> UploadResult
 }
 
-/// 真正的上傳實作（R1 已實測，2026-09-05，見 docs/redeem-flow-capture.md）：
+/// 真正的上傳實作（對應官網的上傳流程）：
 /// 1. `GET /member/upload` 取 `_csrf` 並確認頁面確有 file 欄位（`name="screenshot"`）。
 ///    若當期不在可上傳狀態（非 NOT_UPLOADED、或已上傳過）則頁面沒有表單，回 submitted:false。
 /// 2. `multipart POST /member/upload`，file 欄位名 **`screenshot`**，帶 `_csrf`。

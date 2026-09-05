@@ -42,7 +42,7 @@ struct RootView: View {
     }
 }
 
-/// 主要 4 個分頁：首頁、任務、健康、券夾（對齊 design/Main.dc.html 的 tabbar）。
+/// 主要 4 個分頁：首頁、任務、健康、券夾（對齊設計稿的 tabbar）。
 ///
 struct RootTabView: View {
     var body: some View {

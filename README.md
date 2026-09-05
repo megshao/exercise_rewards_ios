@@ -7,8 +7,7 @@
 > 活動規則與最終權益一律以官方公告為準。
 
 App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作為說明文字出現，
-**不作為 App 名稱**——直接以官方活動名命名會踩 App Review guideline 4.1(b)
-impersonation 與 5.2.1。
+**不作為 App 名稱**——刻意不使用活動名，避免被誤認為官方 App。
 
 - 隱私權政策：<https://megshao.github.io/sports-rewards-ios/privacy.html>
 - 支援與常見問題：<https://megshao.github.io/sports-rewards-ios/support.html>
@@ -48,8 +47,8 @@ cd App && xcodebuild test -project SportsRewards.xcodeproj \
 | 面向 | 措施 |
 |---|---|
 | 個資外洩 | 身分證／出生日期／手機（只收這三欄）只存 iOS Keychain（`WhenUnlockedThisDeviceOnly`、不同步 iCloud、不備份轉移）；**無任何雲端後端**，開發者收不到也看不到任何資料 |
-| Log 洩漏 | 全專案唯一 log 入口 `SecureLog`；敏感值一律先過 `Redact`；`debug` 僅 DEBUG build 輸出；禁 log cookie/CSRF/OTP/session。全 repo 無 `print` / `NSLog` / 直接 `os_log` |
-| 網路面 | ATS 強制 https；`URLSessionHTTPClient` 白名單只允許 `500.gov.tw`（含子網域、擋 suffix spoof），其餘 throw `blockedEgress`；cookie 存在 App 沙盒容器（受 iOS 檔案保護、不進 iCloud），登出與「立即清除本機資料」都會 `resetSession()` 清空 |
+| Log 洩漏 | 全專案唯一 log 入口 `SecureLog`；敏感值一律先過 `Redact`；`debug` 僅 DEBUG build 輸出；禁 log cookie/CSRF/OTP/session。App 與 SportsRewardsKit 內無 `print` / `NSLog` / 直接 `os_log`（UI 截圖測試除外） |
+| 網路面 | ATS 強制 https；`URLSessionHTTPClient` 白名單只允許 `500.gov.tw`（含子網域、擋 suffix spoof），其餘 throw `blockedEgress`。唯一刻意例外：檢視已上傳截圖時，`ScreenshotView` 以 `AsyncImage` 載入官方回傳的 S3 簽章圖片網址（cookie 的 domain scope 是 `500.gov.tw`，不會送到該 host）；cookie 存在 App 沙盒容器（受 iOS 檔案保護、不進 iCloud），登出與「立即清除本機資料」都會 `resetSession()` 清空 |
 | 中間人／降級 | 官方站 302 Location 是 `http://`；client 一律正規化回 https 再送，避免掉 Secure cookie |
 | 裝置遺失 | 防線是 **iOS 裝置本身的鎖屏**（密碼／Face ID／Touch ID）加上 Keychain 的 `WhenUnlockedThisDeviceOnly`：**裝置上鎖時連本 App 自己都讀不到**這些欄位，資料也不會同步 iCloud 或隨備份轉移。另在「我的資料 › 安全與隱私」提供「立即清除本機資料」可隨時永久刪除。<br>**不做 App 內生物辨識鎖**：登入所需三碼本來就是使用者本人記得、官方網站登入也只驗這三碼，App 內再擋一次不會改變裝置遺失時的實際暴露面（真正的界線是裝置鎖屏），只是重複擋自己人 |
 | 健康資料 | HealthKit **唯讀**步數／距離／運動時間，**從不寫入、從不外傳**；只在畫面上顯示與本機判斷是否達標。上傳一律由使用者自己從相簿選圖，App **不以健康數據合成任何要上傳的圖片** |

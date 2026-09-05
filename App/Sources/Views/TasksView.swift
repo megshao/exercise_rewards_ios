@@ -2,7 +2,7 @@ import SwiftUI
 import SportsRewardsKit
 
 /// 我的任務儀表板：垂直卡片列出 [TaskPeriod]，本週置頂高亮，下拉刷新。
-/// 對齊 design/Tasks.dc.html。
+/// 對齊設計稿。
 struct TasksView: View {
     @Environment(\.appEnvironment) private var environment
     @StateObject private var viewModel = TasksViewModel()

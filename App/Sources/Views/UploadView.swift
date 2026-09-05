@@ -3,16 +3,12 @@ import PhotosUI
 import UIKit
 import SportsRewardsKit
 
-/// 上傳運動紀錄（design/Upload.dc.html）。
+/// 上傳運動紀錄。
 ///
-/// App Store 審查降險（見 docs/app-review-risk.md §具體降險清單 4、Guideline 5.1.3(i)）：
+/// 隱私設計：
 /// 不用 HealthKit 數據產圖上傳，改成讓使用者從相簿**自選**一張運動紀錄截圖 → 預覽 →
 /// 「確認上傳」。這裡完全不會讀取／使用 HealthKit 資料（HealthKit read-only, never
 /// transmitted，健康數據只在 HealthView/HomeView 本機顯示）。
-///
-/// 實際 `multipart POST /member/upload` 的 file 欄位名待官網開放上傳期才能實測（PRD R1，
-/// 見 docs/TASKS.md 4.1），目前 `UploadServicing` 只接了佔位實作（`UploadServiceStub`），
-/// 不會真的發出網路請求，詳見下方 `confirmUpload()` 的 TODO。
 struct UploadView: View {
     let taskID: String
     let periodIndex: Int?

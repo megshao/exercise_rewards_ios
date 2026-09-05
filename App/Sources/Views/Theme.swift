@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 設計系統：白底亮橘・運動風。
-/// Token 來源：design/*.dc.html（9 畫面設計稿）的 CSS variables。
+/// Token 來源：9 畫面設計稿的 CSS variables。
 /// 本 App 以淺色為主，深色模式先沿用淺色 token。
 enum Theme {
 

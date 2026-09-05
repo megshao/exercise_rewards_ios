@@ -12,5 +12,5 @@ secrets*
 App/build/
 build/
 
-# App Store 送審產出物（archive/ipa，體積大且含簽章）
+# 本機建置產出物（archive/ipa）
 .asc/

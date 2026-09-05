@@ -1,7 +1,7 @@
 import Foundation
 
 /// 某一日的運動摘要（來自 Apple 健康的真實數據，唯讀）。
-/// 這些值只用於「達標判定」與「產生上傳圖卡」，圖卡必須忠實呈現、不得竄改。
+/// 這些值只用於「達標判定」，不會用於產生任何要上傳的內容。
 public struct HealthSummary: Equatable, Sendable {
     public var date: Date
     public var steps: Int

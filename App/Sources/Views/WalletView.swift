@@ -4,7 +4,7 @@ import SportsRewardsKit
 /// 我的券夾：列出已兌換（可使用）的加碼券與任務完成待兌換的期別。
 /// - 已兌換 → 點「檢視券碼」開 VoucherView（每次都要 OTP 驗證後才顯示條碼）。
 /// - 待兌換 → 點「去兌換」開 RedeemView（兌換的二次確認在 RedeemView 內）。
-/// 對齊 design/Wallet.dc.html。
+/// 對齊設計稿。
 struct WalletView: View {
     @Environment(\.appEnvironment) private var environment
     @StateObject private var viewModel = WalletViewModel()

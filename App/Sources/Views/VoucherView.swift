@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import SportsRewardsKit
 
-/// 檢視加碼券（design/Wallet.dc.html 券卡樣式 + design/Redeem.dc.html 的 OTP 輸入）：
+/// 檢視加碼券（券夾的券卡樣式 + 兌換頁的 OTP 輸入）：
 /// 每次進入畫面都要重新走一次簡訊 OTP 驗證才會顯示券碼——依合規要求「須本人帳號即時畫面
 /// 抵用、不得截圖」，本畫面（與底層的 VoucherServicing）完全不快取券碼，
 /// 一律從 `.needsOtp` 開始，`dismiss` 後再進來就要重新驗證一次。

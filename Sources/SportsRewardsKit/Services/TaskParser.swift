@@ -81,9 +81,9 @@ public enum TaskParser {
     private static func mapState(_ raw: String) -> TaskState {
         switch raw {
         case "NOT_STARTED": return .notStarted
-        // 實測（測試帳號）：可上傳/尚未上傳的當期真實 state 是 NOT_UPLOADED（徽章「尚未上傳」）。
+        // 官網對應狀態：可上傳/尚未上傳的當期 state 是 NOT_UPLOADED（徽章「尚未上傳」）。
         case "OPEN", "NOT_UPLOADED": return .open
-        // 實測（上傳後）：待審核的真實 class 是 UNDER_REVIEW。PENDING_REVIEW 一併容錯。
+        // 官網對應狀態：待審核的 class 是 UNDER_REVIEW。PENDING_REVIEW 一併容錯。
         case "UNDER_REVIEW", "PENDING_REVIEW": return .pendingReview
         case "REDEEMABLE": return .redeemable
         case "REDEEMED": return .redeemed

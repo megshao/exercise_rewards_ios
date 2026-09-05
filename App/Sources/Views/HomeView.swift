@@ -2,7 +2,7 @@ import SwiftUI
 import SportsRewardsKit
 
 /// 首頁：一鍵登入 CTA、今日步數圓環占位、本週任務摘要卡。
-/// 對齊 design/Main.dc.html。
+/// 對齊設計稿。
 struct HomeView: View {
     @Environment(\.appEnvironment) private var environment
     @EnvironmentObject private var envStore: AppEnvironmentStore
@@ -327,7 +327,7 @@ private struct TaskSummaryCard: View {
 }
 
 /// 三段式進度時間軸：上傳 → 審核 → 兌換。節點依狀態顯示 完成(綠勾) / 進行中(填色圖示) /
-/// 未開始(灰框)；連接線在該段完成時轉綠。對齊 design/task-card 方向 D。
+/// 未開始(灰框)；連接線在該段完成時轉綠。對齊設計稿。
 private struct TaskStepper: View {
     let state: TaskState
 

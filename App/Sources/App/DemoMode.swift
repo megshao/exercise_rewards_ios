@@ -6,17 +6,16 @@ import SportsRewardsKit
 ///
 /// **為什麼需要**：本 App 的登入需要真實身分證號、出生日期、手機號碼，且帳號屬於官方網站
 /// `500.gov.tw`（App 不做註冊）。App Store 審查員拿不到這樣一組真實憑證，沒有示範模式就完全
-/// 無法走完主要流程，會直接卡在 Guideline 2.1（App Completeness）。
+/// 無法走完主要流程。
 ///
 /// **刻意不做成隱藏手勢**：示範模式的入口就是一般使用者也看得到的登入表單——只要輸入下列
-/// 這組哨兵值即可進入。這組值會如實寫在 App Store Connect 的示範帳號欄位與 Review Notes 裡，
-/// 因此它是**已揭露的功能**，不是 Guideline 2.3.1 所指的未揭露隱藏功能。
+/// 這組哨兵值即可進入。這組值與 App Store Connect 的示範帳號欄位同步，是**完整揭露的功能**。
 ///
 /// **安全性**：`A000000000` 不是合法的中華民國身分證號（檢查碼不符），真實使用者不可能誤觸。
 /// 進入示範模式後整個 App 改用 `Mock*Service`，**不會發出任何網路請求**，個資也只留在
 /// 記憶體（`InMemoryProfileStore`），絕不寫入 Keychain。
 enum DemoMode {
-    /// 示範帳號三碼。修改這裡就要同步更新 App Store Connect 的示範帳號與 Review Notes。
+    /// 示範帳號三碼。修改這裡就要同步更新 App Store Connect 的示範帳號欄位。
     static let idNo = "A000000000"
     static let birthDate = "1990-01-01"
     static let phone = "0900000000"
@@ -64,11 +63,10 @@ enum DemoMode {
 
 /// 截圖模式：只用來在擷取上架素材時隱藏示範模式橫幅。
 ///
-/// **為什麼這不是 Guideline 2.3.1 的「未揭露隱藏功能」**：唯一的開關是**行程啟動參數**
+/// **只能由啟動參數開啟**：唯一的開關是**行程啟動參數**
 /// （`ProcessInfo.processInfo.arguments`），而啟動參數只有 XCUITest／偵錯工具在啟動 App 時
 /// 才給得出來。從 App Store 安裝的使用者不論怎麼操作（手勢、設定、輸入任何值）都無法讓
-/// 這支 App 帶著這個參數啟動，所以它不是「使用者可觸發但未揭露的功能」，而是 fastlane
-/// snapshot 那類截圖工具的標準做法。
+/// 這支 App 帶著這個參數啟動；這是 fastlane snapshot 那類截圖工具的標準做法。
 ///
 /// **界線在哪（日後改動請守住）**：
 /// - 只讀 `ProcessInfo.arguments`，**不可以**改讀 UserDefaults／Keychain／檔案等任何

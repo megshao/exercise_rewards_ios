@@ -7,7 +7,7 @@ import Foundation
 /// 也絕不可以把解析出的 `Voucher` 存起來跨畫面重用，離開畫面就要丟棄，下次進入重新走一次
 /// `sendOtp` → `verifyOtp` → `fetchVoucher`。
 ///
-/// 端點形狀見 docs/redeem-flow-capture.md 步驟 6-8：
+/// 端點：
 /// - 檢視頁：`GET /member/voucher/{uuid}`（含 resend/verify 兩個 form 的 `_csrf`）
 /// - 發送：`POST /member/voucher/{uuid}/resend`（body `_csrf`）
 /// - 驗證：`POST /member/voucher/{uuid}`（body `_csrf`,`otp`）→ 200+`.notice--error` 或 302 到 `.../view`

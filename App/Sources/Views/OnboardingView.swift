@@ -48,9 +48,8 @@ struct OnboardingView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(Theme.Colors.primary)
 
-                // 主標一律用上架名稱 Sports Rewards：拿活動名「揮汗有禮」自稱會踩
-                // App Review guideline 4.1／5.2.1（冒用他人品牌），活動名只出現在
-                // 說明用途的副標裡。
+                // 主標一律用上架名稱 Sports Rewards：刻意不拿活動名「揮汗有禮」自稱，
+                // 避免被誤認為官方 App；活動名只出現在說明用途的副標裡。
                 Text("Sports Rewards")
                     .font(Theme.displayFont(28, weight: .heavy))
 
@@ -86,7 +85,7 @@ struct OnboardingView: View {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.Colors.muted)
-            Text("本 App 由個人開發，是非官方工具，與教育部體育署／運動部沒有任何隸屬或授權關係。")
+            Text("本 App 由個人開發，是非官方工具，與運動部沒有任何隸屬或授權關係。")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.Colors.muted)
                 .fixedSize(horizontal: false, vertical: true)
