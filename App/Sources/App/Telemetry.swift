@@ -1040,6 +1040,18 @@ enum Telemetry {
         UserDefaults.standard.set(enabled, forKey: preferenceKey)
 
         if enabled {
+            // 示範模式下**不初始化**，即使使用者（或審查員）把開關打開。
+            //
+            // 為什麼這道守衛非有不可：`configure()` 的 demo 守衛只在冷啟動生效，
+            // 這裡是另一條進入 Firebase 的路。而審查員正是唯一一群一定會走示範模式、
+            // 又可能順手撥開關的人——少了這行，光是 `FirebaseApp.configure()` 引發的
+            // Installations 連線就足以推翻 README 與隱私權政策寫下的
+            // 「示範模式下對 Google 零連線」。偏好本身照樣記下來，離開示範模式時
+            // `demoModeDidChange()` 會補做初始化。
+            guard !isDemoModeActive else {
+                log.debug("示範模式：記下遙測偏好但不初始化 Firebase")
+                return
+            }
             // 這一行是整支 App 第一次執行 Firebase 的程式碼。
             startFirebase()
             applyCollectionFlags(enabled: true)
