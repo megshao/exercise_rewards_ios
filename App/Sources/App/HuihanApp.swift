@@ -7,6 +7,13 @@ struct HuihanApp: App {
     /// KeychainStore/HealthKitReader）；審查員輸入示範帳號後切成 `DemoMode.makeEnvironment()`。
     @StateObject private var envStore = AppEnvironmentStore()
 
+    /// 唯一一次 Firebase 初始化。沒有 GoogleService-Info.plist 時會安全跳過（不會 crash），
+    /// 使用者沒開「傳送匿名使用統計」之前也不會送出任何東西。細節見 Telemetry.swift 檔頭。
+    init() {
+        Telemetry.configure()
+        Telemetry.logEvent(.appLaunched)
+    }
+
     var body: some Scene {
         WindowGroup {
             // 用 VStack 讓橫幅真的佔版面（safeAreaInset 會蓋在 TabView 內容上，把首頁問候語壓掉）。

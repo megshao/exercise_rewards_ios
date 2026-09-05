@@ -139,6 +139,8 @@ final class AppEnvironmentStore: ObservableObject {
         TasksCache.clear()
         environment = DemoMode.makeEnvironment()
         isDemo = true
+        // 示範模式一律不送遙測與當機報告，SDK 層也一起關掉（不只靠 Telemetry 的閘門）。
+        Telemetry.demoModeDidChange()
     }
 
     func exitDemo() {
@@ -147,6 +149,8 @@ final class AppEnvironmentStore: ObservableObject {
         TasksCache.clear()
         environment = DefaultAppEnvironment()
         isDemo = false
+        // 離開示範模式後，收集狀態回到使用者自己的偏好。
+        Telemetry.demoModeDidChange()
     }
 }
 

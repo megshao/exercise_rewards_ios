@@ -14,6 +14,9 @@ struct ProfileView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showClearConfirm = false
     @State private var showCleared = false
+    /// 「傳送匿名使用統計」開關。直接綁 Telemetry 用的同一個 UserDefaults 鍵，
+    /// 所以「立即清除本機資料」重設偏好時，這個 Toggle 會自己跟著彈回去。
+    @AppStorage(Telemetry.preferenceKey) private var telemetryEnabled = Telemetry.defaultEnabled
 
     var body: some View {
         ScrollView {
@@ -156,6 +159,8 @@ struct ProfileView: View {
                 }
                 localDataRow
                 Divider().padding(.leading, 62)
+                telemetryRow
+                Divider().padding(.leading, 62)
                 sourceCodeRow
                 Divider().padding(.leading, 62)
                 clearRow
@@ -231,6 +236,32 @@ struct ProfileView: View {
             .padding(15)
         }
         .buttonStyle(.plain)
+    }
+
+    /// 匿名使用統計開關。**預設關閉（opt-in）**：本 App 對外承諾「不蒐集、不外傳」，
+    /// 預設開啟會直接抵觸那句話，所以要由使用者自己打開。
+    /// 這裡只切偏好；真正的「送不送得出去」由 `Telemetry` 的閘門決定（示範模式一律不送）。
+    private var telemetryRow: some View {
+        HStack(spacing: 13) {
+            iconBox("chart.bar.xaxis", tint: Theme.Colors.text, bg: Color(hex: 0xEEF0F3))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("傳送匿名使用統計")
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.text)
+                Text("協助改善 App 的當機與操作統計 · 不含個資 · 不含健康資料 · 可隨時關閉")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.Colors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Toggle("傳送匿名使用統計", isOn: $telemetryEnabled)
+                .labelsHidden()
+                .tint(Theme.Colors.primary)
+        }
+        .padding(15)
+        .onChange(of: telemetryEnabled) { newValue in
+            Telemetry.setUserEnabled(newValue)
+        }
     }
 
     private var clearRow: some View {
@@ -312,6 +343,8 @@ struct ProfileView: View {
         envStore.exitDemo()
         try? environment.profileStore.clear()
         TasksCache.clear()
+        // 遙測偏好也算「本機資料」：清除後回到預設的關閉狀態，並立刻停止收集。
+        Telemetry.resetPreference()
         UserDefaults.standard.removeObject(forKey: "com.megshao.sportsrewards.health.didRequestAuthorization")
         // 官方站的登入 cookie 是持久化在 App 沙盒容器、跨啟動續用的；只清 Keychain 個資
         // 並不會登出。不一併清掉就與這顆按鈕（與隱私說明）承諾的「清除本機所有資料」不符。

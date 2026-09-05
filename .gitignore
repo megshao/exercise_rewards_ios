@@ -14,3 +14,7 @@ build/
 
 # 本機建置產出物（archive/ipa）
 .asc/
+
+# Firebase 專案設定檔：含 API key 與專案識別，且本 repo 公開，真檔一律不進版控。
+# 範本見 App/Resources/GoogleService-Info.plist.template。
+GoogleService-Info.plist

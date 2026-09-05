@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  App 自己的隱私資訊清單（Privacy Manifest）。
+
+  為什麼需要這一份：Firebase 的每個 SDK 都自帶 PrivacyInfo.xcprivacy，但那些只描述
+  「SDK 自己」的行為。Apple 的規定是「App 二進位檔本身用到 required reason API、
+  或 App 自己蒐集資料，就要由 App 自己宣告」——本 App 直接用了 UserDefaults
+  （@AppStorage / TasksCache / HealthKitReader 的授權旗標），所以這份不能省。
+  最終的隱私報告是 App manifest 與所有 SDK manifest 的聯集。
+
+  這裡刻意把 Analytics/Crashlytics 會送出的資料類別也一併列出（即使 Firebase 已經宣告過），
+  讓「這支 App 到底送出什麼」在自家 repo 裡就查得到，不必去讀第三方的清單。
+-->
+<plist version="1.0">
+<dict>
+	<!-- 不做跨 App/網站追蹤：沒有 IDFA（用 FirebaseAnalyticsCore，不連 AdSupport），
+	     也沒有 ATT 提示。 -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<!-- Crashlytics：當機堆疊與裝置/OS 資訊。不連結身分、不用於追蹤。 -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeCrashData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Crashlytics 的非致命錯誤與效能相關診斷。 -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Analytics：畫面瀏覽等互動事件（見 App/Sources/App/Telemetry.swift 的
+		     AnalyticsEvent；不含個資、不含任何 HealthKit 衍生值）。 -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+	</array>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- @AppStorage（onboarding 旗標）、TasksCache、HealthKitReader 的授權旗標、
+		     示範模式旗標、遙測偏好。全部只讀寫本 App 自己的資料，對應理由 CA92.1。 -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
