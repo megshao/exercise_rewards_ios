@@ -21,7 +21,7 @@
 - **券夾**：集中檢視已取得的加碼券，可再次出示 QR／一維條碼給店家掃描。
 - **「我的資料」頁**：檢視與編輯本機個資、遮罩顯示、頁首三點隱私聲明、「立即清除本機資料」（含二次確認，清除後回到初次設定）。
 - **出生日期選擇器**：自製「年／月／日」三欄滾輪，可切換民國／西元（預設民國），底部同時顯示雙年份；換月自動夾住不存在的日期。
-- **示範模式（Demo Mode）**：在登入表單輸入指定的示範三碼即進入全 mock 環境，不發任何網路請求、不寫 Keychain，畫面常駐「示範模式」橫幅，並可在「我的資料」一鍵離開。此模式提供給 App Store 審查員實測完整流程，操作方式完整揭露於 Review Notes 與 App Store Connect 的示範帳號欄位。
+- **示範模式（Demo Mode）**：在登入表單輸入指定的示範三碼即進入全 mock 環境，不發任何網路請求、不寫 Keychain，畫面常駐「示範模式」橫幅，並可在「我的資料」一鍵離開。此模式提供給 App Store 審查員實測完整流程，示範三碼與 App Store Connect 的示範帳號欄位同步。
 - **開源**：全部程式碼以 MIT 授權公開，核心邏輯抽成 `SportsRewardsKit` Swift Package，可 headless `swift build` / `swift test`。
 
 ### Changed
@@ -50,7 +50,6 @@
 - **Cookie 存在 App 沙盒容器、不外流**：`LBSCookie` / `JSESSIONID` 由 `URLSessionHTTPClient`（`persistCookies: true`）保存以維持登入狀態，僅限本 App 容器可讀；登出與「立即清除本機資料」都會呼叫 `resetSession()` 清空。cookie 的 domain scope 為 `500.gov.tw`，不會被送往其他網域。
 - **統一日誌出口 `SecureLog` + `Redact`**：身分證、生日、手機、Email、健保卡號、cookie、`_csrf`、OTP、presigned URL 一律遮罩；debug 層級只在 DEBUG build 輸出。
 - **HealthKit 唯讀**：只要求 `stepCount`、`distanceWalkingRunning`、`appleExerciseTime` 的讀取權限，從不寫入，資料也不離開裝置。
-- **`WKAppBoundDomains` 宣告為 `500.gov.tw`**：目前 App 並未使用可注入腳本的 WebView，此宣告為前瞻性防護，同時作為「腳本注入邊界」的正向佐證。
 - **不繞過任何身分驗證**：戶役政、健保卡、簡訊 OTP 皆為真實驗證，App 設計上不提供繞過路徑，也不提供任何可竄改運動數據的入口。
 - **`ITSAppUsesNonExemptEncryption=false`**：只使用系統 TLS，屬出口管制豁免。
 
