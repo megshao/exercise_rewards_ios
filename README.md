@@ -11,6 +11,8 @@
   - `Security/` `KeychainStore`、`SecureLog`、`Redact`
   - `Health/` `HealthReading` 協定、`GoalEvaluator`
 - `App/`（SwiftUI，XcodeGen 產生 `.xcodeproj`）：UI、HealthKit 實作、FaceID gate
+  - 介面固定繁體中文：開發語言鎖 `zh-Hant`（`App/project.yml`）＋注入 `Locale(zh_Hant_TW)`，不隨裝置語系變動
+  - 「我的資料」頁同時承載安全與隱私設定（無獨立「資安中心」子頁）
 
 ### 建置
 ```
@@ -26,7 +28,7 @@ xcodebuild -scheme Huihan -destination 'platform=iOS Simulator,name=iPhone 16' b
 | Log 洩漏 | 全專案唯一 log 入口 `SecureLog`；敏感值一律先過 `Redact`；`debug` 僅 DEBUG build 輸出；禁 log cookie/CSRF/OTP/session |
 | 網路面 | ATS 強制 https；`URLSessionHTTPClient` 白名單只允許 `500.gov.tw`（含子網域、擋 suffix spoof），其餘 throw `blockedEgress`；cookie 記憶體型、登出即清 |
 | 中間人/降級 | 官方站 302 Location 是 `http://`；client 一律正規化回 https 再送，避免掉 Secure cookie |
-| 裝置遺失 | 開啟 App 與顯示敏感欄位需 Face ID / Touch ID（`BiometricGate`，可設定開關） |
+| 裝置遺失 | 開啟 App 與顯示敏感欄位需 Face ID / Touch ID（`BiometricGate`，可於「我的資料 › 安全與隱私」開關；同區塊提供「立即清除本機資料」） |
 | 資料誠信 | 上傳圖卡只呈現真實 HealthKit 數據、無可竄改輸入、標「數據未經修改」；不繞過戶役政/健保卡/OTP 等真驗證 |
 | 供應鏈 | 零第三方相依，純 Foundation / SwiftUI / HealthKit / LocalAuthentication |
 

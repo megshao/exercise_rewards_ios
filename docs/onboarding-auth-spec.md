@@ -6,7 +6,7 @@
    - 已註冊 → 走**登入**（idNo+birthDate+phone 三碼）→ 成功 → 進主畫面。
    - 未註冊 → 走**註冊**：`POST /register`(name,idNo,birthDate,phone,email,agree=true) → `/register/nhi-verify`(健保卡) → `/register/otp`(簡訊) → 完成 → 進主畫面。
      - ⚠️ nhi-verify / otp 兩步欄位未實測（需未註冊身分才能抓），先搭到 /register，後兩步標 TODO。
-3. 驗證成功後 → **詢問是否啟用 Face ID**（可略過）。略過就直接進主畫面，設定頁可再開。
+3. 驗證成功後 → **詢問是否啟用 Face ID**（可略過）。略過就直接進主畫面，之後可在「我的資料」頁的「安全與隱私」區塊再開（已無獨立「資安中心」子頁）。
 4. **Onboarding 完成前完全不碰 Face ID**（預設 `biometricLockEnabled=false`，不在第一次開 App 就要權限）。
 
 ## B. Face ID 守門點（敏感動作前重新驗證）
@@ -29,6 +29,8 @@
 
 ## E. UI 一致性
 - 主畫面步數卡與本週任務卡等所有卡片統一滿版寬（maxWidth: .infinity），消除長短不一。
+- 生日欄位在 Onboarding 與「我的資料」共用同一元件（`BirthDateField` → `BirthDatePickerSheet`）：年／月／日三欄滾輪、民國／西元可切換（預設民國）、底部雙年份確認，不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`（詳見 PRD §5.2）。
+- 介面文案一律自備繁體中文、不吃裝置語系（開發語言鎖 `zh-Hant` ＋ `Locale(zh_Hant_TW)`）。
 
 ## F. 待辦：註冊全流程實測（R-register）
 使用者稍後提供「未註冊、且本人同意」的測試個資（姓名/身分證/生日/手機/email/健保卡）。

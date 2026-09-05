@@ -19,7 +19,10 @@
 - [x] 1.2 **CsrfParser**：GET 頁面刮 `_csrf`（先用字串/正規式，必要時輕量 HTML parse）
 - [x] 1.3 **SessionBootstrap**：處理 HiNetCDN LBSCookie（`?_cookie_check=1`）首次握手
 - [x] 1.4 **AuthService.login**：`POST /access(idNo)` → GET `/login` → `POST /login(idNo,birthDate,phone)` → 判斷 302 `/member/tasks` 成功；區分「未註冊(導 /register)」與「三碼不符」錯誤
-- [x] 1.5 Profile 設定畫面（存/讀 Keychain、遮罩顯示、FaceID 顯示完整）
+- [x] 1.5 Profile 設定畫面「我的資料」（存/讀 Keychain、遮罩顯示、FaceID 顯示完整）
+  - [x] 1.5.1 出生日期改自製「年／月／日」三欄滾輪 sheet（民國/西元切換、預設民國、雙年份確認、換月自動夾日），不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`。Onboarding 共用同一元件
+  - [x] 1.5.2 App 開發語言鎖 `zh-Hant`（`project.yml` developmentLanguage、CFBundleDevelopmentRegion/CFBundleLocalizations）＋注入 `Locale(zh_Hant_TW)`，介面文案不吃裝置語系
+  - [x] 1.5.3 移除「設定 — 資安中心」子頁，Face ID 開關／本機資料說明／立即清除（含確認 alert、清除後回 Onboarding）與版本聲明併入本頁「安全與隱私」區塊；頁首隱私聲明改為三點明列
 - [x] 1.6 首頁 Home（一鍵登入 CTA、登入中/失敗狀態、登入態保存）
 - [x] 1.7 登出：`POST /logout` + 清 cookie/session
 
@@ -33,6 +36,7 @@
 - [x] 3.1 HealthKit 授權（唯讀 stepCount / distanceWalkingRunning / appleExerciseTime）
 - [x] 3.2 達標判定（對應任務辦法：單日 8000 步 或 健走 30 分 或 跑步 5km）
 - [x] 3.3 健康數據畫面（步數環、達標徽章、指標卡）
+  - [x] 3.3.1 首頁步數環未連結狀態：`HealthLinkState { checking, linked, notLinked }` 三態（避免冷啟動閃現「未連結」）；未連結顯示淺灰虛線環＋灰色步行圖示＋「未連結」（opacity 0.55）＋「前往連結 ›」，並移除原本的示意假數字
 - [x] 3.4 **圖卡產生器**：忠實呈現真實 HealthKit 數據（日期/步數/距離/時間），標「資料來源 Apple 健康・未經修改」；渲染成可上傳圖片
 
 ## Phase 4 — 上傳 + 兌換（第四刀，含未決點）
