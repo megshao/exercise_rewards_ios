@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+App/Generated/
+xcuserdata/
+.swiftpm/
+*.pem
+*.p12
+secrets*
+App/build/
+build/

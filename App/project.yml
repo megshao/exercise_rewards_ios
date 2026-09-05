@@ -1,0 +1,86 @@
+name: SportsRewards
+options:
+  bundleIdPrefix: com.megshao
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  SportsRewardsKit:
+    path: ".."
+
+targets:
+  SportsRewards:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Sources
+      - path: Resources
+    dependencies:
+      - package: SportsRewardsKit
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: 揮汗有禮
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # 讀取步數以協助判斷是否達標（HealthKit，唯讀，never transmitted，不會被上傳）
+        NSHealthShareUsageDescription: 讀取步數以判斷今日是否達標
+        # 選擇運動紀錄截圖以上傳（PhotosPicker；PHPickerViewController 底層通常免權限字串，保險加上）
+        NSPhotoLibraryUsageDescription: 選擇運動紀錄截圖以上傳
+        # 解鎖保護你的個人資料（Face ID / Touch ID）
+        NSFaceIDUsageDescription: 解鎖保護你的個人資料
+        # App-Bound Domains：正向安全訊號——限制任何 WKWebView 的腳本注入能力只可能發生於下列網域。
+        # 目前 App 不使用可注入的 WebView（註冊改導向外部 Safari），此宣告為前瞻性防護。
+        WKAppBoundDomains:
+          - 500.gov.tw
+        # App Transport Security：只允許連線到官方網站 500.gov.tw（https），其餘一律禁止任意 http。
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSExceptionDomains:
+            500.gov.tw:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: false
+              NSExceptionRequiresForwardSecrecy: true
+              NSExceptionMinimumTLSVersion: TLSv1.2
+    entitlements:
+      path: Generated/SportsRewards.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.sportsrewards
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEVELOPMENT_ASSET_PATHS: ""
+    postCompileScripts: []
+
+schemes:
+  SportsRewards:
+    build:
+      targets:
+        SportsRewards: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
