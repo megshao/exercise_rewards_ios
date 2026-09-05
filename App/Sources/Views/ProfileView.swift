@@ -156,6 +156,8 @@ struct ProfileView: View {
                 }
                 localDataRow
                 Divider().padding(.leading, 62)
+                sourceCodeRow
+                Divider().padding(.leading, 62)
                 clearRow
             }
             .cardStyle(padding: 0)
@@ -203,6 +205,32 @@ struct ProfileView: View {
             Spacer()
         }
         .padding(15)
+    }
+
+    /// 原始碼連結：隱私宣稱要能被查證才有意義，所以把 repo 直接放進 App，
+    /// 而不是只寫在商店描述裡。以外部 Safari 開啟（不用 WebView，維持零 WebKit 依賴）。
+    private var sourceCodeRow: some View {
+        Link(destination: URL(string: "https://github.com/megshao/sports-rewards-ios")!) {
+            HStack(spacing: 13) {
+                iconBox("chevron.left.forwardslash.chevron.right",
+                        tint: Theme.Colors.text, bg: Color(hex: 0xEEF0F3))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("原始碼")
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.text)
+                    Text("全部程式碼開源，這頁說的每一句都可以自己查證")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Theme.Colors.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xC3C8D0))
+            }
+            .padding(15)
+        }
+        .buttonStyle(.plain)
     }
 
     private var clearRow: some View {
