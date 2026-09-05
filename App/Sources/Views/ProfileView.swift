@@ -37,6 +37,7 @@ struct ProfileView: View {
         .background(Theme.Colors.background)
         .navigationTitle("我的資料")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { Telemetry.screenAppeared(.profile) }
         .safeAreaInset(edge: .bottom) {
             saveBar
         }
@@ -67,22 +68,27 @@ struct ProfileView: View {
 
     // MARK: - 隱私聲明
 
-    /// 明確聲明：本 App 沒有伺服器、不蒐集也不外傳任何個資；輸入的資料只在你按下登入的
-    /// 當下直接送到官方網站 500.gov.tw，本機保留只是為了免除重複輸入且可隨時清除。
+    /// 明確聲明個資與健康資料的界線。
+    ///
+    /// **這段文字改過一次，原因要留著**：加了 Firebase（匿名使用統計）之後，原本第一點的
+    /// 「也不會提供給任何第三方」就不再是一句無條件為真的話了。個資與健康資料的部分完全沒變
+    /// ——仍然一個位元都不外傳；變的是「使用者自己打開使用統計之後，會有不含個資的操作事件
+    /// 送給 Firebase」。所以這裡把界線拆成兩段講清楚，而不是把兩件事混在一句籠統的保證裡。
     private var privacyBanner: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(Theme.Colors.success)
-                Text("本 App 不蒐集、不外傳你的個資")
+                Text("個資不外傳，健康資料不出這支手機")
                     .font(.system(size: 13.5, weight: .bold))
                     .foregroundStyle(Color(hex: 0x186C3E))
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                privacyBullet("本 App 沒有任何伺服器與後台，你的資料不會上傳雲端、不會同步 iCloud、不會寫入紀錄檔，也不會提供給任何第三方。")
-                privacyBullet("以下資料只在你登入時，由這支手機直接送到官方網站 500.gov.tw，中間不經過任何其他服務。")
-                privacyBullet("為了免除每次重新輸入，資料僅以加密方式保存在這支手機（Keychain）；你可以隨時用下方「立即清除本機資料」永久刪除。")
+                privacyBullet("本 App 沒有伺服器也沒有後台。你的個資不會上傳雲端、不會同步 iCloud、不會寫進任何紀錄，也不會給第三方——這一點沒有例外。")
+                privacyBullet("以下三個欄位只在你登入時，由這支手機直接送到官方網站 500.gov.tw；平常以加密方式存在這支手機（Keychain），可隨時用下方「立即清除本機資料」永久刪除。")
+                privacyBullet("Apple 健康的步數、距離、運動時間只在這支手機上顯示，連「今天達標了沒」都不會被送出去。")
+                privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：預設關閉，你自己打開之後，才會把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase。裡面沒有個資、沒有健康數據、沒有你上傳的截圖與券碼。")
             }
         }
         .padding(14)
@@ -202,7 +208,7 @@ struct ProfileView: View {
                 Text("本機資料")
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.Colors.text)
-                Text("僅這三個欄位加密存於本機 Keychain · 無伺服器 · 未同步 iCloud · 不寫入紀錄檔")
+                Text("僅這三個欄位加密存於本機 Keychain · 無伺服器 · 未同步 iCloud · 不把個資寫入紀錄")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.Colors.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -241,6 +247,10 @@ struct ProfileView: View {
     /// 匿名使用統計開關。**預設關閉（opt-in）**：本 App 對外承諾「不蒐集、不外傳」，
     /// 預設開啟會直接抵觸那句話，所以要由使用者自己打開。
     /// 這裡只切偏好；真正的「送不送得出去」由 `Telemetry` 的閘門決定（示範模式一律不送）。
+    ///
+    /// 副標依開關狀態換句話講：關著的時候使用者最想確認的是「現在真的沒在送吧」，
+    /// 開著的時候想確認的是「那到底送了什麼」。兩種狀態都要把「不含什麼」列完整，
+    /// 也不用行銷語氣（「協助我們做得更好」那類）淡化這是一個把資料送給第三方的開關。
     private var telemetryRow: some View {
         HStack(spacing: 13) {
             iconBox("chart.bar.xaxis", tint: Theme.Colors.text, bg: Color(hex: 0xEEF0F3))
@@ -248,7 +258,9 @@ struct ProfileView: View {
                 Text("傳送匿名使用統計")
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.Colors.text)
-                Text("協助改善 App 的當機與操作統計 · 不含個資 · 不含健康資料 · 可隨時關閉")
+                Text(telemetryEnabled
+                     ? "開啟中 · 送出操作事件與當機報告給 Google Firebase · 不含個資、健康數據、截圖、券碼 · 可隨時關掉"
+                     : "預設關閉 · 目前不會有任何資料送到 Google · 打開後也不含個資、健康數據、截圖、券碼")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.Colors.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -260,7 +272,9 @@ struct ProfileView: View {
         }
         .padding(15)
         .onChange(of: telemetryEnabled) { newValue in
-            Telemetry.setUserEnabled(newValue)
+            // 開啟時會送 E28 `consent_granted`（同意後的第一個事件）；
+            // 關閉時**不送任何事件**——使用者剛說不要，再送一筆等於沒聽到。
+            Telemetry.setUserEnabled(newValue, source: .settings)
         }
     }
 
@@ -295,7 +309,7 @@ struct ProfileView: View {
     }
 
     private var footer: some View {
-        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 不寫紀錄檔 · 只連 500.gov.tw")
+        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 開了使用統計才會連 Firebase")
             .font(.system(size: 11.5))
             .foregroundStyle(Theme.Colors.dim)
             .multilineTextAlignment(.center)
@@ -340,6 +354,9 @@ struct ProfileView: View {
 
     /// 清除本機所有資料：刪 Keychain 個資、重置 onboarding／健康授權旗標，回初次設定。
     private func clearLocalData() {
+        // E26 必須在**這一行**送出：後面的 `Telemetry.resetPreference()` 會把偏好關掉並重置
+        // app instance ID，那之後就再也送不出去了。順序＝先記錄、再重置、最後回到未同意狀態。
+        Telemetry.logEvent(.localDataClear)
         envStore.exitDemo()
         try? environment.profileStore.clear()
         TasksCache.clear()
@@ -677,6 +694,7 @@ final class ProfileViewModel: ObservableObject {
         } catch {
             errorMessage = "讀取失敗，請重新輸入。"
             showErrorAlert = true
+            Self.recordStorageFailure(error, op: .load)
         }
     }
 
@@ -685,9 +703,36 @@ final class ProfileViewModel: ObservableObject {
         do {
             try profileStore.save(draft)
             showSavedAlert = true
+            // E25：只有成功／失敗。`draft`（身分證、生日、手機）永遠不進 Telemetry。
+            Telemetry.logEvent(.profileSave(outcome: .ok))
         } catch {
             errorMessage = "無法寫入本機安全儲存，請確認裝置已解鎖後再試一次。"
             showErrorAlert = true
+            Telemetry.logEvent(.profileSave(outcome: .error))
+            Self.recordStorageFailure(error, op: .save)
+        }
+    }
+
+    /// Keychain 的操作代碼。只用於 N10 的 `op` 參數。
+    private enum StorageOp: String, Sendable {
+        case save
+        case load
+        case clear
+    }
+
+    /// N10：Keychain 失敗走 Crashlytics 非致命錯誤，不進 Analytics。
+    ///
+    /// 只送 `op` 與 `OSStatus`（例如 `errSecInteractionNotAllowed` = -25308，高頻代表
+    /// 有背景讀取時機的問題）。**`Profile` 內容與 `data` 絕不附帶**；JSON 解碼失敗也只記
+    /// 一個代碼，不附 `DecodingError`（它的 `debugDescription` 含欄位名與 coding path）。
+    private static func recordStorageFailure(_ error: Error, op: StorageOp) {
+        if let keychainError = error as? KeychainError, case .unhandled(let status) = keychainError {
+            Telemetry.recordNonFatal(.keychain, extras: [
+                "op": .code(op),
+                "os_status": .int(Int(status)),
+            ])
+        } else {
+            Telemetry.recordNonFatal(.profileDecode, extras: ["op": .code(op)])
         }
     }
 

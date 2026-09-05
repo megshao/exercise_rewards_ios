@@ -50,8 +50,10 @@ struct UploadView: View {
         .background(Theme.Colors.background)
         .navigationTitle(periodIndex.map { "上傳運動紀錄 · 第 \($0) 期" } ?? "上傳運動紀錄")
         .navigationBarTitleDisplayMode(.inline)
+        // E1：不帶 taskID（期別 UUID）。要知道是第幾期，看 upload_submit 的 period_index。
+        .onAppear { Telemetry.screenAppeared(.upload) }
         .task {
-            viewModel.configure(upload: environment.upload, taskID: taskID)
+            viewModel.configure(upload: environment.upload, taskID: taskID, periodIndex: periodIndex)
         }
         .onChange(of: pickerItem) { newItem in
             Task { await viewModel.loadPickedImage(newItem) }
@@ -145,15 +147,25 @@ final class UploadViewModel: ObservableObject {
 
     private var upload: UploadServicing?
     private var taskID = ""
+    /// 活動週次（1–14）。遙測只送這個，**不送 `taskID`（期別 UUID）**。
+    private var periodIndex: Int?
     private var imageData: Data?
 
-    func configure(upload: UploadServicing, taskID: String) {
+    func configure(upload: UploadServicing, taskID: String, periodIndex: Int? = nil) {
         guard self.upload == nil else { return }
         self.upload = upload
         self.taskID = taskID
+        self.periodIndex = periodIndex
+        Telemetry.setCrashKey(.uploadStage(.idle))
     }
 
     /// 讀取使用者從相簿選取的截圖。只接受圖片資料本身，不去讀取任何 HealthKit 或個資欄位。
+    ///
+    /// **E11 只送二元結果（picked / unreadable）。** 刻意不送的東西：`data.count`、
+    /// `UIImage.size`、原始格式（HEIC/JPEG）、`jpegDataUnder5MB` 的壓縮迭代次數
+    /// （迭代次數可以反推檔案大小，是衍生資訊）、`PhotosPickerItem.itemIdentifier`、EXIF。
+    /// 使用者的照片是 User Content，關於它的任何測量值都不該離開裝置。
+    /// 同理，選圖失敗**不進 Crashlytics 非致命錯誤**——那是關於使用者檔案的錯誤。
     func loadPickedImage(_ item: PhotosPickerItem?) async {
         guard let item else { return }
         errorMessage = nil
@@ -161,13 +173,17 @@ final class UploadViewModel: ObservableObject {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
                 errorMessage = "無法讀取這張圖片，請重新選擇"
+                Telemetry.logEvent(.uploadPick(outcome: .unreadable))
                 return
             }
             // 統一轉成 JPEG（官網只收 JPG/PNG）並壓到 5MB 以內，避免相簿原檔是 HEIC 被拒。
             imageData = Self.jpegDataUnder5MB(image) ?? data
             previewImage = image
+            Telemetry.setCrashKey(.uploadStage(.picked))
+            Telemetry.logEvent(.uploadPick(outcome: .picked))
         } catch {
             errorMessage = "無法讀取這張圖片，請重新選擇"
+            Telemetry.logEvent(.uploadPick(outcome: .unreadable))
         }
     }
 
@@ -188,14 +204,58 @@ final class UploadViewModel: ObservableObject {
         isUploading = true
         errorMessage = nil
         defer { isUploading = false }
+        Telemetry.setCrashKey(.uploadStage(.uploading))
+        // E12：只有活動週次。沒有任何檔案資訊。
+        Telemetry.logEvent(.uploadSubmit(periodIndex: periodIndex))
+        let startedAt = DispatchTime.now()
         do {
-            result = try await upload.upload(
+            let uploadResult = try await upload.upload(
                 taskID: taskID.isEmpty ? nil : taskID,
                 imageData: imageData,
                 fileName: "screenshot.jpg"
             )
+            result = uploadResult
+            Telemetry.setCrashKey(.uploadStage(.done))
+            // E13：官網 `.notice--error` 的原文只留在 `uploadResult.message` 給畫面用，
+            // 這裡送的是 `UploadFailure` 分類。
+            Telemetry.logEvent(.uploadResult(outcome: Self.outcome(for: uploadResult),
+                                             periodIndex: periodIndex,
+                                             durationMs: Telemetry.elapsedMs(since: startedAt)))
+            // N9：上傳端點回了非 200／302。「頁面沒有 file 欄位」不算錯誤（當期不可上傳是常態）。
+            if case .httpError(let status) = uploadResult.failure {
+                Telemetry.recordNonFatal(.upload, endpoint: .upload, status: status)
+            }
         } catch {
             result = UploadResult(submitted: false, message: "上傳失敗，請稍後再試")
+            Telemetry.setCrashKey(.uploadStage(.done))
+            let reason = Telemetry.reportFailure(error, endpoint: .upload)
+            Telemetry.logEvent(.uploadResult(outcome: Self.outcome(for: reason),
+                                             periodIndex: periodIndex,
+                                             durationMs: Telemetry.elapsedMs(since: startedAt)))
+        }
+    }
+
+    /// `UploadResult` → 遙測分類。
+    private static func outcome(for result: UploadResult) -> UploadOutcome {
+        guard let failure = result.failure else {
+            return result.submitted ? .submitted : .unknown
+        }
+        switch failure {
+        case .windowClosed: return .windowClosed
+        case .csrfMissing: return .csrfMissing
+        case .siteRejected: return .siteRejected
+        case .httpError: return .httpError
+        }
+    }
+
+    /// throw 出來的錯誤 → 遙測分類。
+    private static func outcome(for reason: FailReason) -> UploadOutcome {
+        switch reason {
+        case .network: return .network
+        case .csrfMissing: return .csrfMissing
+        case .siteStatus, .redirectLoop, .blockedEgress: return .httpError
+        case .siteParse, .sessionProbable: return .siteRejected
+        default: return .unknown
         }
     }
 
@@ -204,5 +264,6 @@ final class UploadViewModel: ObservableObject {
         previewImage = nil
         imageData = nil
         errorMessage = nil
+        Telemetry.setCrashKey(.uploadStage(.idle))
     }
 }

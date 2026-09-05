@@ -30,8 +30,10 @@ struct RedeemView: View {
         .background(Theme.Colors.background)
         .navigationTitle(periodIndex.map { "兌換好禮 · 第 \($0) 期" } ?? "兌換好禮")
         .navigationBarTitleDisplayMode(.inline)
+        // E1：不帶 taskID。
+        .onAppear { Telemetry.screenAppeared(.redeem) }
         .task {
-            viewModel.configure(redeem: environment.redeem, taskID: taskID)
+            viewModel.configure(redeem: environment.redeem, taskID: taskID, periodIndex: periodIndex)
             if viewModel.options.isEmpty && viewModel.result == nil {
                 await viewModel.load()
             }
@@ -41,13 +43,15 @@ struct RedeemView: View {
             isPresented: Binding(
                 get: { viewModel.pendingOption != nil },
                 set: { isPresented in
-                    if !isPresented { viewModel.pendingOption = nil }
+                    // 滑掉 alert 等同取消。
+                    if !isPresented { viewModel.cancelPending() }
                 }
             ),
             presenting: viewModel.pendingOption
         ) { _ in
             Button("取消", role: .cancel) {
-                viewModel.pendingOption = nil
+                // E17
+                viewModel.cancelPending()
             }
             Button("確認兌換", role: .destructive) {
                 Task { await viewModel.confirmRedeem() }
@@ -57,7 +61,7 @@ struct RedeemView: View {
         }
         .sheet(isPresented: $showVoucher) {
             NavigationStack {
-                VoucherView(taskID: taskID)
+                VoucherView(taskID: taskID, source: .redeemResult)
             }
             .environment(\.appEnvironment, environment)
         }
@@ -94,7 +98,8 @@ struct RedeemView: View {
                     VendorRow(
                         option: option,
                         isSubmitting: viewModel.isSubmitting,
-                        onRedeem: { viewModel.pendingOption = option }
+                        // E16：確認 alert 出現的那一刻。
+                        onRedeem: { viewModel.selectOption(option) }
                     )
                 }
             }
@@ -234,11 +239,29 @@ final class RedeemViewModel: ObservableObject {
 
     private var redeem: RedeemServicing?
     private var taskID = ""
+    /// 活動週次（1–14）。遙測只送這個，不送 `taskID`。
+    private var periodIndex: Int?
 
-    func configure(redeem: RedeemServicing, taskID: String) {
+    func configure(redeem: RedeemServicing, taskID: String, periodIndex: Int? = nil) {
         guard self.redeem == nil else { return }
         self.redeem = redeem
         self.taskID = taskID
+        self.periodIndex = periodIndex
+    }
+
+    /// E16：`Vendor` 是由**公開的商家名稱**分類出來的封閉列舉，
+    /// **不是** `option.vendorId`／`option.itemId`（那是官網識別碼），
+    /// 也不是 `option.itemName`（官網文字）。
+    func selectOption(_ option: RedeemOption) {
+        pendingOption = option
+        Telemetry.logEvent(.redeemSelect(vendor: Vendor(vendorName: option.vendorName)))
+    }
+
+    /// E17：使用者在確認 alert 按了取消（或滑掉）。
+    func cancelPending() {
+        guard let option = pendingOption else { return }
+        pendingOption = nil
+        Telemetry.logEvent(.redeemCancel(vendor: Vendor(vendorName: option.vendorName)))
     }
 
     func load() async {
@@ -247,21 +270,46 @@ final class RedeemViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            options = try await redeem.options(taskID: taskID)
+            let loaded = try await redeem.options(taskID: taskID)
+            options = loaded
+            // E15：`option_count` 是官網目錄大小（全體使用者一樣），不是個人資料。
+            Telemetry.logEvent(.redeemOptions(outcome: loaded.isEmpty ? .empty : .ok,
+                                              reason: nil, optionCount: loaded.count))
         } catch {
             errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
+            let reason = Telemetry.reportFailure(error, endpoint: .redeem)
+            Telemetry.logEvent(.redeemOptions(outcome: .error, reason: reason, optionCount: 0))
         }
     }
 
     func confirmRedeem() async {
         guard let redeem, let option = pendingOption else { return }
+        let vendor = Vendor(vendorName: option.vendorName)
         pendingOption = nil
         isSubmitting = true
         defer { isSubmitting = false }
+        // E18
+        Telemetry.logEvent(.redeemSubmit(vendor: vendor, periodIndex: periodIndex))
+        let startedAt = DispatchTime.now()
         do {
-            result = try await redeem.redeem(taskID: taskID, vendorId: option.vendorId, item: option.itemId)
+            let redeemResult = try await redeem.redeem(taskID: taskID, vendorId: option.vendorId,
+                                                       item: option.itemId)
+            result = redeemResult
+            // E19：`RedeemResult.message` 即使是 App 自己的靜態文案也不送，維持「無字串」原則。
+            Telemetry.logEvent(.redeemResult(outcome: redeemResult.submitted ? .submitted : .stayedOnPage,
+                                             vendor: vendor,
+                                             durationMs: Telemetry.elapsedMs(since: startedAt)))
         } catch {
             result = RedeemResult(submitted: false, message: "兌換失敗，請稍後再試，或改用官網確認任務狀態")
+            let reason = Telemetry.reportFailure(error, endpoint: .redeem)
+            let outcome: RedeemOutcome
+            switch reason {
+            case .network: outcome = .network
+            case .siteStatus, .redirectLoop, .blockedEgress, .csrfMissing: outcome = .httpError
+            default: outcome = .unknown
+            }
+            Telemetry.logEvent(.redeemResult(outcome: outcome, vendor: vendor,
+                                             durationMs: Telemetry.elapsedMs(since: startedAt)))
         }
     }
 }

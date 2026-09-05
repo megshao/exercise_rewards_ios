@@ -48,6 +48,7 @@ struct WalletView: View {
         .navigationTitle("我的券夾")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await viewModel.refresh() }
+        .onAppear { Telemetry.screenAppeared(.wallet) }
         .task {
             viewModel.configure(tasks: environment.tasks)
             if viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
@@ -55,7 +56,7 @@ struct WalletView: View {
             }
         }
         .sheet(item: $voucherPeriod) { period in
-            NavigationStack { VoucherView(taskID: period.id) }
+            NavigationStack { VoucherView(taskID: period.id, source: .wallet) }
                 .environment(\.appEnvironment, environment)
         }
         .sheet(item: $redeemPeriod) { period in
@@ -165,14 +166,21 @@ final class WalletViewModel: ObservableObject {
 
     func refresh() async {
         guard let tasks else { return }
+        let hadCache = !redeemed.isEmpty || !redeemable.isEmpty
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        let startedAt = DispatchTime.now()
         do {
             let periods = try await tasks.fetchTasks()
             redeemed = periods.filter { $0.state == .redeemed }
             redeemable = periods.filter { $0.state == .redeemable }
+            TasksTelemetry.reportSuccess(source: .wallet, periods: periods,
+                                         highlighted: HomeViewModel.highlightedPeriod(in: periods),
+                                         hadCache: hadCache, startedAt: startedAt)
         } catch {
+            TasksTelemetry.reportFailure(error, source: .wallet, hadCache: hadCache,
+                                         startedAt: startedAt, sessionProbable: true)
             errorMessage = "無法載入券夾，請先回首頁登入，或稍後重試。"
         }
     }

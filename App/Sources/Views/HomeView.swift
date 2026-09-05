@@ -25,6 +25,7 @@ struct HomeView: View {
         .navigationDestination(isPresented: $showProfile) {
             ProfileView()
         }
+        .onAppear { Telemetry.screenAppeared(.home) }
         .task {
             viewModel.configure(auth: environment.auth, tasks: environment.tasks,
                                  profileStore: environment.profileStore, health: environment.health,
@@ -224,7 +225,10 @@ struct HomeView: View {
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.shield")
                     .foregroundStyle(Theme.Colors.dim)
-                Text("個資只存這支手機 · 不會上傳雲端")
+                // 這行是首頁的信任徽章。加了 Firebase 之後，「不會上傳雲端」單獨看會被讀成
+                // 「這支 App 什麼都不上傳」，所以改成把範圍講明白：講的是個資，去的是官方站。
+                // 使用統計那條界線在「我的資料」的隱私聲明裡完整交代。
+                Text("個資只存這支手機 · 只在登入時送給 500.gov.tw")
                     .foregroundStyle(Theme.Colors.dim)
             }
             .font(.system(size: 12))
@@ -556,19 +560,40 @@ final class HomeViewModel: ObservableObject {
     }
 
     /// 本地優先 + 節流：先秀快取；距上次更新未滿 60 秒（且已有資料）就不發 request。
+    ///
+    /// `force == true` 只發生在「剛登入成功」之後，因此遙測來源標成 `post_login`——
+    /// 這是 analytics-plan §2.4 用來分辨「官網改版」與「session 過期」的關鍵：
+    /// 剛登入完還解析失敗，就不可能是 session 過期了。
     func loadWeeklySummary(force: Bool = false) async {
         guard let tasks else { return }
         if currentWeekTask == nil, let cached = TasksCache.load() {
             currentWeekTask = Self.highlightedPeriod(in: cached)
         }
         guard force || TasksCache.canRefresh() || currentWeekTask == nil else { return }
+        let hadCache = currentWeekTask != nil
         isLoadingSummary = currentWeekTask == nil
         defer { isLoadingSummary = false }
+        let startedAt = DispatchTime.now()
         do {
             let periods = try await tasks.fetchTasks()
             currentWeekTask = Self.highlightedPeriod(in: periods)
             TasksCache.save(periods)
+            TasksTelemetry.reportSuccess(
+                source: force ? .postLogin : .homeRefresh,
+                periods: periods,
+                highlighted: currentWeekTask,
+                hadCache: hadCache,
+                startedAt: startedAt
+            )
         } catch {
+            TasksTelemetry.reportFailure(
+                error,
+                source: force ? .postLogin : .homeRefresh,
+                hadCache: hadCache,
+                startedAt: startedAt,
+                // post_login 的解析失敗才是改版訊號；一般刷新可能只是 session 剛過期。
+                sessionProbable: !force
+            )
             // 有快取就沿用，不清掉。
         }
     }
@@ -585,19 +610,36 @@ final class HomeViewModel: ObservableObject {
     func bootstrap() async {
         refreshProfileState()
         // 本地優先：先秀快取的本週任務（有快取代表先前登入過，樂觀視為已登入）。
+        var hadCache = false
         if let cached = TasksCache.load() {
             currentWeekTask = Self.highlightedPeriod(in: cached)
             hasLoggedIn = true
+            hadCache = true
         }
+        Telemetry.setCrashKey(.tasksCache(hadCache ? (TasksCache.canRefresh() ? .stale : .fresh) : .none))
+        Telemetry.setCrashKey(.sessionState(isProfileComplete ? (hadCache ? .cachedOnly : .loggedIn)
+                                                             : .profileMissing))
         if isProfileComplete && !didAutoLogin {
             didAutoLogin = true
             // 節流：距上次更新未滿 60 秒且已有快取，就不發請求。
             if TasksCache.canRefresh() || currentWeekTask == nil {
-                if let periods = try? await tasks?.fetchTasks(), !periods.isEmpty {
+                let startedAt = DispatchTime.now()
+                do {
+                    let periods = try await tasks?.fetchTasks() ?? []
+                    guard !periods.isEmpty else { throw AppError.parsing("empty task list") }
                     hasLoggedIn = true
                     currentWeekTask = Self.highlightedPeriod(in: periods)
                     TasksCache.save(periods)
-                } else {
+                    TasksTelemetry.reportSuccess(source: .homeBootstrap, periods: periods,
+                                                 highlighted: currentWeekTask, hadCache: hadCache,
+                                                 startedAt: startedAt)
+                } catch {
+                    // 冷啟動的第一次抓取失敗**幾乎都是 session 過期**（官網 302 到登入頁，
+                    // 回的是登入頁 HTML，解析器丟出的錯誤跟官網改版一模一樣）。
+                    // 因此這裡歸類為 `session_probable`，不送 Crashlytics 非致命錯誤——
+                    // 不然每個使用者每天冷啟動都會產生一筆假的「官網改版」警報。
+                    TasksTelemetry.reportFailure(error, source: .homeBootstrap, hadCache: hadCache,
+                                                 startedAt: startedAt, sessionProbable: true)
                     await performLogin(silent: true)  // 內部成功會強制抓一次最新
                 }
             }
@@ -626,6 +668,8 @@ final class HomeViewModel: ObservableObject {
         isLoggingIn = true
         loginResultMessage = nil
         defer { isLoggingIn = false }
+        let trigger: LoginTrigger = silent ? .auto : .manual
+        let startedAt = DispatchTime.now()
 
         do {
             guard let profile = try profileStore.load(),
@@ -652,23 +696,38 @@ final class HomeViewModel: ObservableObject {
             }
 
             let outcome = try await auth.login(credentials)
+            let elapsed = Telemetry.elapsedMs(since: startedAt)
 
             switch outcome {
             case .success:
                 hasLoggedIn = true
                 loginResultIsError = false
                 loginResultMessage = silent ? nil : "登入成功，正在載入我的任務"
+                Telemetry.setCrashKey(.sessionState(.loggedIn))
+                // E4
+                Telemetry.logEvent(.login(trigger: trigger, durationMs: elapsed))
                 await loadWeeklySummary(force: true)  // 剛登入，強制抓一次最新並寫入快取
             case .notRegistered:
                 loginResultIsError = true
                 loginResultMessage = "這組身分證號尚未在「揮汗有禮」官網註冊，請先至官網完成註冊"
+                Telemetry.setCrashKey(.sessionState(.loginFailed))
+                Telemetry.logEvent(.loginFailed(trigger: trigger, reason: .notRegistered,
+                                                netCode: nil, durationMs: elapsed))
             case .invalidCredentials:
                 loginResultIsError = true
                 loginResultMessage = "身分證號、出生日期或手機號碼有誤，請至「我的資料」確認後再試一次"
+                Telemetry.setCrashKey(.sessionState(.loginFailed))
+                Telemetry.logEvent(.loginFailed(trigger: trigger, reason: .invalidCredentials,
+                                                netCode: nil, durationMs: elapsed))
             }
         } catch {
             loginResultIsError = true
             loginResultMessage = Self.message(for: error)
+            Telemetry.setCrashKey(.sessionState(.loginFailed))
+            let reason = Telemetry.reportFailure(error, endpoint: .login)
+            Telemetry.logEvent(.loginFailed(trigger: trigger, reason: reason,
+                                            netCode: Telemetry.networkCode(from: error),
+                                            durationMs: Telemetry.elapsedMs(since: startedAt)))
         }
     }
 

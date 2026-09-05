@@ -8,6 +8,13 @@ import SportsRewardsKit
 /// 一律從 `.needsOtp` 開始，`dismiss` 後再進來就要重新驗證一次。
 struct VoucherView: View {
     let taskID: String
+    /// 這個畫面是從哪裡打開的（券夾／任務／兌換完成）。只用於 E20，不含任何識別碼。
+    let source: VoucherSource
+
+    init(taskID: String, source: VoucherSource = .wallet) {
+        self.taskID = taskID
+        self.source = source
+    }
 
     @Environment(\.appEnvironment) private var environment
     @Environment(\.dismiss) private var dismiss
@@ -29,6 +36,11 @@ struct VoucherView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("關閉") { dismiss() }
             }
+        }
+        // E1 + E20：都不帶 taskID。來源由呼叫端（WalletView／TasksView／RedeemView）傳入。
+        .onAppear {
+            Telemetry.screenAppeared(.voucher)
+            Telemetry.logEvent(.voucherOpen(source: source))
         }
         .task {
             viewModel.configure(voucher: environment.voucher, taskID: taskID)
@@ -229,6 +241,13 @@ private struct VoucherFigureView: View {
                     .foregroundStyle(Theme.Colors.danger)
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 20)
+                    // E24 + N12：只送 format 分類。**`figure.value`（券碼）絕不送。**
+                    // 出現未知 format＝官網換了新券種，是最直接的改版訊號。
+                    .onAppear {
+                        let format = BarcodeFormat(format: figure.format)
+                        Telemetry.logEvent(.barcodeRenderFailed(format: format))
+                        Telemetry.recordNonFatal(.barcode, extras: ["format": .code(format)])
+                    }
             }
 
             Text(figure.value)
@@ -279,9 +298,12 @@ final class VoucherViewModel: ObservableObject {
         guard self.voucher == nil else { return }
         self.voucher = voucher
         self.taskID = taskID
+        Telemetry.setCrashKey(.voucherStage(.needsOtp))
     }
 
-    func sendOtp() async {
+    /// E21：`isResend` 分辨「第一次發」與「重新發送」。
+    /// 發送對象的手機門號在官網 session 裡，App 從頭到尾沒碰過，自然也送不出去。
+    func sendOtp(isResend: Bool = false) async {
         guard let voucher, !isSendingOtp else { return }
         isSendingOtp = true
         needsOtpErrorMessage = nil
@@ -291,15 +313,19 @@ final class VoucherViewModel: ObservableObject {
             otp = ""
             enterCodeErrorMessage = nil
             stage = .enterCode
+            Telemetry.setCrashKey(.voucherStage(.enterCode))
+            Telemetry.logEvent(.voucherOtpSend(outcome: .ok, reason: nil, isResend: isResend))
             startCountdown()
         } catch {
             needsOtpErrorMessage = "驗證碼發送失敗，請確認網路連線後重試"
+            let reason = Telemetry.reportFailure(error, endpoint: .voucherResend)
+            Telemetry.logEvent(.voucherOtpSend(outcome: .error, reason: reason, isResend: isResend))
         }
     }
 
     func resendOtp() async {
         guard resendCountdown == 0 else { return }
-        await sendOtp()
+        await sendOtp(isResend: true)
     }
 
     func verify() async {
@@ -311,22 +337,32 @@ final class VoucherViewModel: ObservableObject {
             let result = try await voucher.verifyOtp(taskID: taskID, otp: otp)
             switch result {
             case .success:
+                // E22
+                Telemetry.logEvent(.voucherOtpVerify(outcome: .success, remaining: nil))
                 await loadVoucher()
             case .wrongCode(let remaining):
                 otp = ""
                 if let remaining, remaining <= 0 {
                     enterCodeErrorMessage = "驗證碼錯誤次數已用罄，請重新發送驗證碼"
+                    Telemetry.logEvent(.voucherOtpVerify(outcome: .exhausted, remaining: nil))
                 } else if let remaining {
                     enterCodeErrorMessage = "驗證碼錯誤，還可以再試 \(remaining) 次"
+                    Telemetry.logEvent(.voucherOtpVerify(outcome: .wrongCode, remaining: remaining))
                 } else {
                     enterCodeErrorMessage = "驗證碼錯誤，請再試一次"
+                    Telemetry.logEvent(.voucherOtpVerify(outcome: .wrongCode, remaining: nil))
                 }
             case .failed(let message):
                 otp = ""
+                // ⚠️ `message` 是官網 OTP 頁的原文，**可能含遮罩後的手機門號**
+                // （「已發送至 09xx***」）。只顯示在畫面上，絕不進遙測——只送分類。
                 enterCodeErrorMessage = message
+                Telemetry.logEvent(.voucherOtpVerify(outcome: .failed, remaining: nil))
             }
         } catch {
             enterCodeErrorMessage = "驗證失敗，請確認網路連線後重試"
+            Telemetry.reportFailure(error, endpoint: .voucher)
+            Telemetry.logEvent(.voucherOtpVerify(outcome: .error, remaining: nil))
         }
     }
 
@@ -338,8 +374,19 @@ final class VoucherViewModel: ObservableObject {
             let fetched = try await voucher.fetchVoucher(taskID: taskID)
             stopCountdown()
             stage = .showing(fetched)
+            Telemetry.setCrashKey(.voucherStage(.showing))
+            // E23：`figure_count` 與 `format` 描述的是**券種結構**（萊爾富是兩段式），
+            // 不是券碼本身。`VoucherFigure.value`（券碼）、`Voucher.expiry`、`vendorName`、
+            // `itemName`、`notices` 一律不送——那些是可以拿去核銷的東西與官網文字。
+            Telemetry.logEvent(.voucherReveal(outcome: .ok,
+                                              figureCount: fetched.figures.count,
+                                              format: BarcodeFormat(figures: fetched.figures)))
         } catch {
             enterCodeErrorMessage = "驗證成功，但券碼載入失敗，請重新整理"
+            // N5：使用者正站在櫃檯前，這一段壞掉最該立刻知道。
+            let reason = Telemetry.reportFailure(error, endpoint: .voucherView)
+            Telemetry.logEvent(.voucherReveal(outcome: reason == .siteParse ? .parseError : .error,
+                                              figureCount: 0, format: .other))
         }
     }
 

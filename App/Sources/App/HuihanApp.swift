@@ -9,9 +9,12 @@ struct HuihanApp: App {
 
     /// 唯一一次 Firebase 初始化。沒有 GoogleService-Info.plist 時會安全跳過（不會 crash），
     /// 使用者沒開「傳送匿名使用統計」之前也不會送出任何東西。細節見 Telemetry.swift 檔頭。
+    ///
+    /// **這裡刻意不送任何「App 啟動了」事件**：Firebase 自己就有 `first_open` 與
+    /// `session_start`（同意前不會產生），再自己補一個 `app_launched` 只是把同一件事
+    /// 數兩次，`docs/analytics-plan.md` §3 的事件表也沒有它。
     init() {
         Telemetry.configure()
-        Telemetry.logEvent(.appLaunched)
     }
 
     var body: some Scene {

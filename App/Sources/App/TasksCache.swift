@@ -11,10 +11,17 @@ enum TasksCache {
     static let minInterval: TimeInterval = 60
 
     static func load() -> [TaskPeriod]? {
-        guard let data = UserDefaults.standard.data(forKey: periodsKey),
-              let periods = try? JSONDecoder().decode([TaskPeriod].self, from: data),
-              !periods.isEmpty else { return nil }
-        return periods
+        guard let data = UserDefaults.standard.data(forKey: periodsKey) else { return nil }
+        do {
+            let periods = try JSONDecoder().decode([TaskPeriod].self, from: data)
+            return periods.isEmpty ? nil : periods
+        } catch {
+            // N11：解碼失敗代表 App 更新後 `TaskPeriod` 結構變了，快取全體失效——
+            // 這是回歸訊號，值得知道。**不附任何快取內容**（雖然不含個資，但沒必要），
+            // 也不附 `error` 原物件（`DecodingError.debugDescription` 含欄位名與 coding path）。
+            Telemetry.recordNonFatal(.cacheDecode)
+            return nil
+        }
     }
 
     static func save(_ periods: [TaskPeriod]) {

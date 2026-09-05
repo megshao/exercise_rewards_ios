@@ -28,6 +28,11 @@ struct HealthView: View {
         .background(Theme.Colors.background)
         .navigationTitle("健康數據")
         .navigationBarTitleDisplayMode(.inline)
+        // E1：健康頁的 screen_view **不帶任何狀態參數**。
+        // 「未授權 / 已連結 / 讀取失敗」看起來像無害的 UI 狀態，但 `ready` 的意思是
+        // 「`summary()` 成功回傳了資料」——那是「這支裝置查得到 HealthKit 資料」的間接
+        // 訊號，屬於 HealthKit 衍生資訊。只送「有人打開了健康頁」。
+        .onAppear { Telemetry.screenAppeared(.health) }
         .task {
             viewModel.configure(health: environment.health)
             await viewModel.load()
@@ -347,8 +352,18 @@ final class HealthViewModel: ObservableObject {
         weeklyAverageSteps = count > 0 ? total / count : nil
     }
 
+    /// 按下「連結 Apple 健康」。
+    ///
+    /// **只埋這個動作，不埋結果。** 這裡是 HealthKit 相關唯一被允許的事件：按鈕按下的
+    /// 當下 HealthKit 還沒被呼叫，送出的是純粹的 UI 動作。
+    /// 底下 `requestAuthorization()` 的回傳／throw **刻意不埋**（規格 §3.2 E10）：
+    /// 那是「從 HealthKit API 取得的資訊」，`HKError` 碼更是直接揭露授權狀態，
+    /// 依 App Store Review Guideline 5.1.3(i) 不得分享給第三方。
+    /// 「有多少人願意連結健康」用本事件的次數就估得出來。
     func requestAuthorizationTapped() async {
         guard let health else { return }
+        // E9：無參數。
+        Telemetry.logEvent(.healthLinkTap)
         isRequestingAuthorization = true
         authorizationErrorMessage = nil
         defer { isRequestingAuthorization = false }

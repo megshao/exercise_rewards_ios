@@ -44,6 +44,7 @@ struct TasksView: View {
         .refreshable {
             await viewModel.refresh()
         }
+        .onAppear { Telemetry.screenAppeared(.tasks) }
         .task {
             viewModel.configure(tasks: environment.tasks)
             if viewModel.periods.isEmpty {
@@ -64,7 +65,7 @@ struct TasksView: View {
         }
         .sheet(item: $voucherPeriod) { period in
             NavigationStack {
-                VoucherView(taskID: period.id)
+                VoucherView(taskID: period.id, source: .tasks)
             }
             .environment(\.appEnvironment, environment)
         }
@@ -262,14 +263,23 @@ final class TasksViewModel: ObservableObject {
         // 2. 節流：未滿間隔且已有資料就不發請求
         guard force || TasksCache.canRefresh() || periods.isEmpty else { return }
 
+        let hadCache = !periods.isEmpty
         isLoading = periods.isEmpty
         errorMessage = nil
         defer { isLoading = false }
+        let startedAt = DispatchTime.now()
         do {
             let fetched = try await tasks.fetchTasks()
             periods = Self.sorted(fetched)
             TasksCache.save(fetched)
+            TasksTelemetry.reportSuccess(source: .tasksTab, periods: fetched,
+                                         highlighted: HomeViewModel.highlightedPeriod(in: fetched),
+                                         hadCache: hadCache, startedAt: startedAt)
         } catch {
+            // 分頁本身可能是冷啟動後第一個被打開的畫面，解析失敗同樣可能只是 session 過期，
+            // 因此這裡也走 sessionProbable，不把它當成官網改版警報。
+            TasksTelemetry.reportFailure(error, source: .tasksTab, hadCache: hadCache,
+                                         startedAt: startedAt, sessionProbable: true)
             // 有快取就靜默沿用；完全沒資料才顯示錯誤。
             if periods.isEmpty {
                 errorMessage = "無法載入任務資料，請確認網路連線後重新整理"

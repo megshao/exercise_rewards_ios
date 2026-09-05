@@ -19,6 +19,8 @@ struct ScreenshotView: View {
     // 縮放狀態：預設 fit（scale 1），雙指可放大、雙擊還原。
     @State private var scale: CGFloat = 1
     @GestureState private var pinch: CGFloat = 1
+    /// E14 每次進入畫面只送一次：`AsyncImage` 的 phase 會多次變動，不擋會洗版。
+    @State private var didReportOutcome = false
 
     private let maxScale: CGFloat = 4
 
@@ -52,12 +54,15 @@ struct ScreenshotView: View {
                                         scale = scale > 1 ? 1 : 2
                                     }
                                 }
+                                .onAppear { report(.ok) }
                         case .failure:
                             errorState("圖片載入失敗，請稍後再試")
                                 .frame(width: geo.size.width, height: geo.size.height)
+                                .onAppear { report(.imageFailed) }
                         @unknown default:
                             errorState("圖片載入失敗，請稍後再試")
                                 .frame(width: geo.size.width, height: geo.size.height)
+                                .onAppear { report(.imageFailed) }
                         }
                     }
                 }
@@ -71,6 +76,8 @@ struct ScreenshotView: View {
         .background(Theme.Colors.background)
         .navigationTitle("上傳截圖")
         .navigationBarTitleDisplayMode(.inline)
+        // E1：不帶 taskID。
+        .onAppear { Telemetry.screenAppeared(.screenshot) }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("關閉") { dismiss() }
@@ -95,10 +102,19 @@ struct ScreenshotView: View {
         .padding(20)
     }
 
+    /// E14：**S3 presigned URL、它的 host 與查詢字串一律不送**——presigned URL 內含
+    /// bucket 名與簽章，是官方站識別碼。只送四選一的結果分類。
+    private func report(_ outcome: ScreenshotOutcome) {
+        guard !didReportOutcome else { return }
+        didReportOutcome = true
+        Telemetry.logEvent(.screenshotView(outcome: outcome))
+    }
+
     private func load() async {
         guard !taskID.isEmpty else {
             isLoading = false
             errorMessage = "找不到這期任務的截圖"
+            report(.noId)
             return
         }
         isLoading = true
@@ -108,6 +124,8 @@ struct ScreenshotView: View {
             imageURL = try await environment.tasks.screenshotImageURL(taskID: taskID)
         } catch {
             errorMessage = "無法載入截圖，請確認網路連線後重試"
+            Telemetry.reportFailure(error, endpoint: .screenshot)
+            report(.urlFailed)
         }
     }
 }

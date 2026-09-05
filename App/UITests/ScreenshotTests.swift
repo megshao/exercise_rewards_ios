@@ -273,7 +273,7 @@ final class ScreenshotTests: XCTestCase {
         profileButton.tap()
 
         XCTAssertTrue(app.navigationBars["我的資料"].waitForExistence(timeout: timeout), "我的資料頁沒載入")
-        _ = app.staticTexts["本 App 不蒐集、不外傳你的個資"].waitForExistence(timeout: timeout)
+        _ = app.staticTexts["個資不外傳，健康資料不出這支手機"].waitForExistence(timeout: timeout)
         settle(1.2)
         capture(app, name: "11-profile")
 
