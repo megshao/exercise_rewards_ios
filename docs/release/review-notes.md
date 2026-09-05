@@ -134,13 +134,13 @@ The app does not create accounts, so there is no app account to delete. Users ca
 
 # Part B — 內部備註（**不要貼給 Apple**）
 
-## B1. 送審前必須先修掉的東西（狀態：2/3 已修）
+## B1. 送審前必須先修掉的東西（狀態：3/3 已修）
 
 | # | 問題 | 位置 | 狀態 |
 |---|---|---|---|
 | 1 | 頁尾寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift` | ✅ **已修**：改為 `Sports Rewards v{CFBundleShortVersionString} · 非官方工具`，版本號改讀 Bundle，不再硬編碼。 |
 | 2 | 首次啟動頁沒有非官方聲明 | `App/Sources/Views/OnboardingView.swift` | ✅ **已修**：歡迎頁主標改為 `Sports Rewards`、副標說明用途，並新增非官方聲明卡。Part A §1 的「三處揭露」現已成立。 |
-| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ⬜ **未修**：Review Notes 拿開源當透明佐證，App 內卻連不過去。repo 網址已定（見 §3），建議加一列「原始碼（GitHub）」。 |
+| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ✅ **已修**：新增「原始碼」一列，以外部 Safari 開啟 https://github.com/megshao/sports-rewards-ios（不用 WebView）。 |
 
 ## B1b. 已知並接受的曝險：首頁標頭保留活動名
 
