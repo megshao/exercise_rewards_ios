@@ -229,8 +229,14 @@ struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
+    /// 版本號讀 Info.plist 的 `CFBundleShortVersionString`，不硬編碼——避免哪天送審版本
+    /// 改了卻忘了同步這行。名稱一律用上架名 Sports Rewards（活動名不拿來自稱）。
+    private var appVersion: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
+    }
+
     private var footer: some View {
-        Text("揮汗有禮 v0.1 · 非官方工具\n個資不上雲 · 不寫紀錄檔 · 只連 500.gov.tw")
+        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 不寫紀錄檔 · 只連 500.gov.tw")
             .font(.system(size: 11.5))
             .foregroundStyle(Theme.Colors.dim)
             .multilineTextAlignment(.center)
@@ -279,6 +285,10 @@ struct ProfileView: View {
         try? environment.profileStore.clear()
         TasksCache.clear()
         UserDefaults.standard.removeObject(forKey: "com.megshao.sportsrewards.health.didRequestAuthorization")
+        // 官方站的登入 cookie 是持久化在 App 沙盒容器、跨啟動續用的；只清 Keychain 個資
+        // 並不會登出。不一併清掉就與這顆按鈕（與隱私說明）承諾的「清除本機所有資料」不符。
+        let environment = environment
+        Task { await environment.resetSession() }
         showCleared = true
         // 觸發回到 Onboarding（RootView 依 hasCompletedOnboarding 切換）。
         hasCompletedOnboarding = false
@@ -319,6 +329,8 @@ struct ProfileField: View {
             }
             ZStack(alignment: .leading) {
                 TextField(placeholder, text: $text)
+                    // 截圖用 UI 測試以欄位標籤定位輸入框（見 App/UITests/ScreenshotTests.swift）。
+                    .accessibilityIdentifier(label)
                     .focused($focused)
                     .keyboardType(keyboard)
                     .autocorrectionDisabled()

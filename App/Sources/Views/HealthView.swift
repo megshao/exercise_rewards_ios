@@ -291,9 +291,11 @@ final class HealthViewModel: ObservableObject {
         return String(format: "%.1f", summary.distanceKm)
     }
 
+    /// 圓環中央的步數是用 `Text("\(Int)")` 畫的，SwiftUI 會自動補千分位（9,688）；
+    /// 這裡回傳的是純字串，得自己 `formatted()` 一次，否則同一畫面會出現 9,688 / 9688 兩種寫法。
     var weeklyAverageText: String {
         guard let weeklyAverageSteps else { return "—" }
-        return "\(weeklyAverageSteps)"
+        return weeklyAverageSteps.formatted()
     }
 
     var dateText: String {

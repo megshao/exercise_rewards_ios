@@ -11,6 +11,10 @@ public protocol AppEnvironment: Sendable {
     var profileStore: ProfileStoring { get }
     var health: HealthReading { get }
     var upload: UploadServicing { get }
+
+    /// 清掉官方站的登入 session（cookie）。「立即清除本機資料」與登出都要呼叫，
+    /// 否則 cookie 會留在 App 沙盒容器裡跨啟動續用，等於沒真的清乾淨。
+    func resetSession() async
 }
 
 /// 預設環境：接真實的 SportsRewardsKit 實作。單一 `URLSessionHTTPClient`（記憶體 cookie，
@@ -26,6 +30,10 @@ public struct DefaultAppEnvironment: AppEnvironment {
     public let health: HealthReading
     public let upload: UploadServicing
 
+    /// 正式環境才有的共用 HTTP client（cookie jar 就在它身上）。Preview／測試／示範模式
+    /// 走可注入版本、沒有真實連線，因此為 nil，`resetSession()` 直接是 no-op。
+    private let http: HTTPClienting?
+
     /// 正式環境：共用一個 HTTP client 串起 Auth / Tasks / Redeem / Voucher，確保登入後的
     /// session cookie 一路帶著；健康資料唯讀接 HealthKit（never transmitted）；上傳接真實
     /// UploadService（multipart POST /member/upload，file 欄位 screenshot；R1 已實測）。
@@ -38,6 +46,7 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.profileStore = KeychainStore()
         self.health = HealthKitReader()
         self.upload = UploadService(http: http)
+        self.http = http
     }
 
     /// 可注入版本：Preview／測試傳入 Mock。
@@ -57,6 +66,12 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.profileStore = profileStore
         self.health = health
         self.upload = upload
+        self.http = nil
+    }
+
+    /// 清空 cookie / cache / 憑證（`URLSession.reset`）。
+    public func resetSession() async {
+        await http?.resetSession()
     }
 }
 

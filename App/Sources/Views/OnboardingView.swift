@@ -48,17 +48,23 @@ struct OnboardingView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(Theme.Colors.primary)
 
-                Text("揮汗有禮")
+                // 主標一律用上架名稱 Sports Rewards：拿活動名「揮汗有禮」自稱會踩
+                // App Review guideline 4.1／5.2.1（冒用他人品牌），活動名只出現在
+                // 說明用途的副標裡。
+                Text("Sports Rewards")
                     .font(Theme.displayFont(28, weight: .heavy))
 
-                Text("達標換好禮\n每週就能領一張超商加碼券")
+                Text("協助你參加運動部「揮汗有禮」活動的非官方小工具\n每週達標，就能換一張超商加碼券")
                     .font(.system(size: 15))
                     .foregroundStyle(Theme.Colors.muted)
                     .multilineTextAlignment(.center)
             }
             Spacer()
 
-            Text("首次使用需先完成身份驗證，資料只加密存在這支手機。")
+            // 非官方聲明（App 內三處揭露之一：啟動頁／我的資料／App Store 商店描述）。
+            disclaimerCard
+
+            Text("首次使用需先完成身分驗證，資料只加密存在這支手機。")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.Colors.dim)
                 .multilineTextAlignment(.center)
@@ -74,6 +80,23 @@ struct OnboardingView: View {
         .padding(24)
     }
 
+    /// 首次啟動就把話講清楚：這是個人做的非官方工具，跟主辦單位沒有任何關係。
+    private var disclaimerCard: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.Colors.muted)
+            Text("本 App 由個人開發，是非官方工具，與教育部體育署／運動部沒有任何隸屬或授權關係。")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.Colors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.card2)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+    }
+
     // MARK: - Step 2：個資填寫 + 送出驗證
 
     private var formStep: some View {
@@ -82,7 +105,7 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("填寫個人資料")
                         .font(Theme.displayFont(20, weight: .heavy))
-                    Text("首次使用需完整填寫以下資料以驗證身份。")
+                    Text("首次使用需完整填寫以下資料以驗證身分。")
                         .font(.system(size: 13))
                         .foregroundStyle(Theme.Colors.muted)
                 }
