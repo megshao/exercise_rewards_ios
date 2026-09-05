@@ -18,3 +18,14 @@ build/
 # Firebase 專案設定檔：含 API key 與專案識別，且本 repo 公開，真檔一律不進版控。
 # 範本見 App/Resources/GoogleService-Info.plist.template。
 GoogleService-Info.plist
+
+# 憑證、簽章與密鑰：任何一個誤入公開 repo 都收不回來，所以即使 .asc/ 已
+# 整個排除，仍逐副檔名擋一次當第二道防線。
+*.p8
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.ipa
+*.xcarchive/
+.env
+.env.*
