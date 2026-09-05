@@ -213,7 +213,10 @@ final class SensitivePatternTests: XCTestCase {
     func testAllKindsInOneString() {
         let text = "id A123456789 tel 0912-345-678 mail ming@mail.com dob 1990/1/1 "
             + "dev 550e8400-e29b-41d4-a716-446655440000 card 000012345678"
-        XCTAssertEqual(Redact.sensitiveKinds(in: text), Set(Kind.allCases))
+        // `.overlong` 是「超過上限、沒掃」的短路結果，定義上不會與實際命中的樣式共存，
+        // 所以這裡比對的是「所有可被掃描出來的種類」。
+        let scannable = Set(Kind.allCases).subtracting([.overlong])
+        XCTAssertEqual(Redact.sensitiveKinds(in: text), scannable)
     }
 
     func testSameKindTwiceStillReportsOnce() {
@@ -371,21 +374,55 @@ final class SensitivePatternTests: XCTestCase {
         }
     }
 
-    func testScrubVeryLongStringDoesNotCrash() {
+    /// 超長輸入必須「很快回來」而不是「算得出正確答案」。
+    ///
+    /// 這一條原本會無限期卡住：`.email` 樣式的 `[A-Za-z0-9._%+\-]+@` 遇到一長串
+    /// 不含 `@` 的字元時會吃下整段再逐字元回溯（ReDoS）。修法是兩層——樣式改成
+    /// 有界量詞，以及在掃描前先擋掉超過 `maxScanLength` 的輸入。
+    func testScrubVeryLongStringReturnsPromptly() {
         let padding = String(repeating: "x", count: 200_000)
         let text = padding + " 0912345678 " + padding
+
+        let start = Date()
         let out = Redact.scrub(text)
-        XCTAssertTrue(out.contains("[已遮蔽:phone]"))
-        XCTAssertFalse(out.contains("0912345678"))
-        XCTAssertEqual(out.count, padding.count * 2 + 2 + "[已遮蔽:phone]".count)
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertLessThan(elapsed, 1.0, "超長輸入必須快速返回，實際花了 \(elapsed) 秒")
+        // 只保留掃描過的前段，其餘截斷——沒掃過的內容不能留在輸出裡。
+        XCTAssertTrue(out.hasSuffix("…[已截斷:超過 \(Redact.maxScanLength) 字元]"))
+        XCTAssertLessThan(out.count, Redact.maxScanLength + 64)
+    }
+
+    /// 超長輸入在守門用途上一律當成「有敏感資料」——漏判是外洩，誤判只是丟事件。
+    func testOverlongInputIsTreatedAsSensitive() {
+        let text = String(repeating: "x", count: Redact.maxScanLength + 1)
+        XCTAssertEqual(Redact.sensitiveKinds(in: text), [.overlong])
+        XCTAssertTrue(Redact.containsSensitive(text))
+    }
+
+    /// 剛好在上限內的字串仍然要正常掃描，不可被誤判成 overlong。
+    func testAtScanLimitStillScannedNormally() {
+        let filler = String(repeating: "x", count: Redact.maxScanLength - 10)
+        XCTAssertEqual(Redact.sensitiveKinds(in: filler), [])
+        let withPhone = String(repeating: "x", count: Redact.maxScanLength - 11) + "0912345678"
+        XCTAssertEqual(withPhone.count, Redact.maxScanLength - 1)
+        // 10 碼手機同時命中 phone 與 longDigitSequence，兩者都是刻意的寬鬆樣式。
+        XCTAssertEqual(Redact.sensitiveKinds(in: withPhone), [.phone, .longDigitSequence])
     }
 
     func testScrubLongStringWithManySensitiveValues() {
+        // 控制在掃描上限內，驗證「一段合理長度的訊息裡每一筆都被遮到」。
         let line = "A123456789 0912345678 ming@mail.com 1990-01-01\n"
-        let text = String(repeating: line, count: 2_000)
+        // 遮蔽標記比被遮的原文長，所以輸出會膨脹。重複次數要讓**輸出**也留在上限內，
+        // 否則下面對輸出做 containsSensitive 會得到 .overlong 而不是「乾淨」。
+        let repeats = 50
+        let text = String(repeating: line, count: repeats)
+        XCTAssertLessThanOrEqual(text.count, Redact.maxScanLength)
+
         let out = Redact.scrub(text)
+        XCTAssertLessThanOrEqual(out.count, Redact.maxScanLength, "輸出膨脹後仍須在上限內")
         XCTAssertFalse(Redact.containsSensitive(out))
-        XCTAssertEqual(out.components(separatedBy: "[已遮蔽:taiwanID]").count - 1, 2_000)
+        XCTAssertEqual(out.components(separatedBy: "[已遮蔽:taiwanID]").count - 1, repeats)
     }
 
     func testScrubMarkerNamesMatchKindRawValue() {

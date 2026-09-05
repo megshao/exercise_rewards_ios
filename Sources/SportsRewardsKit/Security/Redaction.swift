@@ -50,6 +50,9 @@ extension Redact {
         case uuid
         /// 10 碼以上連續數字（券碼、健保卡號、序號、身分證去掉字母後的樣子）
         case longDigitSequence
+        /// 超過 `maxScanLength` 而未實際掃描的輸入。
+        /// 不代表「確定有個資」，而是「無法確認、依 fail-safe 一律當成有」。
+        case overlong
     }
 
     /// 已編譯的樣式表。`NSRegularExpression` 對 matching 是 thread-safe 的（Apple 文件明載），
@@ -70,15 +73,28 @@ extension Redact {
         // 檢查碼錯的、居留證號、以及示範模式的哨兵值 A000000000 都會被擋下來。
         (.taiwanID, #"(?<![A-Za-z0-9])[A-Za-z]\d{9}(?![A-Za-z0-9])"#),
         (.phone, #"(?<!\d)(?:\+?886[-\s]?|0)9\d{2}[-\s]?\d{3}[-\s]?\d{3}(?!\d)"#),
-        (.email, #"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#),
+        // 兩段都用 RFC 5321 的實際長度上限收斂（local part ≤64、domain ≤255），
+        // **不是**為了嚴格驗證 email，而是避免無界量詞造成回溯爆炸：
+        // 開放的 `+` 遇到一長串不含 `@` 的字元時，會吃下整段再逐字元回溯，
+        // 對 20 萬字元的輸入就是 O(n²)，實測會讓整個呼叫卡死（ReDoS）。
+        (.email, #"[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,24}"#),
         (.birthDate, #"(?<!\d)(?:18|19|20)\d{2}[-/.]\d{1,2}[-/.]\d{1,2}(?!\d)"#),
         (.uuid, #"(?i)(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![0-9a-f])"#),
         (.longDigitSequence, #"(?<!\d)\d{10,}(?!\d)"#),
     ])
 
+    /// 掃描長度上限。超過就不掃了——理由不是效能潔癖，而是這些樣式含有量詞，
+    /// 掃描成本隨長度成長；而合法輸入根本不會這麼長（遙測參數上限 100 字元，
+    /// 錯誤訊息也不該是幾百 KB）。真的遇到超長字串，代表呼叫端出了別的問題。
+    public static let maxScanLength = 4096
+
     /// 回傳這段字串命中的所有敏感樣式（沒命中就是空集合）。
+    ///
+    /// **超長輸入一律保守地視為命中**：這個函式是遙測出口的守門員，
+    /// 「不確定」必須倒向「擋下來」——漏判是個資外洩，誤判只是丟掉一個事件。
     public static func sensitiveKinds(in text: String) -> Set<SensitiveKind> {
         guard !text.isEmpty else { return [] }
+        guard text.count <= maxScanLength else { return [.overlong] }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         var found: Set<SensitiveKind> = []
         for entry in patternTable.entries
@@ -97,6 +113,12 @@ extension Redact {
     /// 用於錯誤訊息這種「必須保留上下文才有除錯價值」的場合。
     public static func scrub(_ text: String) -> String {
         guard !text.isEmpty else { return text }
+        // 超長輸入先截斷再遮蔽。截掉的部分沒被掃過，所以不能留著——
+        // 保留前段是為了維持除錯價值，丟掉後段是因為無法保證它不含個資。
+        guard text.count <= maxScanLength else {
+            let head = String(text.prefix(maxScanLength))
+            return scrub(head) + "…[已截斷:超過 \(maxScanLength) 字元]"
+        }
         var result = text
         for entry in patternTable.entries {
             let range = NSRange(result.startIndex..<result.endIndex, in: result)
