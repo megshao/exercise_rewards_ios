@@ -8,10 +8,13 @@ import Foundation
 /// 內含 hidden input `vendorId`、`item` 與 `_csrf`（見 `Fixtures/redeem.html`）。
 /// 2026-08-27 起一家商店可以有多個品項，因此以「表單」而非「商家」為單位解析。
 public enum RedeemParser {
-    private static let formOpenTagPattern = #"<form\b[^>]*>"#
-    private static let itemRowFormClassPattern = #"class\s*=\s*["']item-row__form["']"#
-    private static let vendorNameAttrPattern = #"data-vendor-name\s*=\s*["']([^"']*)["']"#
-    private static let itemNameAttrPattern = #"data-item-name\s*=\s*["']([^"']*)["']"#
+    // ReDoS 防線（H1）：`[^>]*` 在「大量未閉合 `<form `／`<input `」的惡意頁面上是
+    // O(n²)（實測 48 KB → 1.9 秒）。屬性內不可能有裸 `<`，改用 `[^<>]{0,2000}` 後
+    // 掃描會在下一個 `<` 停住，成本與整頁長度脫鉤。
+    private static let formOpenTagPattern = #"<form\b[^<>]{0,2000}>"#
+    private static let itemRowFormClassPattern = #"class\s{0,8}=\s{0,8}["']item-row__form["']"#
+    private static let vendorNameAttrPattern = #"data-vendor-name\s{0,8}=\s{0,8}["']([^"']{0,2000})["']"#
+    private static let itemNameAttrPattern = #"data-item-name\s{0,8}=\s{0,8}["']([^"']{0,2000})["']"#
 
     /// 解析整頁 HTML，回傳依表單出現順序排列的兌換品項清單。
     /// - Throws: `AppError.parsing` 當頁面內完全找不到任何 `item-row__form` 表單時。
@@ -65,7 +68,7 @@ public enum RedeemParser {
     /// 從片段中找出 `<input ... name="X" ... value="Y">` 的 Y（不論屬性順序）。
     private static func hiddenInputValue(in block: String, name: String) -> String? {
         let escapedName = NSRegularExpression.escapedPattern(for: name)
-        let inputPattern = #"<input\b[^>]*\bname\s*=\s*["']"# + escapedName + #"["'][^>]*>"#
+        let inputPattern = #"<input\b[^<>]{0,2000}\bname\s{0,8}=\s{0,8}["']"# + escapedName + #"["'][^<>]{0,2000}>"#
         guard let tagRegex = try? NSRegularExpression(pattern: inputPattern, options: [.caseInsensitive]) else {
             return nil
         }
@@ -77,7 +80,7 @@ public enum RedeemParser {
             return nil
         }
         let tag = String(block[tagRange])
-        return firstGroup(in: tag, pattern: #"\bvalue\s*=\s*["']([^"']*)["']"#)
+        return firstGroup(in: tag, pattern: #"\bvalue\s{0,8}=\s{0,8}["']([^"']{0,2000})["']"#)
     }
 
     /// 取第一個 capture group 的字串（找不到回傳 nil）。

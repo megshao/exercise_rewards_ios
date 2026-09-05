@@ -15,23 +15,37 @@ public enum VoucherParser {
 
     // MARK: - parseView
 
+    // MARK: - Patterns
+    //
+    // ReDoS 防線（H1）：輸入是官方站回傳的 HTML，屬**不受信任輸入**。三條規則：
+    // 1. 相鄰量詞的字元集合不得重疊。`\s*([^<]*?)\s*</p>` 是反例（`\s` ⊂ `[^<]`），
+    //    實測 800 個空白要 9 秒、1600 個要 81 秒（O(n³)）。正解 `([^<]*)</p>` + trim。
+    // 2. 每個量詞都要長度上限，讓單次比對成本不隨整頁長度成長。
+    // 3. 標籤屬性掃描用 `[^<>]`——屬性內不會有裸 `<`，排除它可讓「大量未閉合標籤」
+    //    的攻擊在下一個 `<` 就停住（原本 `[^>]*` 會一路掃到文件尾，O(n²)）。
+    // 另有一道獨立防線：`URLSessionHTTPClient.send` 對 body 設 2 MB 上限。
+
     private static let itemNameTagPattern =
-        #"<strong\b[^>]*\bclass\s*=\s*["']voucher-meta__item["'][^>]*>([^<]*)</strong>"#
+        #"<strong\b[^<>]{0,2000}\bclass\s{0,8}=\s{0,8}["']voucher-meta__item["'][^<>]{0,2000}>([^<]{0,2000})</strong>"#
     private static let channelBlockPattern =
-        #"voucher-meta__channel[\s\S]*?<span[^>]*>([^<]*)</span>"#
-    private static let expiryPattern = #"兌換期限[：:]\s*([^<]*?)\s*</p>"#
+        #"voucher-meta__channel[\s\S]{0,2000}?<span[^<>]{0,2000}>([^<]{0,2000})</span>"#
+    // `([^<]*)` 貪婪一定停在第一個 `<`（零回溯），trim 由 `firstGroup` 統一處理。
+    private static let expiryPattern = #"兌換期限[：:]([^<]{0,2000})</p>"#
 
-    private static let figureSectionOpenTagPattern = #"<section\b[^>]*>"#
-    private static let figureSectionClassPattern = #"class\s*=\s*["'][^"']*\bvoucher-figure\b[^"']*["']"#
+    private static let figureSectionOpenTagPattern = #"<section\b[^<>]{0,2000}>"#
+    private static let figureSectionClassPattern =
+        #"class\s{0,8}=\s{0,8}["'][^"'<>]{0,500}\bvoucher-figure\b[^"'<>]{0,500}["']"#
     private static let figureCaptionPattern =
-        #"<h2\b[^>]*\bclass\s*=\s*["']voucher-figure__caption["'][^>]*>([^<]*)</h2>"#
-    private static let figureFormatPattern = #"data-format\s*=\s*["']([^"']*)["']"#
-    private static let figureValuePattern = #"data-value\s*=\s*["']([^"']*)["']"#
+        #"<h2\b[^<>]{0,2000}\bclass\s{0,8}=\s{0,8}["']voucher-figure__caption["'][^<>]{0,2000}>([^<]{0,2000})</h2>"#
+    private static let figureFormatPattern = #"data-format\s{0,8}=\s{0,8}["']([^"']{0,2000})["']"#
+    private static let figureValuePattern = #"data-value\s{0,8}=\s{0,8}["']([^"']{0,2000})["']"#
 
+    // 注意事項區塊的長度上限同時也是 `listItemPattern` 的成本上限——
+    // `parseNotices` 只在這個已被截短的片段內找 `<li>`，不會掃整頁。
     private static let noticesSectionPattern =
-        #"<section\b[^>]*\bclass\s*=\s*["']voucher-notices["'][\s\S]*?</section>"#
-    private static let listItemPattern = #"<li\b[^>]*>([\s\S]*?)</li>"#
-    private static let tagStripPattern = #"<[^>]+>"#
+        #"<section\b[^<>]{0,2000}\bclass\s{0,8}=\s{0,8}["']voucher-notices["'][\s\S]{0,8000}?</section>"#
+    private static let listItemPattern = #"<li\b[^<>]{0,2000}>([\s\S]{0,2000}?)</li>"#
+    private static let tagStripPattern = #"<[^<>]{1,2000}>"#
 
     /// 解析券碼頁（`/member/voucher/{uuid}/view`）。
     /// - Throws: `AppError.parsing` 只在完全找不到任何 `voucher-figure` 時拋出——
@@ -110,8 +124,10 @@ public enum VoucherParser {
     // MARK: - parseVerifyError
 
     private static let errorNoticePattern =
-        #"<p\b[^>]*\bclass\s*=\s*["'][^"']*\bnotice--error\b[^"']*["'][^>]*>([^<]*)</p>"#
-    private static let remainingCountPattern = #"(\d+)\s*次"#
+        #"<p\b[^<>]{0,2000}\bclass\s{0,8}=\s{0,8}["'][^"'<>]{0,500}\bnotice--error\b[^"'<>]{0,500}["'][^<>]{0,2000}>([^<]{0,2000})</p>"#
+    // `(\d+)\s*次` 對 8000 位連續數字要 4.6 秒（O(n²)：`\d+` 每次貪婪到底再逐格回溯）。
+    // 剩餘次數是個位數，上限 9 位綽綽有餘，且讓每個起點的成本變成常數。
+    private static let remainingCountPattern = #"(\d{1,9})\s{0,8}次"#
 
     /// 解析 OTP 驗證錯誤時原地回傳的同一頁：`.notice--error` 文字與其中的剩餘次數 N。
     /// 找不到 `.notice--error` 或抓不到數字時給合理預設（`remaining: nil`、通用錯誤訊息）。

@@ -69,6 +69,11 @@ public enum AppError: Error, Equatable, Sendable {
     case parsing(String)
     case notLoggedIn
     case blockedEgress(String)   // 嘗試連非白名單網域
+    /// response body 超過 `URLSessionHTTPClient.maxResponseBytes`（2 MB）。
+    /// 官方頁面實測都在數十 KB；超過這個量級代表對面不是我們認得的那個站
+    /// （官網被入侵、或裝置信任了 MITM 憑證），此時**不該把 body 交給任何 parser**。
+    /// associated value 是實際位元組數，只給 log 用，不進遙測。
+    case responseTooLarge(Int)
 }
 
 /// 兌換頁（`/member/redeem/{uuid}`）解析出的一個可兌換品項（商家 + 品項）。

@@ -15,7 +15,11 @@ public protocol TasksServicing: Sendable {
     /// 取得某期已上傳截圖的圖片 URL（/member/screenshot/{id} 會 302 到 S3）。
     func screenshotURL(taskID: String) async throws -> URL
     /// 用已登入的 session 打 `/member/screenshot/{id}`，回傳 302 導向的 S3 presigned 圖片
-    /// 絕對網址，供 UI 用 `AsyncImage` 直接載入顯示（該網址自帶簽章、無需登入）。
+    /// 絕對網址（該網址自帶簽章、無需登入）。
+    ///
+    /// 實作**必須驗證這個網址**：`Location` 完全由官方站決定，屬不受信任輸入。
+    /// 見 `TasksService.isAllowedScreenshotImageURL`（https + 白名單 host），
+    /// 以及 `ScreenshotView` 用來下載它的 cookie-less 專用 `URLSession`。
     func screenshotImageURL(taskID: String) async throws -> URL
 }
 

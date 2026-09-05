@@ -77,7 +77,7 @@ mitmweb                       # 啟動，預設監聽 8080，瀏覽器介面在 
 | 網域 | 誰發的 | 什麼時候 | 開關關著時會出現嗎 |
 |---|---|---|---|
 | `500.gov.tw` | App 自己的網路程式碼 | 登入、抓任務、上傳、兌換、券碼 | 會 |
-| 官方網站存放截圖的圖片網域（實測為 `*.amazonaws.com`） | iOS 的系統圖片載入器（`AsyncImage`） | 只在點開「查看已上傳的截圖」時 | 會（只在那一刻） |
+| 官方網站存放截圖的圖片網域（實測為 `*.amazonaws.com`） | `ScreenshotView` 的專用 `URLSession`（ephemeral、無 cookie 罐、不進 URL cache） | 只在點開「查看已上傳的截圖」時 | 會（只在那一刻） |
 | `firebaseinstallations.googleapis.com` | Firebase SDK | 打開統計開關那一刻（要一組安裝編號） | **不會** |
 | `app-analytics-services.com` | Firebase SDK | 開關開著時，事件批次上傳 | **不會** |
 | `firebase-settings.crashlytics.com` | Firebase SDK | 開關開著時，啟動後抓設定 | **不會** |
@@ -86,7 +86,7 @@ mitmweb                       # 啟動，預設監聽 8080，瀏覽器介面在 
 
 以上五個 Google 網域是從送審版本的二進位裡直接撈出來的字串。Google 可能改網域，所以判準不是「只有這五個」，而是**開關關著時，任何 Google 網域都不該出現**。
 
-圖片網域是**官方網站**決定的，不是本 App 決定的：截圖網址由官網以 302 回傳，App 只是照著載入。官方站若換掉儲存供應商，你看到的會是另一個網域，那不是本 App 的異常——判準是「不帶 cookie、只在點開截圖時出現」，不是網域名稱本身。
+圖片網域是**官方網站**決定的，不是本 App 決定的：截圖網址由官網以 302 回傳。但 App 不是照單全收——`TasksService.screenshotImageURL` 會先檢查那個 `Location`：**scheme 必須是 `https`，host 必須是 `500.gov.tw`（含子網域）或 `*.amazonaws.com`**，否則丟 `blockedEgress` 並顯示載入失敗。官方站若換掉儲存供應商、換到白名單外的網域，你會看到「無法載入截圖」而不是一個往陌生網域的請求（那時請開 issue，我們會補上新網域）。判準是「不帶 cookie、只在點開截圖時出現、而且網域在上面那兩類之內」。
 
 除了這張表上的東西，本 App 不該連任何地方。
 
@@ -138,10 +138,15 @@ POST /registrant/member/upload                  multipart/form-data
 GET  /registrant/member/screenshot/<期別 UUID>
      → 302 Location: https://<官方網站的圖片儲存網域>/...?...簽章...（實測是 AWS S3 的 presigned URL）
 
-GET  https://<同上>                              ← 這一筆是 iOS 系統圖片載入器發的
+GET  https://<同上>                              ← 這一筆是 ScreenshotView 的專用 URLSession 發的
 ```
 
-**要看的重點**：往那個圖片網域的請求**不該帶 `Cookie` 標頭**（登入 cookie 的範圍是 `500.gov.tw`，不會跟過去），也不該帶 `Authorization`。它能讀是因為網址裡自帶簽章，而那個網址是官網給的。
+**要看的重點**：往那個圖片網域的請求**不該帶 `Cookie` 標頭**，也不該帶 `Authorization`。它能讀是因為網址裡自帶簽章，而那個網址是官網給的。
+
+這件事有兩層保證，講清楚哪一層在做事：
+- **第一層是 cookie 自己的網域範圍**：登入 cookie 的 domain 是 `500.gov.tw`，瀏覽器／`URLSession` 本來就不會把它送去別的網域。
+- **第二層是這條路徑用的連線**：`ScreenshotView` 用的是自己開的 `URLSession`（`ephemeral`、`httpCookieStorage = nil`、`urlCache = nil`），**完全沒有 cookie 罐**。這一層才擋得住「`Location` 指回 `500.gov.tw` 自己」的情況——那是同源，只靠第一層是擋不住的。
+  （之前這裡用的是 `AsyncImage`。`AsyncImage` 走 `URLSession.shared`，而它的 cookie 罐就是 `HTTPCookieStorage.shared`，跟 App 自己那個 session 是同一個；而且 `URLSession.shared` 會把圖片以網址為 key 寫進 `Library/Caches`。兩件事都已經改掉。）
 
 ### 兌換
 
@@ -195,7 +200,7 @@ App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logou
 
 1. **開關關著、且 App 已完全關閉重開之後**：除了 `500.gov.tw` 與官方網站回傳的圖片儲存網域，本 App 不該連任何地方。
 2. **往 `500.gov.tw` 的表單欄位只有這幾個**：`_csrf`、`idNo`、`birthDate`、`phone`、`screenshot`（檔案）、`vendorId`、`item`、`otp`。多出任何欄位——尤其像步數、距離、裝置識別碼——就是異常。
-3. **往圖片儲存網域的請求**：不帶 `Cookie`、不帶 `Authorization`，而且只在你點開截圖時發生。
+3. **往圖片儲存網域的請求**：不帶 `Cookie`、不帶 `Authorization`，只在你點開截圖時發生，而且網域只會是 `500.gov.tw`（含子網域）或 `*.amazonaws.com`——其他網域會被 App 主動擋掉並顯示載入失敗。
 4. **遙測開著時，往 Google 的請求裡搜不到**你的身分證號、生日、手機號碼、步數，也搜不到任務的 UUID 與券碼。
 5. **每一筆都是 `https://`**。官方站 302 的 `Location` 是 `http://`，client 一律正規化回 https 再送，所以你看到的實際請求全部應該是 https。看到任何一筆 `http://` 就是異常。
 

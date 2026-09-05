@@ -15,10 +15,34 @@ import Foundation
 ///   （正規化後只保留 path，實際請求一律用 https 重新組 URL），也讓
 ///   LBSCookie 的 `?_cookie_check=1` 握手可以透過一般的 redirect 迴圈自然完成
 ///   （cookie jar 是同一個 `URLSession`，握手拿到的 cookie 會自動帶進下一跳）。
+/// - **Response body 大小上限 2 MB**（`maxResponseBytes`）：超過就丟
+///   `AppError.responseTooLarge`，body 不解碼、不交給任何 parser。這是所有
+///   HTML parser 共用的止血點，見該常數的說明。
 /// - 絕不記錄 cookie / body / 表單欄位；需要時只記錄 path（不含 query）與狀態碼。
 public final class URLSessionHTTPClient: HTTPClienting {
     /// 保護用的 redirect 迴圈上限，避免正規化邏輯出錯造成無窮迴圈。
     private static let maxRedirects = 5
+
+    /// response body 的大小上限（2 MB）。
+    ///
+    /// **這是所有 parser 共用的止血點。** 每個 parser 都是用正規表示式吃官方站回傳的
+    /// HTML，而那是不受信任的輸入；只要有任何一條樣式在對抗輸入下退化成超線性，
+    /// 一頁惡意 HTML 就能把 cooperative thread pool 卡住（`fetchTasks` 是 nonisolated
+    /// async，卡的不是主執行緒，所以不會 watchdog crash——App 只是「所有抓取永遠不回來、
+    /// CPU 滿載耗電」直到使用者自己殺掉）。逐條修 regex 是必要的，但擋不住之後新加的
+    /// parser；把輸入長度先夾住，才是對「未來的自己」有效的防線。
+    ///
+    /// 2 MB 的依據：官方頁面實測都在數十 KB（本 repo 的 fixture 最大 4 KB），
+    /// 留兩個數量級的餘裕。超過就代表對面不是我們認得的那個站。
+    static let maxResponseBytes = 2 * 1024 * 1024
+
+    /// body 超過 `maxResponseBytes` 就丟 `AppError.responseTooLarge`。
+    /// 抽成純函式方便單元測試（不必真的下載 2 MB）。
+    static func validateBodySize(_ byteCount: Int) throws {
+        guard byteCount <= maxResponseBytes else {
+            throw AppError.responseTooLarge(byteCount)
+        }
+    }
 
     private static let userAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 " +
@@ -162,6 +186,19 @@ public final class URLSessionHTTPClient: HTTPClienting {
         }
         guard let http = response as? HTTPURLResponse else {
             throw AppError.unexpectedResponse(-1)
+        }
+        // 大小上限：先看站方宣告的 Content-Length，再看實收位元組數（有些回應不帶
+        // Content-Length，或宣告的跟實際的不符，兩邊都要擋）。任一超標就直接丟錯，
+        // **body 不會被解碼成字串、更不會交給任何 parser**。
+        if http.expectedContentLength > Int64(Self.maxResponseBytes) {
+            log.error("response body too large (declared \(http.expectedContentLength) bytes)")
+            throw AppError.responseTooLarge(Int(clamping: http.expectedContentLength))
+        }
+        do {
+            try Self.validateBodySize(data.count)
+        } catch {
+            log.error("response body too large (\(data.count) bytes)")
+            throw error
         }
         log.debug("\(request.httpMethod ?? "GET") \(request.url?.path ?? "") -> \(http.statusCode)")
         return RawResponse(

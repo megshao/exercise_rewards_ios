@@ -60,7 +60,7 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
 
     /// 示範模式**絕不能連外**（DemoMode 檔頭與畫面上的橫幅都是這樣宣告的），所以這裡回傳
     /// App bundle 內附的示範運動紀錄截圖 file URL，而不是任何第三方圖床網址。
-    /// `ScreenshotView` 的 `AsyncImage` 吃 file URL 一樣可以顯示（URLSession 支援 file scheme）。
+    /// `ScreenshotView.ScreenshotImageLoader` 對 `isFileURL` 有專門分支，不會走網路。
     public func screenshotImageURL(taskID: String) async throws -> URL {
         try await Task.sleep(nanoseconds: 300_000_000)
         guard let url = Bundle.main.url(forResource: "DemoScreenshot", withExtension: "png") else {

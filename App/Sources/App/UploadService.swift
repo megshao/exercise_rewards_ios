@@ -102,8 +102,14 @@ public final class UploadService: UploadServicing, @unchecked Sendable {
     }
 
     /// 從回應頁抓 `.notice--error` 文字（若有）。
+    ///
+    /// H1 同類：這裡吃的也是官方站回傳的 HTML（不受信任輸入）。`[^>]*` 在「大量未閉合
+    /// 標籤」下是 O(n²)——`[^>]` 會一路掃到文件尾。屬性內不可能有裸 `<`，改用
+    /// `[^<>]{0,2000}` 之後掃描在下一個 `<` 就停住，且成本與整頁長度脫鉤。
+    /// 同理 `\s*([^<]+)` 的兩個量詞字元集合重疊（`\s` ⊂ `[^<]`），合併成一個 `[^<]{0,2000}`。
+    /// 另有 `URLSessionHTTPClient` 的 2 MB body 上限當共用止血點。
     static func errorNotice(in html: String) -> String? {
-        guard let range = html.range(of: #"notice--error[^>]*>\s*([^<]+)"#, options: .regularExpression) else {
+        guard let range = html.range(of: #"notice--error[^<>]{0,2000}>[^<]{0,2000}"#, options: .regularExpression) else {
             return nil
         }
         let matched = String(html[range])

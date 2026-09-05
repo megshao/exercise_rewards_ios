@@ -119,6 +119,9 @@ enum FailReason: String, Sendable {
     case csrfMissing = "csrf_missing"
     case blockedEgress = "blocked_egress"
     case redirectLoop = "redirect_loop"
+    /// 官網回應的 body 超過 `URLSessionHTTPClient.maxResponseBytes`（2 MB）。
+    /// **只送這個分類，不送實際位元組數**——長度是關於回應內容的測量值。
+    case responseTooLarge = "response_too_large"
     /// 解析失敗但**很可能只是 session 過期**（官網 302 到登入頁，回的是登入頁 HTML，
     /// 解析器一樣丟 `parsing`）。冷啟動時的第一次抓取歸這一類，不視為官網改版。
     case sessionProbable = "session_probable"
@@ -327,6 +330,7 @@ enum SiteErrorKind: String, Sendable {
     case unexpectedStatus = "unexpected_status"
     case blockedEgress = "blocked_egress"
     case redirectLoop = "redirect_loop"
+    case responseTooLarge = "response_too_large"
 }
 
 /// 同意是從哪個介面給的。
@@ -1344,6 +1348,7 @@ enum Telemetry {
         case .parsing: return .siteParse
         case .notLoggedIn: return .sessionProbable
         case .blockedEgress: return .blockedEgress
+        case .responseTooLarge: return .responseTooLarge
         }
     }
 
@@ -1435,6 +1440,13 @@ enum Telemetry {
             logEvent(.siteError(endpoint: endpoint, kind: .blockedEgress, status: status, hostClass: host))
             recordNonFatal(.egress, endpoint: endpoint,
                            extras: host.map { ["host_class": .code($0)] } ?? [:])
+
+        // 官網回了超過 2 MB 的 body。正常頁面是數十 KB，所以這是很強的改版／異常訊號。
+        // `AppError.responseTooLarge(Int)` 的位元組數**不送**，只送 kind。
+        case .responseTooLarge:
+            logEvent(.siteError(endpoint: endpoint, kind: .responseTooLarge, status: status, hostClass: nil))
+            recordNonFatal(.http, endpoint: endpoint, status: status == -1 ? 200 : status,
+                           extras: ["kind": .code(SiteErrorKind.responseTooLarge)])
         }
         return reason
     }

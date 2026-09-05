@@ -735,7 +735,8 @@ final class HomeViewModel: ObservableObject {
         if let appError = error as? AppError {
             switch appError {
             case .network: return "網路連線異常，請檢查網路後再試一次"
-            case .csrfNotFound, .unexpectedResponse, .parsing: return "官網回應異常，請稍後再試"
+            case .csrfNotFound, .unexpectedResponse, .parsing, .responseTooLarge:
+                return "官網回應異常，請稍後再試"
             case .notLoggedIn: return "尚未登入，請先完成一鍵登入"
             case .blockedEgress: return "偵測到非官方網域連線，已阻擋"
             }

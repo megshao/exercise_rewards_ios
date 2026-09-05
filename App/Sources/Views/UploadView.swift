@@ -177,7 +177,19 @@ final class UploadViewModel: ObservableObject {
                 return
             }
             // 統一轉成 JPEG（官網只收 JPG/PNG）並壓到 5MB 以內，避免相簿原檔是 HEIC 被拒。
-            imageData = Self.jpegDataUnder5MB(image) ?? data
+            //
+            // **重新編碼失敗時一律報錯，絕不 fallback 送原檔。** 相簿原檔帶著完整 EXIF，
+            // 其中包含 GPS 座標——那是「使用者在哪裡運動」的精確位置，比運動紀錄本身
+            // 更敏感，而且使用者按「確認上傳」時完全不會預期它被一起送出去。
+            // 重新用 `UIImage.jpegData` 編碼會把 EXIF 整段丟掉，這是本流程唯一的去識別化
+            // 手段，所以它不能有旁路。（原檔也可能是 HEIC/PNG，跟固定送出的
+            // `screenshot.jpg` / `image/jpeg` 對不上，本來就不該當 fallback。）
+            guard let jpeg = Self.jpegDataUnder5MB(image) else {
+                errorMessage = "圖片處理失敗，請換一張圖片再試"
+                Telemetry.logEvent(.uploadPick(outcome: .unreadable))
+                return
+            }
+            imageData = jpeg
             previewImage = image
             Telemetry.setCrashKey(.uploadStage(.picked))
             Telemetry.logEvent(.uploadPick(outcome: .picked))
@@ -188,6 +200,8 @@ final class UploadViewModel: ObservableObject {
     }
 
     /// 把圖片編成 ≤5MB 的 JPEG；必要時逐步降畫質。
+    /// 回傳 nil（`jpegData` 全數失敗）時呼叫端必須報錯——**不可退回原檔**，
+    /// 原檔帶 EXIF/GPS，重新編碼正是拿掉它們的地方。
     static func jpegDataUnder5MB(_ image: UIImage) -> Data? {
         let limit = 5 * 1024 * 1024
         for q in stride(from: 0.9, through: 0.3, by: -0.1) {

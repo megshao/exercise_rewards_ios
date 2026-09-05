@@ -45,26 +45,49 @@ public enum TaskParser {
         return cards
     }
 
+    // MARK: - Patterns
+    //
+    // ReDoS 防線（H1）：這些樣式吃的是官方站回傳的 HTML，屬**不受信任輸入**。
+    // 三條規則，違反其中任一條都可能讓單一請求把 cooperative thread pool 卡死：
+    // 1. 相鄰量詞的字元集合不得重疊。`\s*([^<]+?)\s*<` 就是反例——`\s` ⊂ `[^<]`，
+    //    三層量詞互相回溯，實測 800 個空白要 4 秒、1600 個要 34 秒（O(n³)）。
+    //    正解是 `([^<]*)<`：`[^<]` 貪婪一定停在第一個 `<`，零回溯，事後再 trim。
+    // 2. 所有量詞都要有長度上限（`{0,N}`），別讓單次比對的成本跟整頁長度成正比。
+    // 3. 標籤屬性用 `[^<>]` 而非 `[^>]`——屬性內不可能出現裸 `<`，排除它可讓
+    //    「大量未閉合標籤」的攻擊在下一個 `<` 就停住，而不是掃到文件尾。
+    //
+    // 另一道獨立防線在 `URLSessionHTTPClient.send`：response body 超過 2 MB 直接
+    // 丟 `AppError.responseTooLarge`，parser 根本不會看到超長輸入。
+
+    private static let indexPattern = #"第\s{0,8}(\d{1,6})\s{0,8}期"#
+    private static let rangePattern = #"period-range">\s{0,8}([0-9/]{1,40})\s{0,8}~\s{0,8}([0-9/]{1,40})"#
+    private static let statePattern = #"period-state--([A-Z_]{1,40})"#
+    private static let remainingPattern = #"period-remaining">([^<]{0,2000})<"#
+    private static let uploadedAtPattern = #"上傳時間：([^<]{0,2000})<"#
+    private static let reviewedAtPattern = #"審核時間：([^<]{0,2000})<"#
+    private static let idPattern = #"/member/(?:redeem|screenshot)/([0-9a-fA-F-]{1,64})"#
+
     /// 解析單張卡片片段。所有欄位都容錯：抓不到就給合理預設值，不丟例外。
     private static func parseCard(_ card: String, fallbackIndex: Int) -> TaskPeriod {
-        let index = firstMatch(in: card, pattern: #"第\s*(\d+)\s*期"#).flatMap { Int($0) } ?? fallbackIndex
+        let index = firstMatch(in: card, pattern: indexPattern).flatMap { Int($0) } ?? fallbackIndex
 
         var startDate = ""
         var endDate = ""
-        if let range = firstMatch(in: card, pattern: #"period-range">\s*([0-9/]+)\s*~\s*([0-9/]+)"#, groups: 2) {
+        if let range = firstMatch(in: card, pattern: rangePattern, groups: 2) {
             startDate = range.0
             endDate = range.1
         }
 
-        let stateRaw = firstMatch(in: card, pattern: #"period-state--([A-Z_]+)"#) ?? ""
+        let stateRaw = firstMatch(in: card, pattern: statePattern) ?? ""
         let state = mapState(stateRaw)
 
-        let remainingText = firstMatch(in: card, pattern: #"period-remaining">\s*([^<]+?)\s*<"#)
+        // `([^<]*)` 連同前後空白一起抓，再 trim——語意等同原本的 `\s*([^<]+?)\s*`，
+        // 但沒有量詞重疊。全空白的欄位 trim 後為空字串，視同「沒有這個欄位」回傳 nil。
+        let remainingText = trimmedMatch(in: card, pattern: remainingPattern)
+        let uploadedAt = trimmedMatch(in: card, pattern: uploadedAtPattern)
+        let reviewedAt = trimmedMatch(in: card, pattern: reviewedAtPattern)
 
-        let uploadedAt = firstMatch(in: card, pattern: #"上傳時間：\s*([^<]+?)\s*<"#)
-        let reviewedAt = firstMatch(in: card, pattern: #"審核時間：\s*([^<]+?)\s*<"#)
-
-        let id = firstMatch(in: card, pattern: #"/member/(?:redeem|screenshot)/([0-9a-fA-F-]+)"#) ?? ""
+        let id = firstMatch(in: card, pattern: idPattern) ?? ""
 
         return TaskPeriod(
             id: id,
@@ -89,6 +112,13 @@ public enum TaskParser {
         case "REDEEMED": return .redeemed
         default: return .unknown
         }
+    }
+
+    /// 取第一個 capture group、去掉前後空白；trim 後為空字串時回傳 nil。
+    private static func trimmedMatch(in text: String, pattern: String) -> String? {
+        guard let raw = firstMatch(in: text, pattern: pattern) else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     /// 取第一個 capture group 的字串（找不到回傳 nil）。

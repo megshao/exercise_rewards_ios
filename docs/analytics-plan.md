@@ -107,7 +107,7 @@
 |---|---|---|
 | `Screen` | `onboarding_welcome` `onboarding_form` `home` `tasks` `health` `wallet` `profile` `upload` `screenshot` `redeem` `voucher` | 對應 11 個 View |
 | `LoginTrigger` | `onboarding` `auto` `manual` | `OnboardingViewModel.submitTapped` ／ `HomeViewModel.bootstrap→performLogin(silent:true)` ／ `HomeViewModel.loginTapped` |
-| `FailReason` | `invalid_credentials` `not_registered` `network` `site_status` `site_parse` `csrf_missing` `blocked_egress` `redirect_loop` `session_probable` `unknown` | 由 `Telemetry.classify(error)` 從 `AppError` 映射；**只取 case，不取 associated value** |
+| `FailReason` | `invalid_credentials` `not_registered` `network` `site_status` `site_parse` `csrf_missing` `blocked_egress` `redirect_loop` `response_too_large` `session_probable` `unknown` | 由 `Telemetry.classify(error)` 從 `AppError` 映射；**只取 case，不取 associated value** |
 | `Endpoint` | `access` `login` `logout` `tasks` `upload` `screenshot` `redeem` `voucher` `voucher_resend` `voucher_view` | 路徑**樣板**，永遠不含 UUID |
 | `TaskStateClass` | `not_started` `open` `pending_review` `redeemable` `redeemed` `unknown` | 直接對應 `TaskState` |
 | `Vendor` | `family_mart` `seven_eleven` `hilife` `pxmart` `other` | 沿用 `RedeemView.VendorLogo` 的名稱比對邏輯抽成共用；**不是** `vendorId` |
@@ -144,7 +144,7 @@
 | E24 | `barcode_render_failed` | `VoucherFigureView` 拿到 `BarcodeGenerator.barcodeImage` 回 nil | `format: BarcodeFormat` | G7 G9 | R3：只送 format 分類。新的未知 format 出現 = 官網改版訊號，同時進 Crashlytics（§5.4） |
 | E25 | `profile_save` | `ProfileViewModel.save()` 結束 | `outcome: enum = ok \| error` | G10 | R1：`draft` 不進 facade；Keychain OSStatus 走 Crashlytics 非致命（§5.4），不進 Analytics |
 | E26 | `local_data_clear` | `ProfileView.clearLocalData()` **第一行**（在 `exitDemo`／清 Keychain 之前） | 無 | G10 | 事件送出後立刻執行 §6.4 的 `resetAnalyticsData()`；順序：先記錄、再重置 app instance ID、再把同意狀態設回未決 |
-| E27 | `site_error` | `Telemetry.classify` 判定為 `site_parse`／`csrf_missing`／`site_status`／`blocked_egress`／`redirect_loop` 時（與各 `*_result` 事件並存） | `endpoint: Endpoint`、`kind: enum = parse \| csrf_missing \| unexpected_status \| blocked_egress \| redirect_loop`、`status: Int`（HTTP 狀態碼；不明時 -1）、`host_class: HostClass`（僅 `blocked_egress`） | G9 | R3：endpoint 是樣板；`AppError.blockedEgress(host)` 的 host **不送**，只送 `HostClass`；`AppError.parsing(String)` 的字串（目前皆為靜態訊息）也不送，改用 endpoint＋kind |
+| E27 | `site_error` | `Telemetry.classify` 判定為 `site_parse`／`csrf_missing`／`site_status`／`blocked_egress`／`redirect_loop`／`response_too_large` 時（與各 `*_result` 事件並存） | `endpoint: Endpoint`、`kind: enum = parse \| csrf_missing \| unexpected_status \| blocked_egress \| redirect_loop \| response_too_large`、`status: Int`（HTTP 狀態碼；不明時 -1）、`host_class: HostClass`（僅 `blocked_egress`） | G9 | R3：endpoint 是樣板；`AppError.blockedEgress(host)` 的 host **不送**，只送 `HostClass`；`AppError.parsing(String)` 的字串（目前皆為靜態訊息）也不送，改用 endpoint＋kind；`AppError.responseTooLarge(Int)` 的位元組數**不送**（那是關於回應內容的測量值），只送 kind |
 | E28 | `consent_granted` | 使用者在同意卡或設定頁開啟匿名統計，`setAnalyticsCollectionEnabled(true)` 之後立刻送 | `source: enum = prompt \| settings` | G11 | 唯一一個「同意後的第一個事件」；沒有對應的 `consent_revoked`（§4） |
 
 ### 3.3 Firebase 自動事件（不需埋，但要知道會有）
