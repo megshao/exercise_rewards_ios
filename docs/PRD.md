@@ -41,7 +41,10 @@
 ### 2.3 成功指標（North Star & 輔助）
 - **North Star**：使用者「每週完成一次達標上傳」的連續週數（habit streak）。
 - 輔助：一鍵登入成功率、從「達標」到「上傳完成」的中位時間（目標 < 30 秒）、每週上傳完成率。
-- 反指標（必須為 0）：個資外洩事件、log 中出現敏感欄位、對非 `500.gov.tw` 網域的非預期連線。
+- 反指標（必須為 0）：個資外洩事件、log 中出現敏感欄位、對非 `500.gov.tw` 網域的**非預期**連線。
+  - **「非預期」的定義（1.0 更新，2026-09-06）**：Firebase SDK 在**使用者明示同意後**連往 Google 端點屬於**預期內**，
+    不計入本指標；未同意時出現任何 Google 端點連線，則計為外洩事件。App 自己的 HTTP client 連往
+    非 `500.gov.tw` 網域，一律計為外洩事件（唯一例外是官方回傳的 S3 簽章圖片網址）。
 
 ---
 
@@ -81,7 +84,7 @@
 ### 4.3 明確不做（Out of Scope）
 - 不繞過任何身分驗證（戶役政、健保卡、OTP）。
 - 不偽造、竄改或合成運動數據。
-- 不蒐集、不上傳任何個資到第三方或自建伺服器（本 App **無後端**）。
+- 不蒐集、不上傳任何**個資**到第三方或自建伺服器（本 App **無自建後端**）。健康資料同樣完全不外傳。**匿名、不含個資與健康資料的使用統計除外**，且預設關閉、由使用者自行開啟（見 §8.2）。
 
 ---
 
@@ -112,7 +115,10 @@
   - Onboarding 的個資填寫頁沿用同一元件（`BirthDateField`），樣式與行為一致。
 - **輸出**：加密寫入 Keychain；欄位即時格式驗證。
 - **狀態**：空 / 編輯中 / 已儲存 / 驗證錯誤。
-- **頁首隱私聲明**：標題「本 App 不蒐集、不外傳你的個資」，並明列三點——(a) 沒有任何伺服器與後台，不上傳雲端、不同步 iCloud、不寫入紀錄檔、不提供第三方；(b) 填的資料只在登入當下由這支手機直送官方網站 500.gov.tw；(c) 為免重複輸入，資料僅以加密方式存在本機 Keychain，可隨時用「立即清除本機資料」永久刪除。
+- **頁首隱私聲明**：標題「本 App 不蒐集、不外傳你的個資」，並明列三點——(a) 開發者沒有任何自建伺服器與後台，個資不上傳雲端、不同步 iCloud、不寫入紀錄檔；(b) 填的資料只在登入當下由這支手機直送官方網站 500.gov.tw；(c) 為免重複輸入，資料僅以加密方式存在本機 Keychain，可隨時用「立即清除本機資料」永久刪除。
+  - **文案變更（1.0，2026-09-06）**：原文 (a) 的結尾為「不提供第三方」。加入預設關閉的匿名遙測後，這句話不再無條件成立，須改寫成
+    「除非你主動開啟下方的『傳送匿名使用統計』，否則不會有任何資料送到第三方；即使開啟，也絕不包含個資、健康數據、截圖與券碼」之類的版本。
+    **實際 App 內文案由 `App/Sources/Views/ProfileView.swift` 決定，本節只定義規格。**
   - 用語刻意不寫「不儲存」——本機 Keychain 確實有存，避免文件與實作不符。
 - **使用者故事**：作為使用者，我想只填一次資料，之後都不用再打。
 - **驗收**：
@@ -295,7 +301,12 @@ flowchart TD
 
 ## 8. 安全架構與威脅模型（最高優先）
 
-> 本專案將開源，安全性須可被第三方完整稽核。原則：**本 App 無後端、個資只留本機、絕不寫 log、只連 `500.gov.tw`。**
+> 本專案將開源，安全性須可被第三方完整稽核。原則：**本 App 無自建後端、個資只留本機、絕不寫 log、App 自己只連 `500.gov.tw`。**
+>
+> **原則變更（1.0，2026-09-06）**：原文為「只連 `500.gov.tw`」。加入 Firebase Analytics／Crashlytics 後，
+> 這句話的範圍必須收斂成「**App 自己的 HTTP client** 只連 `500.gov.tw`」——網域白名單是 `URLSessionHTTPClient`
+> 裡的檢查，管不到 Firebase SDK 自己的 `URLSession`。使用者開啟遙測後，SDK 會另連 Google 的端點。
+> 詳見 §8.2 的決策紀錄。
 
 ### 8.1 個資儲存
 - 敏感個資只存 **iOS Keychain**。v1.0 實際寫入的只有**身分證號、出生日期、手機**三欄（姓名／Email／健保卡卡號不收集，見 §5.2）。
@@ -309,10 +320,45 @@ flowchart TD
 - **禁止寫入 log 的欄位**：身分證、出生日期、手機、Email、健保卡號、cookie（`LBSCookie`/`JSESSIONID`）、`_csrf`、OTP、session 內容、presigned URL。
 - 遮罩規則：如需除錯，一律以 `****` 或雜湊前綴呈現（例：身分證僅顯示 `A1***`）。
 - **Release build 關閉所有敏感 log**；統一走一個 `Redactor`/`SecureLog` 封裝，禁止直接 `print`/`NSLog` 敏感物件。
-- **禁用**會外傳個資的第三方 analytics / crash SDK；若需 crash 收集，須本機化且不含個資。
+- ~~**禁用**會外傳個資的第三方 analytics / crash SDK；若需 crash 收集，須本機化且不含個資。~~
+  **此硬約束已於 1.0 變更（2026-09-06）。** 保留原文以維持決策軌跡。
+
+  **變更後的規則**：允許第三方 analytics / crash SDK，但必須同時滿足以下六條，缺一不可。
+  1. **預設關閉（opt-in）**。使用者在「我的資料 › 安全與隱私 › 傳送匿名使用統計」自行開啟前，一個位元組都不送。
+     Info.plist 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED`、`FirebaseCrashlyticsCollectionEnabled`、
+     `GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 全為 `false`。
+  2. **個資零外傳**。身分證號、出生日期、手機號碼的任何形式（原文、雜湊、截斷、拼接）都不得進入遙測。
+  3. **HealthKit 資料零外傳**，且**連由健康資料推導出來的結論也不得外傳**（例如「今日是否達標」這個布林）。
+     理由不是偏好，是 Apple Guideline 5.1.3 明文禁止把 HealthKit 資料分享給第三方。
+  4. **單一出口 + 封閉列舉**。全 App 只有一個檔案（`App/Sources/App/Telemetry.swift`）可以 import 遙測 SDK；
+     事件名、參數值、使用者屬性、crash key 全部是封閉列舉，自由字串在編譯期就送不出去。
+  5. **四道閘門**：未初始化 → 示範模式（無 bypass）→ 使用者關閉 → 參數命中 `Redact` 敏感樣式
+     （最後一道在 DEBUG build 直接 `assertionFailure`，讓錯誤在開發期爆出來而不是在正式版靜靜被丟掉）。
+  6. **不得引入廣告識別能力**。使用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`）而非 `FirebaseAnalytics`，
+     二進位不得連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`。
+
+  **決策紀錄（1.0 變更，2026-09-06）**
+  - **為什麼改**：官網是純 HTML 刮取的對象，改版就會整個功能失效；沒有任何遙測時，我們只能等使用者來信才知道
+    解析器壞了，而使用者通常是站在超商櫃檯前發現的。1.0 需要一條「官網改版時最早的警報」。
+    完整的量測目標與事件設計見 `docs/analytics-plan.md`。
+  - **考慮過的替代方案**：`analytics-plan.md` §8 的零 SDK 方案（MetricKit + App Store Connect 分析 + Xcode Organizer
+    + CI 端 parser 冒煙測試）。它不動任何承諾，但拿不到事件層級的漏斗，也無法區分「官網改版」與「使用者網路不好」。
+  - **代價（誠實記錄，不粉飾）**：
+    (a) 「零第三方相依」這個乾淨的辯護點沒有了，README、CHANGELOG、官網、隱私政策、隱私標籤、Review Notes 全部改寫過；
+    (b) 隱私標籤四格從 Not Collected 變成 Collected（Identifiers › Device ID、Usage Data › Product Interaction、
+        Diagnostics › Crash Data／Other Diagnostic Data），從此必須與實作逐格一致，填錯就是 metadata 違規；
+    (c) 帶 HealthKit entitlement 的 App 裡出現 Google SDK，5.1.3(i) 從「不必解釋」變成「必須主動解釋」；
+    (d) opt-in 表示樣本偏向願意分享的人，安裝數分母得從 App Store Connect 拿，審查期間的當機也收不到。
+  - **不變的部分**：個資與健康資料仍然完全不外傳。這一點沒有因為這次變更打任何折扣，
+    隱私標籤的 Health / Fitness 兩格仍是 Not Collected。
 
 ### 8.3 網路安全
-- **網域白名單**：只允許連 `500.gov.tw`（含其 CDN/S3 presigned 圖片網域，需明列於允許清單）。
+- **網域白名單**：`URLSessionHTTPClient` 只允許連 `500.gov.tw`（含其 CDN/S3 presigned 圖片網域，需明列於允許清單）。
+  - **界線（1.0 變更後必須寫清楚）**：這個白名單是 App 自己 HTTP client 裡的檢查，**只管 App 自己發出的請求**。
+    Firebase SDK 使用自己的 `URLSession`，**不受白名單管轄**。使用者開啟遙測後，SDK 會連往
+    `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、
+    `crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com`（ATS 仍強制 HTTPS）。
+    這不是白名單被放寬，而是白名單從來就不涵蓋 SDK 內部連線——這個區別必須在所有對外文件裡講明，不能靠沉默。
 - **ATS 強制 https**：`NSAllowsArbitraryLoads=false`；針對官網 redirect 的 http 降級由 App 層改寫為 https，而非放寬 ATS。
 - Cookie 存於 App 沙盒容器（受 iOS 檔案保護，不進 iCloud），讓登入 session 可跨啟動續用；**登出 `resetSession()` 即清空 cookie/cache/憑證**。（`URLSessionHTTPClient(persistCookies: false)` 可退回純記憶體 ephemeral，供測試使用。）
 - 不硬編碼任何密鑰／token（本 App 本就無需伺服器密鑰）。
@@ -323,15 +369,18 @@ flowchart TD
 | **S**poofing 假冒 | 中間人假冒官網 | ATS + https、網域白名單；官網為政府憑證 |
 | **T**ampering 竄改 | 竄改運動數據上傳 | 數據唯讀取自 HealthKit，無竄改入口；忠實呈現 |
 | **R**epudiation 否認 | 使用者否認操作 | 本機無需審計；官網端自有紀錄 |
-| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏 | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無後端、無第三方 SDK |
+| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏、**個資誤入遙測** | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無自建後端；遙測方面：單一出口 + 封閉列舉（型別限制優先於遮罩）+ 四道閘門 + DEBUG `assertionFailure`，且預設關閉（見 §8.2） |
 | **D**oS 阻斷 | 過度打 OTP / 官網 | 尊重官網每日 OTP 上限與 resend 倒數，不自動重試轟炸 |
 | **E**levation 提權 | 越權存取他人資料 | 只操作本機使用者自己的帳號；不支援批量／代操 |
 
 ### 8.5 開源治理交付物
 - `LICENSE`（建議 MIT 或 Apache-2.0，待定）。
-- `README.md`：含**威脅模型摘要**、資料流圖、「不含後端、不上雲」聲明、建置與稽核指引。
+- `README.md`：含**威脅模型摘要**、資料流圖、「無自建後端、個資不上雲」聲明、第三方相依與遙測邊界的如實說明、建置與稽核指引。
 - `SECURITY.md`：漏洞回報流程。
-- CI 檢查：無硬編碼密鑰（secret scan）、無禁用 SDK、log 遮罩 lint 規則。
+- CI 檢查：無硬編碼密鑰（secret scan）、log 遮罩 lint 規則、**遙測不變量檢查**——
+  `Telemetry.defaultEnabled == false`、Info.plist 四個 Firebase 旗標為 `false`、
+  `Telemetry.swift` 以外的檔案沒有 `import FirebaseAnalytics` / `import FirebaseCrashlytics`、
+  二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`。`TODO(待確認：這條 CI 檢查尚未建立)`
 
 ---
 

@@ -81,11 +81,11 @@
 | 1 | 改名為中性工具名 | ⚠️ 部分 | `CFBundleDisplayName = Sports Rewards`、商店名稱與副標已定案（副標「揮汗有禮非官方串接」——活動名緊接「非官方」）；**但首頁標頭仍以大字自稱「揮汗有禮」**（`HomeView`），見下方決策紀錄 |
 | 2 | 組織帳號提交 | ❌ 未做 | 仍為個人開發者帳號（`DEVELOPMENT_TEAM: 8DVXA389TX`）——**5.1.1(ix) 殘餘風險最高的一項** |
 | 3 | 身分證/健保卡/生日不落 Keychain | ⚠️ 部分 | 個資已最小化到登入必需三欄（身分證／生日／手機）；姓名／email／**健保卡卡號完全不收集**；idNo 與 birthDate 為登入必需仍存 Keychain |
-| 4 | HealthKit 只讀不傳 | ✅ 已做 | `requestAuthorization(toShare: [], read:)` 唯讀；1.0 已移除「以 HealthKit 數據產生上傳圖卡」路徑，上傳一律由使用者以 `PhotosPicker` 自選截圖——健康資料完全不離開裝置，這是 5.1.3(i) 最有力的辯護點 |
+| 4 | HealthKit 只讀不傳 | ✅ 已做 | `requestAuthorization(toShare: [], read:)` 唯讀；1.0 已移除「以 HealthKit 數據產生上傳圖卡」路徑，上傳一律由使用者以 `PhotosPicker` 自選截圖——健康資料完全不離開裝置，這是 5.1.3(i) 最有力的辯護點。**2026-09-06 加入 Firebase 後仍成立**：遙測是封閉列舉，不含任何健康數值，連「今日是否達標」的推導布林都不送（見下方重評 §R1） |
 | 5 | 移除 WebView JS 注入 | ✅ 已做 | 全專案無 `WKWebView`／`WebKit`（`grep` 零命中），註冊改以外部 Safari 開官網 → 等同上表方案 **D** |
 | 6 | Demo Mode + 示範影片 | ⚠️ 部分 | `App/Sources/App/DemoMode.swift` 已實作（哨兵三碼、全 Mock、常駐橫幅、個資只在記憶體）；示範影片與 Review Notes 文字待補 |
 | 7 | 聯繫運動部取得「知悉不反對」 | ❌ 未做 | 5.2.2 授權文件仍拿不出 |
-| 8 | 隱私權政策 + 隱私標籤如實勾 | ❌ 待辦 | 需在 App Store Connect 填；Health 應為 Not Collected（不傳給開發者），身分資料屬「與第三方（500.gov.tw）分享」 |
+| 8 | 隱私權政策 + 隱私標籤如實勾 | ⚠️ 文件已備妥，**ASC 尚未填** | 需在 App Store Connect 填。Health 仍為 Not Collected（不傳給開發者，也不進遙測）；身分資料屬「與第三方（500.gov.tw）分享」；**2026-09-06 起另有四格因 Firebase 改為 Collected / Not Linked**——Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data。逐格答案見 `docs/release/privacy-labels.md`（2026-09-06 大改版）|
 
 ### 決策紀錄：首頁標頭保留「揮汗有禮」（2026-09-05）
 
@@ -104,10 +104,62 @@
 1. **示範模式**：入口就是登入表單，輸入 `A000000000` / `1990-01-01` / `0900000000` 即進入；
    全程不連線官方網站、資料為範例。（此三碼須同步填進 App Store Connect 的示範帳號欄位。）
 2. **本 App 為非官方工具**，以一般 HTTP client 操作使用者本人在 `500.gov.tw` 的帳號，
-   不繞過任何身分驗證，開發者不營運任何伺服器（開源連結一併附上）。
+   不繞過任何身分驗證，開發者不營運任何自建伺服器（開源連結一併附上；唯一的第三方相依與遙測見第 5 點）。
 3. **`WKAppBoundDomains` 的宣告用意**：本 App 目前完全不使用 WKWebView，該鍵是前瞻性防護宣告
    而非既有 WebView 的設定；若審查員質疑，可直接說明並移除。
 4. **看截圖畫面會連到 AWS S3**：`GET /member/screenshot/{uuid}` 由官方站 302 到 S3 presigned URL，
    App 用 `AsyncImage` 顯示該圖。這是白名單（`500.gov.tw`）唯一的刻意例外，只讀取使用者本人
    上傳的圖片，URL 自帶簽章、不夾帶任何帳號憑證。
+5. **第三方 SDK：Firebase Analytics／Crashlytics**（2026-09-06 新增）。Info.plist 四個旗標預設停用，
+   僅在使用者於「我的資料 › 安全與隱私 › 傳送匿名使用統計」明示開啟後才啟用；**絕不含 HealthKit 資料
+   （連推導結論也不含）與任何個資**。要一併說明網域白名單管不到 SDK 自己的連線這件事，
+   不要讓「只連 500.gov.tw」這句話看起來比實際範圍大。詳見 `docs/release/review-notes.md` §5b。
 
+
+---
+
+## 2026-09-06 變更：加入 Firebase Analytics／Crashlytics 後的風險重評
+
+**變更內容**：加入 `firebase-ios-sdk` 12.18.0（product：`FirebaseAnalyticsCore`、`FirebaseCrashlytics`、`FirebaseCore`）。
+SPM 解析 13 個套件、實際連進二進位 6 個。預設關閉（opt-in），使用者在「我的資料 › 安全與隱私 › 傳送匿名使用統計」自行開啟。
+決策紀錄與代價見 `docs/PRD.md` §8.2；量測設計見 `docs/analytics-plan.md`。
+
+### 總體風險變化
+
+**中風險 → 中高風險。** 這次變更沒有新增任何「會被直接拒審」的行為，但拿掉了一個最省事的辯護句
+（「binary 裡根本沒有第三方 SDK」），把兩條原本不必解釋的題目變成必須主動解釋。
+**風險的形態從「行為風險」變成「一致性風險」**：實作沒問題，出問題會出在文件、標籤與實作三者對不齊。
+
+### 逐條 guideline 重評
+
+| # | 條號 | 變更前 | 變更後 | 說明與應對 |
+|---|---|---|---|---|
+| R1 | **5.1.3(i)** 健康資料 | 高風險，但辯護乾淨：「binary 裡沒有任何第三方 SDK」 | **仍高風險，辯護變長** | 一個帶 HealthKit entitlement 的 App 裡出現 Google SDK，審查員必然會問「健康資料有沒有進 Firebase」。**事實上沒有**：`AnalyticsEvent`／`UserProperty`／`CrashKey` 都是封閉列舉，沒有任何成員帶步數、距離、運動時間，**連「今日是否達標」這種由步數推導的布林值都刻意不送**（`Telemetry.swift` 檔頭列為禁止項第 2 條，並引用本條為理由）。唯一沾邊的 `health_auth_granted` 是授權狀態而非量測值。**應對**：Review Notes §5b 與 §7 的 5.1.3(i) 段已逐點主動揭露；隱私標籤 Health / Fitness 維持 Not Collected。**這是本次變更代價最高的一格。** |
+| R2 | **5.1.1(ix)** 敏感服務的資料蒐集 | 高風險（政府服務 + 身分證號 + 個人開發者帳號） | **略升** | 原本可以說「開發者什麼都收不到」。現在要改成更精確的版本：**身分資料仍然一筆都不進遙測**（任何形式，含雜湊、截斷、拼接），開發者收到的只有匿名操作事件與當機報告。**應對**：Review Notes 的 5.1.1(ix) 段已改寫成「邊界式」論述，不再宣稱「什麼都沒有」。**真正的主風險仍是提交者身分（個人 vs 組織帳號），這一點沒有因為 Firebase 而改變。** |
+| R3 | **5.1.1／5.1.2** 隱私標籤一致性 | 低（幾乎全 Not Collected，不容易填錯） | **明顯升高，且是本次最容易踩到的一條** | 四格從 Not Collected 改為 Collected（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data）。標籤不實可導致下架與 metadata 違規。**應對**：依 `docs/release/privacy-labels.md`（2026-09-06 大改版）逐格填，並與 `App/Resources/PrivacyInfo.xcprivacy` 交叉核對——最終隱私報告是 App manifest 與所有 SDK manifest 的聯集，問卷不能比它少。**Location › Coarse Location 仍是 `TODO(待確認)`。** |
+| R4 | **2.3.1** 準確的 metadata／無隱藏功能 | 低 | **低，但多一項要講** | 遙測開關是使用者看得到的設定，不是隱藏旗標；但 Crashlytics 會向 `firebase-settings.crashlytics.com` 取自己的設定，這在字面上是一種「遠端設定」。**應對**：Review Notes 的 2.3.1 段已主動說明——那是 Google SDK 自我設定，改變不了本 App 的任何行為或功能，且我們自己沒有任何 remote config 或 feature flag 服務。 |
+| R5 | **2.1** App 完整性／審查可測 | 中（靠示範模式） | **不變** | 示範模式仍完全不發 App 自己的網路請求，且會強制關閉遙測收集。**副作用**：審查期間的當機我們收不到——這是 opt-in 的必然代價，已在 Review Notes 誠實寫出，並自行在示範模式跑完整流程作為補償。 |
+| R6 | **3.1 / 廣告與追蹤** | 不適用 | **仍不適用** | 用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`），結構上不含 IDFA 收集能力；Release 二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`（`otool -l` 可驗）。因此 `NSPrivacyTracking = false`、無追蹤網域、不需要也不可能出現 ATT 提示。 |
+| R7 | **4.0 / 官網改版即失效** | 中（只能等使用者來信） | **降低** | 這是加 Firebase 的主要理由：非致命錯誤可以在官網改版時提供最早的警報，縮短「壞掉 → 修好」的時間。**但只在使用者同意後才有資料**，樣本會偏向願意分享的人。 |
+| R8 | **5.2.2 授權文件／官方 App 出現（4.1）** | 高 | **不變** | 與遙測無關，仍是全案殘餘風險最高的兩項。 |
+
+### 這次變更帶來的新硬約束（違反即為不實陳述）
+
+以下四句同時出現在 `README.md`、`CHANGELOG.md`、`site/privacy.html` §5、`site/index.html`、
+`docs/release/app-store-metadata.md`、`docs/release/review-notes.md` §5b 與隱私標籤。任何一句在程式碼裡變成假的，
+上述所有文件都要同步改：
+
+1. **遙測預設關閉**（`Telemetry.defaultEnabled == false`，且 Info.plist 四個旗標為 `false`）。
+2. **個資零外傳**（三個登入欄位任何形式都不進遙測）。
+3. **HealthKit 資料與其推導結論零外傳**（含「今日是否達標」）。
+4. **不連結廣告識別框架**（`AdSupport`／`AppTrackingTransparency`／`AdServices`）。
+
+建議把這四條做成 CI 檢查（見 `docs/PRD.md` §8.5）。`TODO(待確認：CI 檢查尚未建立)`
+
+### 送審前必做
+
+- [ ] App Store Connect 隱私標籤依 `privacy-labels.md` 2026-09-06 版填寫，並與 `PrivacyInfo.xcprivacy` 對齊
+- [ ] `site/privacy.html` §5 已上線（隱私政策 URL 的內容須與標籤逐格一致）
+- [ ] Review Notes 貼上含 §5b 的版本
+- [ ] archive 內確實含正式的 `GoogleService-Info.plist`（不進版控，缺檔時遙測全程 no-op）
+- [ ] Firebase 主控台：資料保留設最短、關閉 Google Signals、關閉廣告個人化、關閉精細位置、不開 BigQuery、限制 API key 的 bundle ID

@@ -22,11 +22,12 @@
 <main class="wrap">
 
 <h1>隱私權政策</h1>
-<p class="updated">最後更新：2026 年 9 月 5 日｜適用版本：Sports Rewards 1.0.0（iOS）</p>
+<p class="updated">最後更新：2026 年 9 月 6 日｜適用版本：Sports Rewards 1.0.0（iOS）</p>
 
 <div class="notice">
-  <strong>先講最重要的一句</strong>
-  這支 App 沒有任何伺服器。開發者收不到、也看不到你的任何資料。你填的資料只存在你自己的 iPhone 裡，或在你按下登入時由你的手機直接送到活動官方網站。
+  <strong>先講最重要的兩句</strong>
+  開發者沒有任何自建伺服器。你的身分證號、出生日期、手機號碼只存在你自己的 iPhone 裡，或在你按下登入時由你的手機直接送到活動官方網站；你的健康數據完全不離開這支手機。<br>
+  另外要老實說：這個版本內建了 Google Firebase 的匿名使用統計與當機回報，<strong style="display:inline">出廠是關閉的</strong>，你自己打開它才會開始送，而且送出的東西裡沒有任何個資與健康數據。詳見第 5 節。
 </div>
 
 <h2>0. 這是什麼 App</h2>
@@ -35,11 +36,13 @@
   本 App 與運動部及任何政府機關<strong>沒有隸屬、合作、贊助或授權關係</strong>，也不代表活動主辦單位。活動規則與最終權益一律以官方公告為準。
 </p>
 
-<h2>1. 開發者不營運任何伺服器</h2>
+<h2>1. 開發者不營運任何伺服器（但有一個第三方套件）</h2>
 <ul>
-  <li>本 App <strong>沒有後端服務</strong>，開發者不接收、不儲存，也無法存取你的任何資料。</li>
-  <li>沒有分析（analytics）工具、沒有當機回報（crash reporting）、<strong>零第三方 SDK</strong>。程式只用到 Apple 系統框架。</li>
-  <li>不投放廣告、不做使用者追蹤、不建立廣告識別碼、不與資料掮客往來。</li>
+  <li>本 App <strong>沒有自建後端服務</strong>。你的身分證號、出生日期、手機號碼與健康數據，開發者不接收、不儲存，也無法存取。</li>
+  <li>本 App 使用<strong>一個</strong>第三方套件：Google 的 Firebase（Analytics 與 Crashlytics），用來收集匿名的使用統計與當機回報。
+      它<strong>預設是關閉的</strong>，要你自己在 App 裡打開才會運作；打開之後開發者能看到的也只有匿名的操作事件與當機報告，看不到你是誰。完整說明見<a href="#usage">第 5 節</a>。</li>
+  <li>不投放廣告、不建立廣告識別碼（IDFA）、不做跨 App 或跨網站的追蹤、不與資料掮客往來。
+      App 也不會跳出 iOS 的「要求追蹤」詢問——因為程式裡根本沒有連結做這件事的系統框架。</li>
 </ul>
 
 <h2>2. 存在你手機裡的資料</h2>
@@ -58,8 +61,11 @@
 
 <h2>3. 會離開你手機的資料</h2>
 <p>
-  只有在你<strong>主動操作</strong>時，資料才會由你的手機<strong>直接</strong>傳送到活動官方網站
+  你的個資只有在你<strong>主動操作</strong>時，才會由你的手機<strong>直接</strong>傳送到活動官方網站
   <a href="https://500.gov.tw/" target="_blank" rel="noopener">500.gov.tw</a>（活動主辦單位營運、也就是你帳號所在的網站）。中間不經過開發者或任何其他服務。
+</p>
+<p>
+  另外，若<strong>你自己打開</strong>了「傳送匿名使用統計」，會有一類不含個資的資料送到 Google Firebase。下表把兩者一起列出來，看得到全部的出口：
 </p>
 <div class="scroll">
 <table>
@@ -70,6 +76,7 @@
     <tr><td>身分證號、出生日期、手機號碼</td><td>你按下登入時</td><td>500.gov.tw</td></tr>
     <tr><td>你自己從相簿挑選的運動紀錄截圖</td><td>你按下上傳時</td><td>500.gov.tw</td></tr>
     <tr><td>兌換選擇（商家、品項）與簡訊驗證碼</td><td>你操作兌換時</td><td>500.gov.tw</td></tr>
+    <tr><td>匿名使用事件與當機報告（<strong>不含個資、不含健康數據</strong>，詳見第 5 節）</td><td><strong>只有在你自己打開「傳送匿名使用統計」之後</strong></td><td>Google Firebase（Google LLC，伺服器在美國）</td></tr>
   </tbody>
 </table>
 </div>
@@ -77,39 +84,122 @@
   這些資料送達之後如何被處理，適用 <a href="https://500.gov.tw/" target="_blank" rel="noopener">500.gov.tw</a> 自身的隱私政策與活動辦法，不在本 App 的控制範圍內。
 </p>
 <p>
-  技術上，本 App 只允許連線到 <code>500.gov.tw</code>（含其子網域）；連往其他網域的請求會被程式主動阻擋，並且強制使用 HTTPS 加密傳輸。
-  唯一的例外是：當你檢視自己先前上傳的截圖時，官方網站會回傳一個自帶簽章的圖片網址，App 交由系統的圖片載入器顯示該圖片——這個過程不會夾帶你的登入憑證。
+  技術上，本 App 自己發出的請求只允許連到 <code>500.gov.tw</code>（含其子網域）；連往其他網域的請求會被程式主動阻擋，並且強制使用 HTTPS 加密傳輸。
+  這裡有兩個例外，都講清楚：
 </p>
+<ul>
+  <li>當你檢視自己先前上傳的截圖時，官方網站會回傳一個自帶簽章的圖片網址，App 交由系統的圖片載入器顯示該圖片——這個過程不會夾帶你的登入憑證。</li>
+  <li><strong>Firebase 走的是它自己的連線，不受上面那個網域阻擋機制管轄</strong>（那個機制只管 App 自己寫的網路程式碼）。你打開使用統計後，它會連往 Google 的
+      <code>app-analytics-services.com</code>、<code>firebaseinstallations.googleapis.com</code>、<code>firebase-settings.crashlytics.com</code>、
+      <code>crashlyticsreports-pa.googleapis.com</code>、<code>firebaselogging.googleapis.com</code>。這些連線一樣強制 HTTPS。開關關著的時候不會發生。</li>
+</ul>
 
 <h2>4. 健康資料</h2>
 <ul>
   <li>經你同意後，本 App 會從 Apple「健康」<strong>唯讀</strong>取得三項數據：步數、步行與跑步距離、運動時間。</li>
   <li>用途只有一個：在畫面上顯示今天的數字，並提示你是否達到活動門檻。</li>
   <li><strong>健康資料完全不離開你的裝置。</strong>不上傳、不外傳、不用於產生任何要上傳的內容、不用於廣告或行銷、不提供給任何第三方。</li>
+  <li><strong>健康資料也不會進入使用統計。</strong>就算你打開了第 5 節的開關也一樣：步數、距離、運動時間的數值不送，
+      <strong>連「今天有沒有達標」這種從步數推算出來的是／否結論也不送</strong>。這不只是我們的偏好——Apple 明文禁止把 Apple 健康的資料分享給第三方，Google Firebase 就是第三方。
+      使用統計裡唯一跟健康沾上邊的一筆，是「這位使用者有沒有授權讀取步數」這個是／否，裡面沒有任何數值。</li>
   <li>本 App <strong>從不寫入</strong>任何健康資料。（iOS 要求帶有健康權限的 App 必須同時提供寫入用途說明，即使實際上不寫入，這就是那段說明存在的原因。）</li>
   <li>你可以隨時在「設定 › 隱私權與安全性 › 健康」中收回授權。</li>
 </ul>
 
-<h2>5. 兒童</h2>
+<h2 id="usage">5. 使用統計與當機回報（預設關閉）</h2>
+<div class="notice">
+  <strong>出廠是關的</strong>
+  App 安裝好之後，這項功能是關閉的，一個位元組都不會送出去。你要自己到「我的資料 › 安全與隱私 › 傳送匿名使用統計」把它打開，它才會開始運作。
+</div>
+<p>
+  <strong>為什麼預設關？</strong>因為 Firebase 只要一啟動，就會立刻產生一組安裝編號並送出一筆「首次開啟」。
+  如果預設是開的，你在還沒看到那個開關之前，資料就已經送出去了。我們不想那樣。
+</p>
+
+<h3>送出去的是什麼、送給誰</h3>
+<p>
+  收件者是 <strong>Google LLC</strong>（Firebase Analytics 與 Firebase Crashlytics），資料存放於 Google 位在美國的伺服器，適用
+  <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase 的隱私與安全性條款</a>。開發者透過 Firebase 主控台檢視彙總結果。
+</p>
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>類別</th><th>具體內容</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>匿名操作事件</td>
+      <td>「App 啟動了」、「看了哪一個分頁」（分頁名稱是程式裡寫死的固定清單，例如 <code>home</code>、<code>tasks</code>、<code>wallet</code>）、「使用者切換了這個統計開關」、以及 Firebase 自動記錄的基本事件（首次開啟、一次使用階段的開始與結束、App 版本更新）。</td>
+      <td>知道哪些畫面有人用、哪一步大家卡住</td>
+    </tr>
+    <tr>
+      <td>兩個是／否屬性</td>
+      <td>「有沒有授權讀取步數」、「有沒有完成初次設定」。<strong>只有是／否，沒有任何數值。</strong></td>
+      <td>區分不同狀態下的使用情形</td>
+    </tr>
+    <tr>
+      <td>當機與錯誤報告</td>
+      <td>當機的程式堆疊、手機型號、iOS 版本、App 版本、記憶體與空間餘量、當機時間、當機前停在哪一個畫面、當時是不是示範模式；以及非致命錯誤的錯誤代碼。錯誤訊息一律先經過遮罩處理才送出。</td>
+      <td>修 bug</td>
+    </tr>
+    <tr>
+      <td>一組隨機編號</td>
+      <td>Firebase 產生的安裝編號（app instance ID／installation UUID）。它是隨機的、可重置的，<strong>不是</strong>你的廣告識別碼，也沒有跟 iOS 的 vendor 識別碼綁定（這項已在設定中關閉），更沒有跟你的身分證號或任何帳號串接。</td>
+      <td>把同一支手機的事件歸在一起</td>
+    </tr>
+    <tr>
+      <td>粗略地區</td>
+      <td>Google 由連線 IP 推導出的國家層級位置。App 本身不使用定位，也沒有申請任何定位權限。</td>
+      <td>Google 端的基本統計</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>絕對不會送出的東西（就算開關打開也一樣）</h3>
+<ul>
+  <li><strong>身分證號、出生日期、手機號碼</strong>——任何形式都不行，包含雜湊、只取前幾碼、或跟別的字串拼在一起。</li>
+  <li><strong>Apple 健康的任何數據</strong>，以及任何從健康數據推算出來的結論（含「今天是否達標」）。</li>
+  <li>你上傳的截圖、或關於那張圖的任何資訊。</li>
+  <li>加碼券的券碼、條碼內容、兌換序號。</li>
+  <li>你在官方網站的登入憑證、cookie、驗證碼。</li>
+  <li>你自己輸入的任何文字，以及官方網站回傳的原始錯誤訊息。</li>
+</ul>
+<p>
+  這不是靠「我們記得不要送」來保證的。程式裡送得出去的事件名稱、參數與屬性都寫成<strong>固定的封閉清單</strong>，
+  自由輸入的字串在編譯階段就過不去；送出前還會再檢查一次內容有沒有長得像個資，像的話直接丟棄。
+  這段程式碼只有一個檔案（<code>App/Sources/App/Telemetry.swift</code>），是公開的，你可以自己去看。
+</p>
+
+<h3>怎麼關掉</h3>
+<ul>
+  <li>「我的資料 › 安全與隱私 › 傳送匿名使用統計」，把開關關掉即可，立刻停止收集。</li>
+  <li>按「立即清除本機資料」時，這個開關也會一併回到預設的關閉狀態。</li>
+  <li>進入示範模式時，不論開關是開是關，一律不送任何東西。</li>
+  <li>沒有廣告用途、沒有跨 App 追蹤，所以 App 不會、也無法跳出 iOS 的「要求追蹤」詢問。</li>
+</ul>
+
+<h2>6. 兒童</h2>
 <p>本 App 不針對兒童設計，也不會刻意蒐集兒童資料。活動參加資格以官方公告為準。</p>
 
-<h2>6. 怎麼刪除你的資料</h2>
+<h2>7. 怎麼刪除你的資料</h2>
 <ul>
   <li><strong>App 內：</strong>「我的資料」→「立即清除本機資料」，會永久刪除本機保存的全部欄位與登入狀態。</li>
   <li><strong>刪除 App：</strong>移除 App 時，Keychain 中屬於本 App 的資料一併移除。</li>
   <li><strong>官方網站上的帳號：</strong>本 App 無法代為刪除。請至 <a href="https://500.gov.tw/" target="_blank" rel="noopener">500.gov.tw</a> 自行管理。</li>
+  <li><strong>已經送到 Google 的使用統計：</strong>那裡沒有你的身分資料，所以無法用「你是誰」去查詢或刪除特定筆數。你能做的是把開關關掉停止繼續送出；已送出的資料由 Google 依 Firebase 的保存政策自動過期。</li>
 </ul>
 
-<h2>7. 你可以自己查證</h2>
+<h2>8. 你可以自己查證</h2>
 <p>
   「相信我們」不夠。本專案<strong>全部程式碼開源</strong>（MIT 授權），每一行處理個資的程式碼都可以逐行檢查：
   <a href="https://github.com/megshao/sports-rewards-ios" target="_blank" rel="noopener">github.com/megshao/sports-rewards-ios</a>
 </p>
 
-<h2>8. 政策變更</h2>
+<h2>9. 政策變更</h2>
 <p>本政策如有修改，會更新本頁最上方的「最後更新」日期。重大變更會在 App 更新說明中一併告知。</p>
 
-<h2>9. 聯絡方式</h2>
+<h2>10. 聯絡方式</h2>
 <p>對隱私有任何疑問，請來信：<a href="mailto:megshao0918@gmail.com">megshao0918@gmail.com</a></p>
 
 </main>

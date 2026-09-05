@@ -41,11 +41,11 @@
 
 <h2>你的資料在哪裡</h2>
 <ul>
-  <li><strong>沒有伺服器。</strong>這支 App 完全沒有後端，開發者收不到、也看不到你的任何資料。</li>
-  <li><strong>只連官方網站。</strong>App 只會連線到 500.gov.tw，其他網域一律阻擋，且強制 HTTPS。</li>
+  <li><strong>沒有自建伺服器。</strong>開發者沒有後端，收不到也看不到你的身分證號、生日、手機號碼或任何健康數據。</li>
+  <li><strong>App 自己只連官方網站。</strong>App 發出的請求只會到 500.gov.tw，其他網域一律阻擋，且強制 HTTPS。（你若自行開啟下面說的使用統計，Google Firebase 會另外走它自己的連線。）</li>
   <li><strong>個資只存本機。</strong>加密保存在 iOS Keychain，不同步 iCloud、不隨備份轉移，隨時可一鍵清除。</li>
-  <li><strong>健康資料不外傳。</strong>只讀不寫，數字只顯示在畫面上，不會被上傳。</li>
-  <li><strong>零第三方 SDK。</strong>沒有分析工具、沒有廣告、沒有追蹤。</li>
+  <li><strong>健康資料不外傳。</strong>只讀不寫，數字只顯示在畫面上，不會被上傳、也不會進入使用統計——連「今天有沒有達標」都不會送出去。</li>
+  <li><strong>使用統計預設是關的。</strong>App 內建 Google Firebase 的匿名使用統計與當機回報，<strong style="display:inline">出廠關閉</strong>，你自己去「我的資料 › 安全與隱私」打開才會開始送。沒有廣告、沒有廣告識別碼、不做跨 App 追蹤。</li>
 </ul>
 <p>詳細說明見 <a href="privacy.html">隱私權政策</a>。</p>
 
