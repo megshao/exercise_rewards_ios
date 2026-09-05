@@ -103,7 +103,9 @@ Sign-in requires real government-issued credentials that a reviewer cannot obtai
 The only conditional behaviour in the app is demo mode, and it is disclosed here, in the App Store Connect demo-account fields, and by a permanent on-screen banner while active. **There are no other hidden, dormant, or remotely-toggled features**, no remote configuration, no feature flags fetched from a server (there is no server), and no code that behaves differently for reviewers versus users beyond the sentinel credentials documented above.
 
 ### 4.1 — Copycats / Impersonation
-The app is named **"Sports Rewards"** — a neutral English name that is not the campaign's name. The icon carries no agency mark, national emblem, or campaign branding. The first paragraph of the App Store description, the first-run screen, and the in-app My Data screen all state plainly that this is an unofficial tool with no affiliation. The campaign name appears only in explanatory prose ("an unofficial tool that helps you take part in the 揮汗有禮 campaign"), never as an identity claim.
+The app is named **"Sports Rewards"** — a neutral English name that is not the campaign's name. The icon carries no agency mark, national emblem, or campaign branding. The first paragraph of the App Store description, the first-run screen, and the in-app My Data screen all state plainly that this is an unofficial tool with no affiliation.
+
+**Disclosed proactively:** the Home tab displays the campaign's Chinese name (揮汗有禮) as a section heading, so that users who came for that campaign recognise they are in the right place. We want to be explicit that this is a **descriptive reference to the campaign the app helps with, not a claim of identity or endorsement**. The app's own identity — on the App Store, on the Home screen icon, in the About footer (`Sports Rewards v1.0.0 · 非官方工具`), and on the first-run screen — is consistently **Sports Rewards**, and the App Store subtitle reads 「揮汗有禮非官方串接」, which places the word **非官方 ("unofficial")** directly against the campaign name. If the review team would prefer the campaign name removed from that heading as well, we will change it immediately on request.
 
 ### 5.1.1(ix) — Data collection for sensitive services
 The app **does not operate a service that collects data**. There is no backend; the developer receives nothing. The three identity fields the user types are stored only in that user's own device Keychain and are transmitted only to `500.gov.tw`, the site where the user already holds an account, to sign that user in. This is functionally equivalent to a password manager filling a government login form on the user's behalf. The app requests no name, no email, and no health-insurance card number, and it never asks for data that the official sign-in form does not itself require.
@@ -132,15 +134,22 @@ The app does not create accounts, so there is no app account to delete. Users ca
 
 # Part B — 內部備註（**不要貼給 Apple**）
 
-## B1. 送審前必須先修掉的東西（目前程式碼與 Part A 的敘述不符）
+## B1. 送審前必須先修掉的東西（狀態：2/3 已修）
 
-| # | 問題 | 位置 | 為什麼是 blocker |
+| # | 問題 | 位置 | 狀態 |
 |---|---|---|---|
-| 1 | 頁尾仍寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift:233` | (a) 顯示名已定案 `Sports Rewards`，App 內卻用活動名當自稱——**這正是 4.1／5.2.1 想避免的事**；(b) 版本寫 v0.1，與送審的 1.0 不符，屬 metadata 不一致。建議改為 `Sports Rewards 1.0 · 非官方工具（與運動部無關）`。 |
-| 2 | 首次啟動頁**沒有**非官方聲明 | `App/Sources/Views/OnboardingView.swift`（歡迎頁大標目前是「揮汗有禮」） | Part A §1 宣稱「三處揭露」，但目前**只有「我的資料」頁一處**。歡迎頁不但缺聲明，還把活動名當成 App 標題顯示。送審前必須：把大標改成 `Sports Rewards`（或中性標語），並在按鈕上方加一行「本 App 為非官方工具，與運動部無關」。 |
-| 3 | App 內沒有開源 repo 連結 | `docs/PRD.md §5.9` 標為「待補」 | Review Notes 拿開源當透明佐證，App 內卻連不過去。建議在「我的資料 → 安全與隱私」加一列「原始碼（GitHub）」。 |
+| 1 | 頁尾寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift` | ✅ **已修**：改為 `Sports Rewards v{CFBundleShortVersionString} · 非官方工具`，版本號改讀 Bundle，不再硬編碼。 |
+| 2 | 首次啟動頁沒有非官方聲明 | `App/Sources/Views/OnboardingView.swift` | ✅ **已修**：歡迎頁主標改為 `Sports Rewards`、副標說明用途，並新增非官方聲明卡。Part A §1 的「三處揭露」現已成立。 |
+| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ⬜ **未修**：Review Notes 拿開源當透明佐證，App 內卻連不過去。repo 網址已定（見 §3），建議加一列「原始碼（GitHub）」。 |
 
-**在 1 和 2 修好之前，Part A §1 的「三處揭露」是不實敘述，不可送出。**
+## B1b. 已知並接受的曝險：首頁標頭保留活動名
+
+`App/Sources/Views/HomeView.swift` 的首頁標頭仍以大字顯示「揮汗有禮」。
+
+- **這是使用者在知悉風險後的明確決定**（2026-09-05），理由是活動參加者的辨識度。
+- **代價**：這是全 App 對 guideline 4.1／5.2.1 曝險最大的一處——審查員打開 App，最顯眼的自稱是官方活動名，而商店名稱卻是 Sports Rewards。若官方日後推出自己的 App，此處會是最先被指為 impersonation 的地方。
+- **緩解**：已在 Part A §4.1 **主動向審查員揭露**這件事並說明它是描述性引用，同時表明「若審查團隊希望移除，我們立即照辦」。主動講比被抓到好。
+- **若被以 4.1／5.2.1 退件**：第一個該改的就是這裡（改成 `Sports Rewards` 或 `揮汗有禮·非官方`），成本只有一行文字。
 
 ## B2. 你必須自己補的資訊（Part A 裡的 `TODO(待填)`）
 

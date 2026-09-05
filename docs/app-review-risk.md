@@ -78,14 +78,27 @@
 
 | # | 降險項目 | 1.0 狀態 | 依據 |
 |---|---|---|---|
-| 1 | 改名為中性工具名 | ✅ 已做 | `CFBundleDisplayName = Sports Rewards`；「揮汗有禮」只當活動說明用語（`App/project.yml`、README） |
+| 1 | 改名為中性工具名 | ⚠️ 部分 | `CFBundleDisplayName = Sports Rewards`、商店名稱與副標已定案（副標「揮汗有禮非官方串接」——活動名緊接「非官方」）；**但首頁標頭仍以大字自稱「揮汗有禮」**（`HomeView`），見下方決策紀錄 |
 | 2 | 組織帳號提交 | ❌ 未做 | 仍為個人開發者帳號（`DEVELOPMENT_TEAM: 8DVXA389TX`）——**5.1.1(ix) 殘餘風險最高的一項** |
 | 3 | 身分證/健保卡/生日不落 Keychain | ⚠️ 部分 | 個資已最小化到登入必需三欄（身分證／生日／手機）；姓名／email／**健保卡卡號完全不收集**；idNo 與 birthDate 為登入必需仍存 Keychain |
-| 4 | HealthKit 只讀不傳 | ⚠️ 部分 | `requestAuthorization(toShare: [], read:)` 確為唯讀；但仍保留「以 HealthKit 數據產生上傳圖卡」路徑（同時提供 `PhotosPicker` 自選截圖） |
+| 4 | HealthKit 只讀不傳 | ✅ 已做 | `requestAuthorization(toShare: [], read:)` 唯讀；1.0 已移除「以 HealthKit 數據產生上傳圖卡」路徑，上傳一律由使用者以 `PhotosPicker` 自選截圖——健康資料完全不離開裝置，這是 5.1.3(i) 最有力的辯護點 |
 | 5 | 移除 WebView JS 注入 | ✅ 已做 | 全專案無 `WKWebView`／`WebKit`（`grep` 零命中），註冊改以外部 Safari 開官網 → 等同上表方案 **D** |
 | 6 | Demo Mode + 示範影片 | ⚠️ 部分 | `App/Sources/App/DemoMode.swift` 已實作（哨兵三碼、全 Mock、常駐橫幅、個資只在記憶體）；示範影片與 Review Notes 文字待補 |
 | 7 | 聯繫運動部取得「知悉不反對」 | ❌ 未做 | 5.2.2 授權文件仍拿不出 |
 | 8 | 隱私權政策 + 隱私標籤如實勾 | ❌ 待辦 | 需在 App Store Connect 填；Health 應為 Not Collected（不傳給開發者），身分資料屬「與第三方（500.gov.tw）分享」 |
+
+### 決策紀錄：首頁標頭保留「揮汗有禮」（2026-09-05）
+
+使用者在知悉風險後決定，`HomeView` 的首頁標頭**維持以大字顯示「揮汗有禮」**，理由是活動參加者的辨識度。
+
+- **曝險**：這是全 App 對 4.1／5.2.1 曝險最大的一處。審查員打開 App，最顯眼的自稱是官方活動名，
+  而商店名稱是 Sports Rewards——兩者不一致，且等同以官方活動名自稱。官方日後推出自有 App 時，
+  這裡會是最先被指為 impersonation 的地方（風險 #5）。
+- **已採取的緩解**：在 Review Notes 的 4.1 段落**主動揭露**此事，說明它是對「本 App 協助的活動」的
+  描述性引用而非身分宣稱，並表明若審查團隊希望移除，立即照辦。主動講遠優於被審查員自己發現。
+- **其餘自稱處已對齊**：Onboarding 主標、「我的資料」頁尾（`Sports Rewards v1.0.0 · 非官方工具`）、
+  商店名稱與描述，全部使用 Sports Rewards。
+- **若因 4.1／5.2.1 被退**：第一個該改的就是這個標頭，成本只有一行文字。
 
 ### Review Notes 必須主動揭露的三件事（2.3.1）
 1. **示範模式**：入口就是登入表單，輸入 `A000000000` / `1990-01-01` / `0900000000` 即進入；
