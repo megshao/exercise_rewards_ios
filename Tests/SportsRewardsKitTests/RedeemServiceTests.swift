@@ -3,7 +3,7 @@ import XCTest
 
 /// 驗證 RedeemService：不打真實網路，全部透過 MockHTTPClient（見 AuthServiceTests.swift）。
 final class RedeemServiceTests: XCTestCase {
-    private let taskID = "9f746d24-213d-43c8-b291-5183cab4c64f"
+    private let taskID = "00000000-0000-4000-8000-000000000001"
     private var redeemPath: String { "/member/redeem/\(taskID)" }
 
     private func loadFixture(_ name: String) throws -> String {
@@ -60,7 +60,7 @@ final class RedeemServiceTests: XCTestCase {
         let sut = RedeemService(http: mock)
 
         // Act
-        let result = try await sut.redeem(taskID: taskID, vendorId: "1", item: "item-20260904-family")
+        let result = try await sut.redeem(taskID: taskID, vendorId: "1", item: "test-item-0001")
 
         // Assert: GET 先於 POST，且 POST 帶正確 path / fields
         XCTAssertTrue(result.submitted)
@@ -69,9 +69,9 @@ final class RedeemServiceTests: XCTestCase {
         XCTAssertEqual(mock.postPaths, [redeemPath])
 
         let fields = try XCTUnwrap(mock.postFields[redeemPath])
-        XCTAssertTrue(fields.contains { $0.0 == "_csrf" && $0.1 == "vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo" })
+        XCTAssertTrue(fields.contains { $0.0 == "_csrf" && $0.1 == "test-csrf-token-member" })
         XCTAssertTrue(fields.contains { $0.0 == "vendorId" && $0.1 == "1" })
-        XCTAssertTrue(fields.contains { $0.0 == "item" && $0.1 == "item-20260904-family" })
+        XCTAssertTrue(fields.contains { $0.0 == "item" && $0.1 == "test-item-0001" })
     }
 
     func testRedeemReturnsNotSubmittedWhenStaysOnPageWith200() async throws {
@@ -82,7 +82,7 @@ final class RedeemServiceTests: XCTestCase {
         let sut = RedeemService(http: mock)
 
         // Act
-        let result = try await sut.redeem(taskID: taskID, vendorId: "1", item: "item-20260904-family")
+        let result = try await sut.redeem(taskID: taskID, vendorId: "1", item: "test-item-0001")
 
         // Assert
         XCTAssertFalse(result.submitted)
@@ -102,7 +102,7 @@ final class RedeemServiceTests: XCTestCase {
 
         // Act & Assert
         do {
-            _ = try await sut.redeem(taskID: taskID, vendorId: "1", item: "item-20260904-family")
+            _ = try await sut.redeem(taskID: taskID, vendorId: "1", item: "test-item-0001")
             XCTFail("expected throw")
         } catch let error as AppError {
             XCTAssertEqual(error, .unexpectedResponse(500))
@@ -119,7 +119,7 @@ final class RedeemServiceTests: XCTestCase {
 
         // Act & Assert
         do {
-            _ = try await sut.redeem(taskID: taskID, vendorId: "1", item: "item-20260904-family")
+            _ = try await sut.redeem(taskID: taskID, vendorId: "1", item: "test-item-0001")
             XCTFail("expected throw")
         } catch let error as AppError {
             XCTAssertEqual(error, .csrfNotFound)

@@ -18,7 +18,7 @@ final class CsrfParserTests: XCTestCase {
         let token = try CsrfParser.extract(from: html)
 
         // Assert
-        XCTAssertEqual(token, "PY9w6M-bRFEx9E9VWKqVIPnsr7zVB5lmK83v4lGfHQM")
+        XCTAssertEqual(token, "test-csrf-token-access")
     }
 
     func testExtractReturnsTokenFromLoginFixture() throws {
@@ -29,7 +29,7 @@ final class CsrfParserTests: XCTestCase {
         let token = try CsrfParser.extract(from: html)
 
         // Assert
-        XCTAssertEqual(token, "vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo")
+        XCTAssertEqual(token, "test-csrf-token-member")
     }
 
     func testExtractThrowsCsrfNotFoundOnEmptyString() {

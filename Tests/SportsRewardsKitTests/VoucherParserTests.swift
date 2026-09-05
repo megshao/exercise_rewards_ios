@@ -1,7 +1,7 @@
 import XCTest
 @testable import SportsRewardsKit
 
-/// 驗證 VoucherParser 對真實去識別化 fixture 的解析（見 Tests/SportsRewardsKitTests/Fixtures/
+/// 驗證 VoucherParser 對合成最小 fixture 的解析（見 Tests/SportsRewardsKitTests/Fixtures/
 /// voucher_view.html／voucher_verify_error.html）。純函式測試，不打網路。
 final class VoucherParserTests: XCTestCase {
     private func loadFixture(_ name: String) throws -> String {
@@ -40,7 +40,7 @@ final class VoucherParserTests: XCTestCase {
 
         let voucher = try VoucherParser.parseView(html: html)
 
-        XCTAssertTrue(voucher.vendorName.contains("萊爾富"), "vendorName was: \(voucher.vendorName)")
+        XCTAssertTrue(voucher.vendorName.contains("示範超商 C"), "vendorName was: \(voucher.vendorName)")
         XCTAssertTrue(voucher.itemName.contains("超值"), "itemName was: \(voucher.itemName)")
         XCTAssertTrue(voucher.expiry.contains("115"), "expiry was: \(voucher.expiry)")
     }

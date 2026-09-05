@@ -5,7 +5,7 @@ import XCTest
 /// 取 302 導向的絕對 Location（S3 presigned URL）。不打真實網路，全部透過 MockHTTPClient
 /// （見 AuthServiceTests.swift）。
 final class TasksServiceTests: XCTestCase {
-    private let taskID = "9f746d24-213d-43c8-b291-5183cab4c64f"
+    private let taskID = "00000000-0000-4000-8000-000000000001"
     private var screenshotPath: String { "/member/screenshot/\(taskID)" }
 
     func testScreenshotImageURLReturnsRedirectLocationVerbatim() async throws {

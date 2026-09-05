@@ -3,7 +3,7 @@ import XCTest
 
 /// 驗證 VoucherService：不打真實網路，全部透過 MockHTTPClient（見 AuthServiceTests.swift）。
 final class VoucherServiceTests: XCTestCase {
-    private let taskID = "9f746d24-213d-43c8-b291-5183cab4c64f"
+    private let taskID = "00000000-0000-4000-8000-000000000001"
     private var voucherPath: String { "/member/voucher/\(taskID)" }
     private var resendPath: String { "\(voucherPath)/resend" }
     private var viewPath: String { "\(voucherPath)/view" }
@@ -147,7 +147,7 @@ final class VoucherServiceTests: XCTestCase {
 
         XCTAssertEqual(mock.getPaths, [viewPath])
         XCTAssertEqual(voucher.figures.count, 2)
-        XCTAssertTrue(voucher.vendorName.contains("萊爾富"))
+        XCTAssertTrue(voucher.vendorName.contains("示範超商 C"))
     }
 
     func testFetchVoucherThrowsParsingWhenTaskIDEmpty() async {

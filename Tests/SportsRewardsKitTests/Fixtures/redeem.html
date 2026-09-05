@@ -1,375 +1,82 @@
-<!DOCTYPE html>
-<!--
-  兌換頁：依商家分組挑一個品項。
-
-  每個品項是自己的一支 <form method="post">。2026-08-30 起，JavaScript 會在真正送出前顯示
-  「確認／取消」對話框；沒有 JavaScript 或瀏覽器不支援 dialog 時，表單仍可直接送出，
-  後端的「每筆運動紀錄只能兌換一次」交易防線不受影響。
-
-  庫存只顯示「尚有」／「已索完」，不顯示張數：即時剩餘量會製造搶券壓力，
-  也會在最後一張被別人搶走時變成「明明顯示還有 1 張」的客訴（設計文件七）。
-
-  2026-08-27 起一家可以有多個品項（在那之前庫存查詢是 group by vendor_id，一家永遠只有一列）。
-  品項清單來自 voucher_item_catalog，不再由券池反推，所以：
-  ‧ 完全沒匯入過券的品項也會出現，標成「已索完」——要它徹底消失請用 catalog.listed = 0
-  ‧ 「已索完」的粒度是單一品項，同一家的其他品項照樣兌得到
-  隱藏的 item 欄位會原樣送回後端鎖定品項；它是使用者可竄改的，但配發查詢同時比對
-  vendor_id 與 item，偽造的值只會匹配不到任何列而得到「已索完」（見 VoucherRedeemService.redeem）。
-
-  2026-08-28 依畫面需求，廠商介紹頁改成每個品項列的「兌換品項」按鈕，放在「兌換」左側；
-  兩者使用相同的主按鈕樣式。介紹仍是廠商層級內容，因此同一廠商各列會指向同一頁。
-  連結只在該廠商真的有介紹頁時才出現：static/intro/vendor-<代碼>.html 這個檔案在不在
-  就是唯一的開關（見 VendorIntroPages），沒有另一份設定可以跟它不同步而生出 404。
-  另開新視窗是因為使用者正在挑品項，不該被帶離兌換流程；rel="noopener" 與 sr-only 的
-  「（另開新視窗）」是規約五的硬性要求。
-
-  introPath 一定要包在 @{...} 裡。VendorIntroPages 交出來的是不含 context-path 的
-  對外路徑（/intro/vendor-1.html），而 context-path 是 /registrant——直接輸出 ${...}
-  會少掉那一段，連結點下去就是 404。這正是「檔案在不在就是唯一開關」要避免的那種 404，
-  只是肇因在樣板而不在設定。
--->
-<html lang="zh-TW">
-<head>
-	<meta charset="utf-8">
-	<title>兌換好禮｜揮汗有禮・全民動起來</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-	<link rel="icon" type="image/png" sizes="64x64"
-		href="/registrant/images/sportscoin/sabo-icon.png">
-
-	
-	<!-- Global site tag (gtag.js) - Google Analytics（活動方提供的現行追蹤 ID，唯一來源） -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZT3BSJ50TW"></script>
-	<script>
-		window.dataLayer = window.dataLayer || [];
-		function gtag() { dataLayer.push(arguments); }
-		gtag('js', new Date());
-		gtag('config', 'G-ZT3BSJ50TW');
-	</script>
-
-
-	<!--
-	  先掛上 js class，CSS 才知道可以啟用導覽列收合。寫成 inline 是為了避免
-	  手機版在 nav.js 載入前先閃一次展開的選單
-	-->
-	<script>document.documentElement.className += ' js';</script>
-
-	<link rel="stylesheet" href="/registrant/css/sportscoin/tokens.css">
-	<link rel="stylesheet" href="/registrant/css/sportscoin/base.css">
-	<link rel="stylesheet" href="/registrant/css/sportscoin/layout.css">
-	<link rel="stylesheet" href="/registrant/css/sportscoin/components.css?v=20260901-roc-date">
-	<link rel="stylesheet" href="/registrant/css/sportscoin/pages.css?v=20260903-registration-pause">
-	<!-- 個別頁面的額外樣式（目前只有 register-nhi-mock 用到） -->
-	<!-- extraCss 加版本號，避免部署新版會員頁樣式後被瀏覽器沿用舊 CSS 快取 -->
-	<link rel="stylesheet"
-		href="/registrant/css/sportscoin/member.css?v=20260830-upload-flow2">
-
-	<script src="/registrant/vendor/alpinejs/alpine-3.15.12.min.js" defer></script>
-	<script src="/registrant/js/sportscoin/nav.js?v=20260830-id-uppercase" defer></script>
-	<script src="/registrant/js/sportscoin/registration-opening.js?v=20260831-1000" defer></script>
-</head>
-<body>
-
-	<div>
-
-	<!-- 頁內錨點，不能用 @{/}——那會跳回首頁而不是本頁的主要內容 -->
-	<a class="skip-link" href="#main">跳至主要內容</a>
-
-	<noscript>
-		<p class="notice notice--warning" style="margin: 8px 16px 0; text-align: center;">
-			本網站的部分功能（選單收合、驗證碼倒數）在 JavaScript 未啟用時無法使用，
-			但所有頁面與表單仍可正常瀏覽與送出。
-		</p>
-	</noscript>
-
-	<header class="site-header">
-		<div class="shell">
-			<a class="site-logo" href="/registrant/">
-				<img src="/registrant/images/sportscoin/homeicon.png"
-					width="420" height="123" alt="揮汗有禮・全民動起來 活動首頁" decoding="async">
-			</a>
-
-			<button type="button" class="menu-btn" id="menuBtn"
-				aria-label="開啟主選單" aria-expanded="false" aria-controls="siteNav">
-				<span></span>
-			</button>
-
-			<nav class="site-nav" id="siteNav" aria-label="主要導覽">
-				<ul>
-					<!-- 值為 null 時 Thymeleaf 會整個拿掉該屬性，所以非目前頁就不會有 aria-current -->
-					<li><a href="/registrant/">活動首頁</a></li>
-					<li><a href="https://500.gov.tw/news/115/運動幣全民運動加碼方案規劃-懶人包08261609_300dpi.pdf"
-						target="_blank" rel="noopener">懶人包</a></li>
-					<li><a href="/registrant/activity-rules">任務辦法</a></li>
-					<li><a href="https://500.gov.tw/news/115/115年揮汗有禮加碼活動使用說明_0831V4.pdf"
-						target="_blank" rel="noopener">操作手冊</a></li>
-					<!--
-					  已登入就換成「我的任務」，否則顯示「立即參加/登入「我的任務」」。loggedIn 由
-					  GlobalModelAttributes（@ControllerAdvice）帶進來，每一頁都有——
-					  這個 fragment 是全站共用的，靠各 controller 自己 addAttribute 遲早會漏。
-					  登出是 POST（見 LoginController.logout），不能做成導覽列的連結。
-					-->
-					<li><a href="/registrant/member/tasks" aria-current="page">我的任務</a></li>
-					
-				</ul>
-			</nav>
-		</div>
-	</header>
-</div>
-
-	<main id="main" tabindex="-1">
-		<div class="shell">
-			<div class="card card--wide">
-				<h1>兌換好禮</h1>
-
-				
-
-				<p class="step-pill">第 1 期</p>
-				<p class="lead">
-							選擇一家合作商家後即完成兌換，<strong>每筆運動紀錄只能兌換一次，送出後不可更換</strong>。
-					兌換期間至 <span>2026/09/01 ~ 2026/12/31</span>。
-				</p>
-
-				
-
-				<section class="vendor-group">
-					<h2 class="vendor-group__name">
-						<span>全家便利商店</span>
-					</h2>
-					<ul class="item-list">
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">50+3元加碼券</span>
-								
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-1.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（全家便利商店，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="全家便利商店" data-item-name="50+3元加碼券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="1">
-									<input type="hidden" name="item" value="item-20260904-family">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-					</ul>
-				</section>
-
-				<section class="vendor-group">
-					<h2 class="vendor-group__name">
-						<span>7-11</span>
-					</h2>
-					<ul class="item-list">
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">50+5元加碼券</span>
-								
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-2.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（7-11，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="7-11" data-item-name="50+5元加碼券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="2">
-									<input type="hidden" name="item" value="tmp-20260827-item-711">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-					</ul>
-				</section>
-
-				<section class="vendor-group">
-					<h2 class="vendor-group__name">
-						<span>萊爾富</span>
-					</h2>
-					<ul class="item-list">
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">50元加碼券</span>
-								
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-3.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（萊爾富，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="萊爾富" data-item-name="50元加碼券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="3">
-									<input type="hidden" name="item" value="tmp-20260827-item-hilife">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">超值商品券</span>
-								
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-3.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（萊爾富，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="萊爾富" data-item-name="超值商品券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="3">
-									<input type="hidden" name="item" value="tmp-20260822-item-hilife">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-					</ul>
-				</section>
-
-				<section class="vendor-group">
-					<h2 class="vendor-group__name">
-						<span>全聯</span>
-					</h2>
-					<ul class="item-list">
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">50元加碼券</span>
-								
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-5.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（全聯，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="全聯" data-item-name="50元加碼券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="5">
-									<input type="hidden" name="item" value="tmp-20260828-item-pxmart">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-					</ul>
-				</section>
-
-				<section class="vendor-group">
-					<h2 class="vendor-group__name">
-						<span>萬家福／樂家康</span>
-					</h2>
-					<ul class="item-list">
-						<li class="item-row">
-							<div class="item-row__details">
-								<span class="item-row__name">萬家福／樂家康 50 元加碼券＋5 元運動幣驚喜回饋券</span>
-								<span class="item-row__note">
-									※「5 元運動幣驚喜回饋券」將於消費者使用 50 元加碼券完成抵用後，由門市另行提供紙本券或電子券。
-								</span>
-							</div>
-
-							<div class="item-row__actions">
-								<a href="/registrant/intro/vendor-7.html"
-									target="_blank" rel="noopener"
-									class="btn btn--primary btn--small item-row__intro">兌換品項<span
-										class="sr-only">（萬家福／樂家康，另開新視窗）</span></a>
-
-								<form action="/registrant/member/redeem/9f746d24-213d-43c8-b291-5183cab4c64f"
-									method="post" class="item-row__form" data-vendor-name="萬家福／樂家康" data-item-name="萬家福／樂家康 50 元加碼券＋5 元運動幣驚喜回饋券">
-									<input type="hidden" name="_csrf" value="vgs1bXls3ux1FeeqX4gOfdCrQHvCHpXVZDmvcXqRKdo"/>
-									<input type="hidden" name="vendorId" value="7">
-									<input type="hidden" name="item" value="tmp20260827A">
-									<button type="submit" class="btn btn--primary btn--small">兌換</button>
-								</form>
-
-								
-							</div>
-						</li>
-					</ul>
-				</section>
-
-				<div class="actions">
-					<a href="/registrant/member/tasks" class="btn btn--secondary">回我的任務</a>
-				</div>
-			</div>
-		</div>
-	</main>
-
-	<dialog id="redeem-confirm-dialog" class="redeem-confirm" aria-labelledby="redeem-confirm-title">
-		<form method="dialog" class="redeem-confirm__panel">
-			<h2 id="redeem-confirm-title">確認兌換</h2>
-			<p id="redeem-confirm-message">確定要兌換這張加碼券嗎？兌換後不可更換。</p>
-			<div class="redeem-confirm__actions">
-				<button type="submit" value="cancel" class="btn btn--secondary">取消</button>
-				<button type="button" id="redeem-confirm-submit" class="btn btn--primary">確認</button>
-			</div>
-		</form>
-	</dialog>
-
-	<footer class="site-footer">
-	<div class="shell">
-		<div class="footer-row">
-			<div>客服電話：<a href="tel:0277523658">02-7752-3658</a></div>
-			<div>客服時間：週一至週日 0900 - 1800（12:00-13:00 暫停服務）</div>
-		</div>
-		<div class="footer-row">
-			<div>本網站支援 Edge、Google Chrome、Firefox 與 Safari 瀏覽器</div>
-			<div>最佳解析度：1920*1080</div>
-		</div>
-		<div class="footer-row">
-			<div>地址：10489 臺北市中山區朱崙街20號</div>
-		</div>
-
-		<div class="footer-badges">
-			<a href="https://accessibility.moda.gov.tw/Applications/Detail?category=20220622172837"
-				target="_blank" rel="noopener">
-				<img src="/registrant/images/sportAdmin/無障礙標章2.0AA級圖示.png"
-					width="88" height="31" alt="通過AA無障礙網頁檢測">
-				<span class="sr-only">（另開新視窗）</span>
-			</a>
-			<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener">
-				<img src="/registrant/images/sportAdmin/service.svg"
-					width="30" height="30" alt="">線上客服<span class="sr-only">（另開新視窗）</span>
-			</a>
-		</div>
-
-		<p class="copyright">運動部 2026©版權所有（所有圖資未經本部同意不得轉載及重製）</p>
-	</div>
-
-	<!-- 運動幣既有的文字客服小幫手：固定在右下角，點圖開啟客服；× 可暫時收起。 -->
-	<aside id="customerServiceHelper" class="customer-service-helper" aria-label="線上客服小幫手">
-	<button type="button" class="customer-service-helper__close" aria-label="收起線上客服小幫手"
-		onclick="document.getElementById('customerServiceHelper').classList.toggle('is-collapsed')">×</button>
-	<a href="https://twedu.qbicloud.com/webchat_sa/index.html" target="_blank" rel="noopener"
-		aria-label="開啟線上客服">
-		<img src="/registrant/images/sportscoin/customer-service-helper.webp" width="294" height="320"
-			alt="有問題請點我" decoding="async">
-	</a>
-</aside>
-</footer>
-	<script src="/registrant/js/sportscoin/redeem-confirm.js" defer></script>
-</body>
-</html>
+<title>Synthetic minimal test fixture. Not a copy of any official page; only the DOM contract RedeemParser depends on.</title>
+<main>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 A</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <span class="item-row__name">測試品項 A1</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 A" data-item-name="測試品項 A1">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="1">
+          <input type="hidden" name="item" value="test-item-0001">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 B</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <span class="item-row__name">測試品項 B1</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 B" data-item-name="測試品項 B1">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="2">
+          <input type="hidden" name="item" value="test-item-0002">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 C</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <span class="item-row__name">測試品項 C1</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 C" data-item-name="測試品項 C1">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="3">
+          <input type="hidden" name="item" value="test-item-0003">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+      <li class="item-row">
+        <span class="item-row__name">測試品項 C2 超值券</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 C" data-item-name="測試品項 C2 超值券">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="3">
+          <input type="hidden" name="item" value="test-item-0004">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超市 D</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <span class="item-row__name">測試品項 D1</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超市 D" data-item-name="測試品項 D1">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="5">
+          <input type="hidden" name="item" value="test-item-0005">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範量販 E</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <span class="item-row__name">測試品項 E1</span>
+        <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範量販 E" data-item-name="測試品項 E1">
+          <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+          <input type="hidden" name="vendorId" value="7">
+          <input type="hidden" name="item" value="test-item-0006">
+          <button type="submit">兌換</button>
+        </form>
+      </li>
+    </ul>
+  </section>
+</main>

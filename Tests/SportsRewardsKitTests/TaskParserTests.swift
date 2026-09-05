@@ -34,7 +34,7 @@ final class TaskParserTests: XCTestCase {
         XCTAssertEqual(first.index, 1)
         XCTAssertEqual(first.state, .redeemable)
         XCTAssertFalse(first.id.isEmpty)
-        XCTAssertEqual(first.id, "9f746d24-213d-43c8-b291-5183cab4c64f")
+        XCTAssertEqual(first.id, "00000000-0000-4000-8000-000000000001")
         XCTAssertEqual(first.startDate, "2026/09/01")
         XCTAssertEqual(first.endDate, "2026/09/06")
         XCTAssertEqual(first.remainingText, "剩 1 天 22 小時")
@@ -80,7 +80,7 @@ final class TaskParserTests: XCTestCase {
     }
 
     func testNotUploadedMapsToOpen() throws {
-        // 實測形狀：當期尚未上傳 = period-state--NOT_UPLOADED，應對到 .open（可上傳）。
+        // 當期尚未上傳 = period-state--NOT_UPLOADED，應對到 .open（可上傳）。
         let html = """
         <ul class="period-list">
         <li class="period-card period-card--current">
@@ -100,7 +100,7 @@ final class TaskParserTests: XCTestCase {
 
 
     func testUnderReviewMapsToPendingReview() throws {
-        // 實測：上傳後待審核的真實 class 是 UNDER_REVIEW。
+        // 上傳後待審核的 state class 是 UNDER_REVIEW，應對到 .pendingReview。
         let html = """
         <ul class="period-list">
         <li class="period-card">
