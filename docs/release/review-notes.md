@@ -56,7 +56,7 @@ Demo mode is **deliberately not a hidden gesture or secret build flag**. Its ent
 
 The complete source code is published under the **MIT license**. Every line that touches personal data, networking, or HealthKit can be audited independently.
 
-- Repository: `TODO(待填：開源 repo 網址)`
+- Repository: https://github.com/megshao/sports-rewards-ios
 - Files a reviewer may find most relevant:
   - `App/Sources/App/DemoMode.swift` — the demo mode described above
   - `Sources/SportsRewardsKit/Networking/` — the domain allowlist and HTTPS enforcement

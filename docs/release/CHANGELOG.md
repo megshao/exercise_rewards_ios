@@ -54,4 +54,4 @@
 - **不繞過任何身分驗證**：戶役政、健保卡、簡訊 OTP 皆為真實驗證，App 設計上不提供繞過路徑，也不提供任何可竄改運動數據的入口。
 - **`ITSAppUsesNonExemptEncryption=false`**：只使用系統 TLS，屬出口管制豁免。
 
-[1.0.0]: TODO(待填：開源 repo 的 release tag 連結，例 https://github.com/<org>/<repo>/releases/tag/v1.0.0)
+[1.0.0]: https://github.com/megshao/sports-rewards-ios/releases/tag/v1.0.0

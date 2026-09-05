@@ -87,10 +87,10 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 ・需要 iOS 16 以上，僅支援 iPhone 直向使用，介面為繁體中文。
 
 【回報問題】
-歡迎來信或到開源專案回報：TODO(待填：支援信箱／GitHub Issues 網址)
+歡迎來信或到開源專案回報：megshao0918@gmail.com
 ```
 
-**送審前必改**：最後一行的 `TODO(待填…)` 必須換成真實的支援信箱或 GitHub Issues 網址，否則等於在商店頁面留下佔位字串。
+**已填**：支援信箱 `megshao0918@gmail.com`（與 App Store Connect 開發者帳號一致）；另有 GitHub Issues：https://github.com/megshao/sports-rewards-ios/issues
 
 ---
 
@@ -133,15 +133,15 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 
 | 欄位 | 必填？ | 內容 | 狀態 |
 |---|---|---|---|
-| 支援 URL（Support URL） | **必填** | 需要一個能公開開啟、且有聯絡方式的網頁 | `TODO(待填)` |
-| 行銷 URL（Marketing URL） | 選填 | 產品介紹頁；沒有可留空 | `TODO(待填，可留空)` |
-| 隱私權政策 URL（Privacy Policy URL） | **必填** | 需要一個公開網址，內容須與 App 隱私標籤一致 | `TODO(待填)` |
+| 支援 URL（Support URL） | **必填** | 需要一個能公開開啟、且有聯絡方式的網頁 | `https://megshao.github.io/sports-rewards-ios/support.html` |
+| 行銷 URL（Marketing URL） | 選填 | 產品介紹頁；沒有可留空 | `https://megshao.github.io/sports-rewards-ios/`（首頁，可填可不填） |
+| 隱私權政策 URL（Privacy Policy URL） | **必填** | 需要一個公開網址，內容須與 App 隱私標籤一致 | `https://megshao.github.io/sports-rewards-ios/privacy.html` |
 
 ### 需要你補的內容
 
 1. **支援 URL**：最省事的做法是用開源 repo 的 README 或 GitHub Pages。需要包含：App 名稱、聯絡信箱、「這是非官方工具」聲明、常見問題（登入失敗怎麼辦、官網改版怎麼辦）。
-   - `TODO(待填：repo 網址／GitHub Pages 網址)`
-   - `TODO(待填：支援聯絡信箱)`
+   - https://github.com/megshao/sports-rewards-ios　/　https://megshao.github.io/sports-rewards-ios/
+   - megshao0918@gmail.com
 2. **隱私權政策 URL**：必須是**獨立可直接開啟**的網址（不能只是 App 內頁面）。內容至少要寫清楚：
    - 開發者不營運任何伺服器，不接收、不儲存任何使用者資料。
    - 使用者輸入的身分證號、出生日期、手機號碼只存在裝置本機 Keychain，登入時由裝置直送 `500.gov.tw`。
@@ -149,7 +149,7 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
    - HealthKit 資料唯讀、只在裝置顯示、不外傳、不寫入。
    - 使用者可隨時以「立即清除本機資料」永久刪除；刪除 App 亦同。
    - 聯絡方式與更新日期。
-   - `TODO(待填：隱私權政策網址)`　`TODO(待填：政策文件的法律責任主體名稱／個人姓名)`
+   - https://megshao.github.io/sports-rewards-ios/privacy.html　（責任主體：megshao，個人開發者）
 3. **行銷 URL**：可留空。若填，指向同一個 repo 頁面即可。
 
 ---
@@ -198,14 +198,14 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 | 是否使用加密 | 已在 Info.plist 宣告 `ITSAppUsesNonExemptEncryption = false`，App Store Connect 不會再問 | `App/project.yml` |
 | 廣告識別碼（IDFA） | **否** | 專案零第三方 SDK，無任何廣告或分析 |
 | 是否含第三方內容 | 否 | 零第三方相依 |
-| 版權（Copyright） | `TODO(待填：2026 <你的姓名或組織名>)` | 需與開發者帳號名稱相符 |
+| 版權（Copyright） | `2026 megshao` | 需與開發者帳號名稱相符 |
 | 帳號刪除（Guideline 5.1.1(v)） | App 內提供「立即清除本機資料」；官方帳號本身需到 `500.gov.tw` 處理——需在支援頁面提供官網帳號管理的深連結 | `docs/app-review-risk.md`；`App/Sources/Views/ProfileView.swift` |
 
 ---
 
 ## 11. 送審前檢查清單
 
-- [ ] 描述最後一行的 `TODO(待填)` 已換成真實聯絡方式
+- [x] 描述最後一行已換成真實聯絡方式（megshao0918@gmail.com）
 - [ ] 支援 URL 與隱私權政策 URL 都已填且可公開開啟
 - [ ] 隱私權政策內容與 `docs/release/privacy-labels.md` 的勾選完全一致
 - [ ] 示範帳號欄位已填入 `docs/release/review-notes.md` 所載的三碼
