@@ -379,15 +379,16 @@ final class SensitivePatternTests: XCTestCase {
     /// 這一條原本會無限期卡住：`.email` 樣式的 `[A-Za-z0-9._%+\-]+@` 遇到一長串
     /// 不含 `@` 的字元時會吃下整段再逐字元回溯（ReDoS）。修法是兩層——樣式改成
     /// 有界量詞，以及在掃描前先擋掉超過 `maxScanLength` 的輸入。
+    ///
+    /// 量的是 CPU 時間不是牆上時間：修好之後實測 0.17 秒，1.0 秒是 6 倍餘裕；
+    /// 但牆上時間會把「整包測試同時在跑別的東西」算進來，實測可以灌大到十幾倍而誤判。
+    /// 理由與數字見 `CPUTimeBudget.swift`。
     func testScrubVeryLongStringReturnsPromptly() {
         let padding = String(repeating: "x", count: 200_000)
         let text = padding + " 0912345678 " + padding
 
-        let start = Date()
-        let out = Redact.scrub(text)
-        let elapsed = Date().timeIntervalSince(start)
+        let out = assertCPUBudget(1.0, rounds: 2, "Redact.scrub 超長輸入") { Redact.scrub(text) }
 
-        XCTAssertLessThan(elapsed, 1.0, "超長輸入必須快速返回，實際花了 \(elapsed) 秒")
         // 只保留掃描過的前段，其餘截斷——沒掃過的內容不能留在輸出裡。
         XCTAssertTrue(out.hasSuffix("…[已截斷:超過 \(Redact.maxScanLength) 字元]"))
         XCTAssertLessThan(out.count, Redact.maxScanLength + 64)

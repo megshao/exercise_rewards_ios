@@ -55,14 +55,14 @@ final class HTMLEntitiesTests: XCTestCase {
     }
 
     /// 這支會吃到整頁 HTML 大小的輸入，必須是線性成本。
+    ///
+    /// 量 CPU 時間不是牆上時間——牆上時間量到的是「機器當下多忙」，
+    /// 整包測試一起跑時同一份工作可以被灌大十幾倍。理由見 `CPUTimeBudget.swift`。
     func testHandlesLongInputQuickly() {
         let input = String(repeating: "商品名稱 &amp; 說明 &#x27;A&#x27; ", count: 5_000)
 
-        let start = Date()
-        let decoded = HTMLEntities.decode(input)
-        let elapsed = Date().timeIntervalSince(start)
+        let decoded = assertCPUBudget(2.0, "HTMLEntities.decode 長輸入") { HTMLEntities.decode(input) }
 
         XCTAssertFalse(decoded.contains("&amp;"))
-        XCTAssertLessThan(elapsed, 2.0, "解碼耗時異常，可能不是線性掃描")
     }
 }
