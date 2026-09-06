@@ -1,6 +1,6 @@
 # App Store Connect 送審欄位（Sports Rewards v1.0.0）
 
-- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = 2（build 1 已上傳過 App Store Connect，同版本不可重複）
+- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = 4（build 4 於 2026-09-06 上傳並掛上版本記錄；build 1–3 已作廢）
 - **Bundle ID**：`com.megshao.sportsrewards`
 - **語系**：只提供「繁體中文（台灣）」一種 App Store 語系（App 本身鎖 zh-Hant，不提供英文介面）
 - **平台**：iOS 16.0 以上、僅 iPhone、僅直向
@@ -221,13 +221,20 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 ## 11. 送審前檢查清單
 
 - [x] 描述最後一行已換成真實聯絡方式（megshao0918@gmail.com）
-- [ ] 支援 URL 與隱私權政策 URL 都已填且可公開開啟
+- [x] 支援 URL 與隱私權政策 URL 都已填且可公開開啟（另已填行銷 URL、分類、版權、分級問卷、第三方內容宣告）
 - [ ] 隱私權政策內容與 `docs/release/privacy-labels.md` 的勾選完全一致
-- [ ] 示範帳號欄位已填入 `docs/release/review-notes.md` 所載的三碼
-- [ ] Review Notes 已貼上 `docs/release/review-notes.md` 內容
-- [ ] 截圖不含任何真實個資、不含政府識別標誌
+- [x] 示範帳號欄位已填入 `docs/release/review-notes.md` 所載的三碼
+- [x] Review Notes 已貼上 `docs/release/review-notes.md` 的 **Part A-短**（Part A 有 31,016 字元，超過欄位 4,000 上限）
+- [x] 截圖不含任何真實個資、不含政府識別標誌（7 張逐張目視確認，全為 `A000000000` / `1990/01/01` / `0900000000` 佔位值）
 - [ ] App 內殘留的舊字樣已更新（見 `review-notes.md` §殘留待辦）
 - [ ] 隱私標籤已依 `privacy-labels.md` **2026-09-06 大改後**的版本填寫（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data／Other Diagnostic Data 四格改為 Yes / Not Linked / 不追蹤）
 - [ ] 隱私權政策網頁 §5「使用統計與當機回報」已上線，且與隱私標籤逐格對得上
 - [ ] Firebase 主控台端設定已完成（資料保留最短、關 Google Signals、關廣告個人化、關精細位置、不開 BigQuery）——見 `privacy-labels.md` §6 的 TODO
-- [ ] 送審用的 archive 內**確實**含有正式專案的 `GoogleService-Info.plist`（它不進版控；缺檔時遙測全程 no-op，開關打開也不會送出任何東西）
+- [x] 送審用的 archive 內**確實**含有正式專案的 `GoogleService-Info.plist`（build 4 的 IPA 已解包確認，`.template` 未被打包）
+### 尚未完成、且需要你決定或只能在網頁後台做的
+
+- [ ] **App Review Information 的聯絡人**：姓名、電話、Email 三欄仍空白（`review-notes.md` §8 本來就標著 TODO）。這三欄不填不能送審。
+- [ ] **價格與供應地區**：`appPriceSchedule` 與 `appAvailabilityV2` 都還沒設定（API 回 404）。免費是定案的，但要上架到哪些地區（全球／只有台灣）沒人決定過。
+- [ ] **App Privacy 隱私標籤**：App Store Connect **沒有開放 API**，只能在網頁後台照 `privacy-labels.md` 逐格勾。
+- [ ] **What's New**：首次上架的版本記錄不接受這個欄位（API 回 `STATE_ERROR: Attribute 'whatsNew' cannot be edited at this time`），文案留在本文件 §6 待 1.0.1 用。
+

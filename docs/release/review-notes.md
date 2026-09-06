@@ -1,13 +1,14 @@
 # App Review Notes — Sports Rewards 1.0
 
-本檔案分兩部分：
+本檔案分三部分：
 
-- **Part A**：直接複製貼上到 App Store Connect 的 **App Review Information → Notes** 欄位（英文為主，關鍵處附中文）。
+- **Part A**：完整論述版，作為所有對外說法的單一事實來源。**它有 31,016 字元，塞不進 App Store Connect**（Notes 欄位上限 4,000 字元），所以不要直接貼。
+- **Part A-短**：實際貼進 **App Review Information → Notes** 的 3,975 字元版本，2026-09-06 已寫入 ASC。改 Part A 的任何對外說法時，這一份要一起改。
 - **Part B**：**不要貼給 Apple**，是給提交者的內部備註——殘餘風險、我們無法自行消除的部分、以及送審前必須先處理的待辦。
 
 ---
 
-# Part A — Paste into App Store Connect "Notes"
+# Part A — 完整論述版（**不要直接貼**，超過 4,000 字元上限；要貼的是 Part A-短）
 
 ## 1. What this app is (and is not)
 
@@ -197,6 +198,46 @@ The app does not create accounts, so there is no app account to delete. Users ca
 
 ---
 ---
+
+# Part A-短 — 實際貼進 App Store Connect 的版本（3,975 / 4,000 字元）
+
+> 2026-09-06 已由 API 寫入版本 1.0.0 的 `appStoreReviewDetail.notes`。
+> **這是從 Part A 壓縮來的，不是另一套說法**：Part A 的每一項對外主張都保留了，被刪掉的是舉例、
+> 交叉引用、以及重複的中文對照。修改前請先確認 `wc -m` 仍 ≤ 4000。
+> 另外兩個 Demo Account 欄位填的是：`demoAccountName` = `A000000000`、
+> `demoAccountPassword` = `1990-01-01 / 0900000000`（這個 App 沒有密碼，把生日與手機號放在這裡，
+> 讓只看欄位不看 Notes 的審查員也拿得到三碼）。
+
+```
+1) WHAT THIS IS — AN UNOFFICIAL APP
+Sports Rewards is an unofficial, personal-use companion app for a public exercise campaign in Taiwan ("揮汗有禮", run on 500.gov.tw). The developer is an independent individual, NOT affiliated with, endorsed by, sponsored by or authorized to represent the Ministry of Sports or any government agency. The App Store name is neutral: "Sports Rewards"; the campaign name appears only in the subtitle, immediately followed by "非官方" (unofficial). The icon carries no government emblem, agency name or "500", and the description's first paragraph says the app is unofficial. The app has no backend of its own: it is a native HTTPS client acting on the user's behalf, with credentials the user typed in, against their own account. Requests reach only 500.gov.tw; every other domain is blocked by an allowlist.
+
+2) DEMO ACCOUNT — REQUIRED TO REVIEW
+Real sign-in needs a valid Taiwan ID, date of birth and mobile number already on the government site, which a reviewer cannot obtain, so we ship a fully disclosed demo mode. Enter these in the app's sign-in form:
+  身分證號 (ID) = A000000000
+  出生日期 (Date of birth) = 1990-01-01
+  手機號碼 (Mobile) = 0900000000
+a. First launch shows a mandatory disclaimer ("使用前請先確認"): tick the checkbox, tap "同意並開始使用".
+b. Tap "開始使用" on the welcome screen.
+c. Type A000000000 into 身分證號.
+d. Tap 出生日期. The wheel defaults to the ROC calendar; use the segmented control to switch to 西元 (Gregorian), pick 1990 / 1 / 1, tap "完成". (1990-01-01 = 民國 79 年 1 月 1 日.)
+e. Type 0900000000 into 手機號碼, tap "送出並驗證".
+f. Demo mode starts, with a pinned black banner "示範模式 · 畫面為範例資料，未連線官方網站". All four tabs plus upload and redeem flows work with mock data.
+g. To exit: 我的資料 → 安全與隱私 → "離開示範模式".
+Not a hidden feature (2.3.1): the entry point is the ordinary sign-in form, it is documented here and in the Demo Account fields, and a permanent banner announces it. A000000000 fails the official ROC ID checksum, so no real user can trigger it accidentally. In demo mode every service is a mock: no network request, no Keychain write, no telemetry event.
+
+3) HEALTHKIT — READ-ONLY, NEVER TRANSMITTED
+Read access only, for stepCount, distanceWalkingRunning and appleExerciseTime, used only to show users their own daily activity on device and whether they met the campaign threshold. Health data never leaves the device — not to the government site, not to the developer (we run no server), and never to the telemetry SDK, not even a derived boolean such as "did the user hit today's goal", which Telemetry.swift forbids per 5.1.3. There is no write path and Health access is optional. NSHealthUpdateUsageDescription exists only to satisfy upload validation ITMS-90683; the app never writes health data.
+
+4) THIRD-PARTY SDK — FIREBASE ANALYTICS / CRASHLYTICS
+One third-party SDK, for anonymous usage stats and crash reports. None of it runs until the user accepts the mandatory first-run disclaimer, which states plainly that the app sends anonymous usage records and crash reports to Google Firebase. After acceptance it is on by default, switchable off any time in 我的資料 → 安全與隱私. It never receives the ID number, date of birth or mobile number in any form, health data, uploaded screenshots, voucher codes or user-typed text. No ads, no IDFA, no tracking: the binary links neither AdSupport nor AppTrackingTransparency, so no ATT prompt appears. Ordering note: the disclaimer precedes onboarding and demo mode starts inside it, so a reviewer's device contacts Google once, at acceptance, and nothing after.
+
+5) STORAGE AND DELETION (5.1.1(v))
+Those three fields are stored encrypted in the iOS Keychain on device, not synced to iCloud, not written to log files. "我的資料 → 立即清除本機資料" deletes them permanently and resets the consent record. The campaign account itself is managed by the user at 500.gov.tw.
+
+6) OPEN SOURCE (MIT)
+https://github.com/megshao/sports_rewards_ios — see DemoMode.swift, Telemetry.swift, SportsRewardsKit/Networking and /Security.
+```
 
 # Part B — 內部備註（**不要貼給 Apple**）
 
