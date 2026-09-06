@@ -231,10 +231,12 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 - [ ] 隱私權政策網頁 §5「使用統計與當機回報」已上線，且與隱私標籤逐格對得上
 - [ ] Firebase 主控台端設定已完成（資料保留最短、關 Google Signals、關廣告個人化、關精細位置、不開 BigQuery）——見 `privacy-labels.md` §6 的 TODO
 - [x] 送審用的 archive 內**確實**含有正式專案的 `GoogleService-Info.plist`（build 4 的 IPA 已解包確認，`.template` 未被打包）
-### 尚未完成、且需要你決定或只能在網頁後台做的
+### 送審前剩下的（只剩隱私標籤要人工做）
 
-- [ ] **App Review Information 的聯絡人**：姓名、電話、Email 三欄仍空白（`review-notes.md` §8 本來就標著 TODO）。這三欄不填不能送審。
-- [ ] **價格與供應地區**：`appPriceSchedule` 與 `appAvailabilityV2` 都還沒設定（API 回 404）。免費是定案的，但要上架到哪些地區（全球／只有台灣）沒人決定過。
+- [x] **App Review Information 的聯絡人**：REDACTED / REDACTED、`+886REDACTED`、`megshao0918@gmail.com`（見 `review-notes.md` §8）
+- [x] **價格與供應地區**：免費（`customerPrice 0 / proceeds 0`，基準地區 TWN），**只在台灣上架**——175 個地區只有 `TWN` 為 `available`，且 `availableInNewTerritories = false`，Apple 日後新增地區不會自動跟著上架。
+
+  > `POST /v2/appAvailabilities` 不接受「只列出要開的地區」：只給 `TWN` 會被逐一退回其餘 174 個地區的 `RELATIONSHIP.INVALID`。必須把全部地區都放進 `included`，各自帶 `available` 布林值，並用 `${local-id}` 格式的 inline id。
 - [ ] **App Privacy 隱私標籤**：App Store Connect **沒有開放 API**，只能在網頁後台照 `privacy-labels.md` 逐格勾。
 - [ ] **What's New**：首次上架的版本記錄不接受這個欄位（API 回 `STATE_ERROR: Attribute 'whatsNew' cannot be edited at this time`），文案留在本文件 §6 待 1.0.1 用。
 

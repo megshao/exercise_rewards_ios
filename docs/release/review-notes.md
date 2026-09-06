@@ -194,7 +194,17 @@ The app does not create accounts, so there is no app account to delete. Users ca
 
 ## 8. Contact
 
-`TODO(待填：送審聯絡人姓名、Email、電話——App Store Connect 的 App Review Information 也需要同一組資料)`
+已填入 App Store Connect 的 **App Review Information**（2026-09-06）：
+
+| 欄位 | 值 |
+|---|---|
+| Last Name / First Name | REDACTED / REDACTED |
+| Phone | `+886REDACTED` |
+| Email | `megshao0918@gmail.com` |
+
+**電話為什麼寫成 +886 開頭**：使用者給的是 `09REDACTED`，但審查員可能從美國撥號，本地格式的前導 0 撥不通，所以轉成國際格式。
+
+**Email 用 `megshao0918@gmail.com` 而不是開發者帳號的信箱**：對外文件（描述、支援頁、隱私權政策）一律用這個信箱，聯絡窗口跟著一致，審查員回信才不會落到使用者不看的地方。
 
 ---
 ---
