@@ -245,13 +245,13 @@
 </p>
 <p>
   步驟、每個操作預期會看到的請求、以及怎麼判斷有沒有異常，寫在
-  <a href="https://github.com/megshao/sports-rewards-ios/blob/main/docs/verify-network.md" target="_blank" rel="noopener">docs/verify-network.md</a>。
+  <a href="https://github.com/megshao/sports_rewards_ios/blob/main/docs/verify-network.md" target="_blank" rel="noopener">docs/verify-network.md</a>。
   門檻：要在手機上安裝並信任一張憑證，全程約 15 分鐘；驗完記得把憑證移除。
 </p>
 
 <h3>第 3 層：工程師——讀程式碼、重現建置</h3>
 <ul>
-  <li>原始碼全部公開（MIT 授權）：<a href="https://github.com/megshao/sports-rewards-ios" target="_blank" rel="noopener">github.com/megshao/sports-rewards-ios</a>。</li>
+  <li>原始碼全部公開（MIT 授權）：<a href="https://github.com/megshao/sports_rewards_ios" target="_blank" rel="noopener">github.com/megshao/sports_rewards_ios</a>。</li>
   <li>唯一會碰 Firebase 的檔案是 <code>App/Sources/App/Telemetry.swift</code>；網域白名單在 <code>Sources/SportsRewardsKit/Networking/URLSessionHTTPClient.swift</code>。從這兩個檔案開始讀，就能掌握全部的對外出口。</li>
   <li>相依套件鎖在 <code>App/Package.resolved</code>：13 個套件全部鎖到 git commit。跑 <code>./Scripts/bootstrap.sh</code> 會產生 Xcode 專案並套用同一份鎖定，建置時加 <code>-disableAutomaticPackageResolution</code>，拿到的就是跟我們一模一樣的相依組合。</li>
 </ul>

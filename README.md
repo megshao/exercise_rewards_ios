@@ -14,8 +14,8 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 | 平台 | iOS 16.0+，僅 iPhone、僅直向、介面固定繁體中文 |
 | 第三方相依 | 只有 firebase-ios-sdk（Analytics + Crashlytics），**初始化綁在免責聲明同意之後；同意後預設開啟、隨時可關** |
 | 授權 | MIT（[`LICENSE`](LICENSE)） |
-| 隱私權政策 | <https://megshao.github.io/sports-rewards-ios/privacy.html> |
-| 支援與 FAQ | <https://megshao.github.io/sports-rewards-ios/support.html> |
+| 隱私權政策 | <https://megshao.github.io/sports_rewards_ios/privacy.html> |
+| 支援與 FAQ | <https://megshao.github.io/sports_rewards_ios/support.html> |
 
 ---
 
@@ -28,11 +28,11 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 - **上傳的圖一律重新編碼**，把 EXIF（含 GPS）整段丟掉；編碼失敗時報錯而不是退回原檔。
 - **遙測綁在免責聲明的同意之後**：首次啟動先擋一張免責聲明，上面明寫「會把匿名操作紀錄與當機報告送給 Google Firebase」，按下同意才初始化 Firebase。同意之後**預設是開的**，可隨時到「我的資料 › 安全與隱私」關掉。這不是 opt-in，是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。個資與 HealthKit 衍生值（連「今日是否達標」的布林都算）在任何情況下都不進遙測。
 
-細節見下方[安全設計](#安全設計)，或直接讀[隱私權政策](https://megshao.github.io/sports-rewards-ios/privacy.html)。
+細節見下方[安全設計](#安全設計)，或直接讀[隱私權政策](https://megshao.github.io/sports_rewards_ios/privacy.html)。
 
 ## 開源到什麼程度可以被驗證
 
-開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/sports-rewards-ios/privacy.html#verify)：
+開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/sports_rewards_ios/privacy.html#verify)：
 
 1. **不用懂程式**：iOS 內建「App 隱私權報告」列出本 App 連過的網域。**在你按下免責聲明的「同意並開始使用」之前**，只該出現 `500.gov.tw`，以及看截圖時官方網站回傳的圖片儲存網域——那個時間點出現任何 Google 網域就是我們違約，歡迎打臉。同意之後出現 Google 網域是**預期中的**（統計在運作）；把開關關掉並完全重開 App，它們就該再次消失。
 2. **懂一點技術**：用 mitmproxy 看每一筆請求的內容——本 App 與 Firebase 都刻意不做 certificate pinning，就是為了讓你看得到。操作步驟與異常判準在 [`docs/verify-network.md`](docs/verify-network.md)。
@@ -177,4 +177,4 @@ SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 Ap
 
 MIT，見 [`LICENSE`](LICENSE)。變更紀錄見 [`CHANGELOG.md`](CHANGELOG.md)。
 
-問題回報：<https://github.com/megshao/sports-rewards-ios/issues>
+問題回報：<https://github.com/megshao/sports_rewards_ios/issues>

@@ -61,7 +61,7 @@ Demo mode is **deliberately not a hidden gesture or secret build flag**. Its ent
 
 The complete source code is published under the **MIT license**. Every line that touches personal data, networking, or HealthKit can be audited independently.
 
-- Repository: https://github.com/megshao/sports-rewards-ios
+- Repository: https://github.com/megshao/sports_rewards_ios
 - Files a reviewer may find most relevant:
   - `App/Sources/App/DemoMode.swift` — the demo mode described above
   - `Sources/SportsRewardsKit/Networking/` — the domain allowlist and HTTPS enforcement
@@ -206,7 +206,7 @@ The app does not create accounts, so there is no app account to delete. Users ca
 |---|---|---|---|
 | 1 | 頁尾寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift` | ✅ **已修**：改為 `Sports Rewards v{CFBundleShortVersionString} · 非官方工具`，版本號改讀 Bundle，不再硬編碼。 |
 | 2 | 首次啟動頁沒有非官方聲明 | `App/Sources/Views/OnboardingView.swift` | ✅ **已修**：歡迎頁主標改為 `Sports Rewards`、副標說明用途，並新增非官方聲明卡。Part A §1 的「三處揭露」現已成立。 |
-| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ✅ **已修**：新增「原始碼」一列，以外部 Safari 開啟 https://github.com/megshao/sports-rewards-ios（不用 WebView）。 |
+| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ✅ **已修**：新增「原始碼」一列，以外部 Safari 開啟 https://github.com/megshao/sports_rewards_ios（不用 WebView）。 |
 
 ## B1b. 已知並接受的曝險：首頁標頭保留活動名
 
