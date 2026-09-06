@@ -34,7 +34,7 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: - 設定
 
-    /// 每個等待步驟的逾時。Mock 服務刻意有 0.4~0.5 秒延遲，健康頁還會連抓 7 天資料。
+    /// 每個等待步驟的逾時。Mock 服務刻意有 0.4~0.5 秒延遲。
     private let timeout: TimeInterval = 25
 
     /// 寫檔目的地（由 `TEST_RUNNER_SCREENSHOT_OUTPUT_DIR` 指定）。沒設定就只走 XCTAttachment。
@@ -63,21 +63,46 @@ final class ScreenshotTests: XCTestCase {
 
     /// 依序拍完上架要用的 13 張畫面。刻意寫成單一測試方法，讓導覽順序固定、可重現。
     func testCaptureAppStoreScreenshots() throws {
-        try captureDisclaimer()
+        try captureWelcomeThenDisclaimer()
         try captureOnboardingAndLogin()
         try captureMainFlow()
     }
 
-    // MARK: - 第零段：免責聲明
+    // MARK: - 第零段：歡迎頁 → 免責聲明
 
-    /// 以「從未同意過」的狀態啟動，拍使用者開 App 看到的第一個畫面。
-    private func captureDisclaimer() throws {
+    /// 以「完全乾淨」的狀態啟動，驗證首次啟動的順序並拍前兩個畫面。
+    ///
+    /// **順序本身就是要守的東西**：歡迎頁必須在免責聲明**之前**。
+    /// 使用者連「這是什麼 App」都還不知道就被要求同意條款，是先前的問題。
+    /// **為什麼分兩次啟動、而不是按下「開始使用」走過去**：這些旗標是用啟動參數灌進去的，
+    /// 而啟動參數落在 `NSArgumentDomain`，優先於 App 寫回 standard domain 的值。
+    /// 也就是說測試裡按下按鈕也翻不動 `hasSeenWelcome`（既有的 `hasCompletedOnboarding`
+    /// 同理，所以原本的測試也是一段一段各自啟動）。
+    ///
+    /// 順序的保證改用另一種方式表達：**乾淨啟動時第一個畫面是歡迎頁，而且免責聲明
+    /// 的勾選框此時不存在**——這就足以證明聲明沒有搶在歡迎頁之前。
+    private func captureWelcomeThenDisclaimer() throws {
+        // 00 歡迎頁：完全乾淨的狀態。
+        let welcome = launch(demoMode: false, hasCompletedOnboarding: false,
+                             agreedDisclaimerVersion: 0, hasSeenWelcome: false)
+
+        XCTAssertTrue(welcome.buttons["welcome.start"].waitForExistence(timeout: timeout),
+                      "第一個畫面不是歡迎頁")
+        XCTAssertTrue(welcome.staticTexts["Sports Rewards"].exists, "歡迎頁沒有大標題")
+        XCTAssertFalse(welcome.buttons["disclaimer.agreeCheckbox"].exists,
+                       "免責聲明不該在歡迎頁之前出現")
+        settle()
+        capture(welcome, name: "00-welcome")
+        welcome.terminate()
+
+        // 01 免責聲明：已看過歡迎頁、但還沒同意。
         let app = launch(demoMode: false, hasCompletedOnboarding: false, agreedDisclaimerVersion: 0)
 
         let checkbox = app.buttons["disclaimer.agreeCheckbox"]
         XCTAssertTrue(checkbox.waitForExistence(timeout: timeout), "找不到免責聲明的同意勾選")
+        XCTAssertFalse(app.buttons["welcome.start"].exists, "看過歡迎頁之後不該再出現它")
         settle()
-        capture(app, name: "00-disclaimer")
+        capture(app, name: "01-disclaimer")
 
         // 順手驗證閘門：沒勾就不能繼續。
         XCTAssertFalse(app.buttons["disclaimer.continue"].isEnabled, "未勾選時「同意並開始使用」不該可按")
@@ -88,18 +113,12 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: - 第一段：Onboarding 導覽 + 個資填寫
 
-    /// 以「尚未完成導覽、非示範模式」的乾淨狀態啟動，拍歡迎頁與個資填寫頁。
+    /// 以「已看過歡迎頁、已同意聲明、尚未完成導覽」的狀態啟動，拍個資填寫頁。
     private func captureOnboardingAndLogin() throws {
         let app = launch(demoMode: false, hasCompletedOnboarding: false)
 
-        // 01 歡迎頁：品牌標題 + 一句隱私訴求（資料只存這支手機）。
-        XCTAssertTrue(app.buttons["開始使用"].waitForExistence(timeout: timeout), "找不到「開始使用」")
-        settle()
-        capture(app, name: "01-onboarding")
-
-        // 進入個資填寫頁，填入 App Store 審查用的示範三碼（DemoMode 的哨兵值，非真人個資）。
-        app.buttons["開始使用"].tap()
-
+        // 直接落在個資填寫頁（歡迎頁與聲明已在上一段走完）。
+        // 填入 App Store 審查用的示範三碼（DemoMode 的哨兵值，非真人個資）。
         // 填寫順序刻意安排成「手機 → 出生日期 → 身分證」：
         // 手機是數字鍵盤（沒有 return 鍵，收不掉），身分證是一般鍵盤，最後在它上面按一次
         // return 就能把鍵盤收乾淨——不然截圖會被鍵盤蓋掉半個畫面。
@@ -128,13 +147,12 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: - 第二段：示範模式下的主要畫面
 
-    /// 直接以示範狀態啟動（跳過導覽），逐一拍首頁 / 任務 / 健康 / 上傳 / 兌換 / 券夾 / 券碼 / 我的資料。
+    /// 直接以示範狀態啟動（跳過導覽），逐一拍首頁 / 任務 / 上傳 / 兌換 / 券夾 / 券碼 / 我的資料。
     private func captureMainFlow() throws {
         let app = launch(demoMode: true, hasCompletedOnboarding: true)
 
         captureHome(app)
         captureTasks(app)
-        captureHealth(app)
         captureUpload(app)
         captureTaskScreenshot(app)
         captureRedeem(app)
@@ -142,11 +160,10 @@ final class ScreenshotTests: XCTestCase {
         captureProfile(app)
     }
 
-    /// 03 首頁：步數環（示範資料 9,688 步 / 目標 8,000）＋ 本週任務摘要卡。
+    /// 03 首頁：本週任務摘要卡＋加碼券清單（最多五列）。
     private func captureHome(_ app: XCUIApplication) {
         XCTAssertTrue(app.staticTexts["本週任務"].waitForExistence(timeout: timeout), "首頁沒載入")
-        // 等健康摘要與任務資料都回來（Mock 有延遲），避免拍到讀取中的占位圖。
-        _ = app.staticTexts["9688"].waitForExistence(timeout: timeout)
+        // 等任務資料回來（Mock 有延遲），避免拍到讀取中的轉圈。
         _ = app.staticTexts["第 6 期"].waitForExistence(timeout: timeout)
         settle(1.2)
         capture(app, name: "03-home")
@@ -171,16 +188,6 @@ final class ScreenshotTests: XCTestCase {
         app.swipeDown()
         app.swipeDown()
         settle(1.2)
-    }
-
-    /// 05 健康數據：步數環、達標百分比、三張指標卡、達標徽章。
-    /// 這頁會連續抓 7 天資料算本週平均，等待時間拉長。
-    private func captureHealth(_ app: XCUIApplication) {
-        app.tabBars.buttons["健康"].tap()
-        XCTAssertTrue(app.navigationBars["健康數據"].waitForExistence(timeout: timeout), "健康頁沒載入")
-        _ = app.staticTexts["今日已符合任務條件"].waitForExistence(timeout: timeout)
-        settle(1.2)
-        capture(app, name: "05-health")
     }
 
     /// 06 上傳運動紀錄：從任務頁「上傳運動紀錄」進入，選一張相簿裡的示範截圖後拍預覽 + 確認上傳。
@@ -237,6 +244,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// 08 兌換好禮：從可兌換那期進入，列出合作商家品項。
+    /// 08b 可兌換商品：點該列的「兌換品項」，看該通路的加碼券能換什麼。
     private func captureRedeem(_ app: XCUIApplication) {
         let redeemButton = app.buttons["立即兌換"]
         XCTAssertTrue(redeemButton.waitForExistence(timeout: timeout), "找不到「立即兌換」")
@@ -246,9 +254,30 @@ final class ScreenshotTests: XCTestCase {
         settle(1.2)
         capture(app, name: "08-redeem")
 
+        captureVendorIntro(app)
+
         // 兌換頁沒有「關閉」鈕（設計上靠下滑關閉 sheet），這裡模擬下滑手勢。
         dismissSheetByDragging(app)
         _ = app.navigationBars["我的任務"].waitForExistence(timeout: timeout)
+    }
+
+    /// 08b 可兌換商品：分類卡（點開看品項）＋搜尋。
+    /// 這一頁是純資訊頁，不會送出任何東西，所以可以放心點。
+    private func captureVendorIntro(_ app: XCUIApplication) {
+        let introButton = app.buttons["查看全家便利商店可兌換商品"]
+        XCTAssertTrue(introButton.waitForExistence(timeout: timeout), "找不到「兌換品項」")
+        introButton.tap()
+
+        XCTAssertTrue(app.staticTexts["全部品項"].waitForExistence(timeout: timeout), "可兌換商品頁沒載入")
+        settle(1.0)
+
+        // 展開一張分類卡，讓截圖看得出「點分類就能看到品項」。
+        app.staticTexts["現煮咖啡"].tap()
+        settle(1.0)
+        capture(app, name: "08b-vendor-intro")
+
+        app.buttons["關閉"].tap()
+        _ = app.staticTexts["全家便利商店"].waitForExistence(timeout: timeout)
     }
 
     /// 09 券夾清單 + 10 加碼券券碼（需先完成簡訊 OTP 才會出示條碼）。
@@ -279,8 +308,96 @@ final class ScreenshotTests: XCTestCase {
         settle(1.5)
         capture(app, name: "10-voucher")
 
+        verifyMarkUsedFlow(app)
+
         app.buttons["關閉"].tap()
         _ = app.navigationBars["我的券夾"].waitForExistence(timeout: timeout)
+    }
+
+    /// 驗證「標記為已使用」：標記後該張券不再提供出示條碼的入口，且可以還原。
+    ///
+    /// 官網沒有「已使用」這個狀態（實測：用過的券在 `/member/tasks` 仍是 REDEEMED、
+    /// 仍掛著「檢視加碼券」），所以這個狀態完全由本機旗標 `VoucherUsage` 決定——
+    /// 也就是說**只有這個測試能守住它**。
+    private func verifyMarkUsedFlow(_ app: XCUIApplication) {
+        let markToggle = app.buttons["voucherMarkUsedToggle"]
+        XCTAssertTrue(markToggle.waitForExistence(timeout: timeout), "券碼頁沒有「標記為已使用」")
+        XCTAssertEqual(markToggle.label, "標記為已使用", "一開始應該是未標記狀態")
+
+        let unusedCount = app.buttons.matching(identifier: "檢視券碼").count
+        XCTAssertGreaterThan(unusedCount, 0, "券夾應該至少有一張可使用的券")
+
+        markToggle.tap()
+        settle()
+        XCTAssertEqual(markToggle.label, "還原成未使用", "標記後同一顆按鈕應該變成可還原")
+
+        // 回券夾：該張券要移到「已使用」區，且「檢視券碼」少一顆。
+        app.buttons["關閉"].tap()
+        XCTAssertTrue(app.navigationBars["我的券夾"].waitForExistence(timeout: timeout), "沒回到券夾")
+        let restore = app.buttons["walletRestoreUsed"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: timeout), "券夾沒出現「已使用」區")
+        settle(1.0)
+        XCTAssertEqual(app.buttons.matching(identifier: "檢視券碼").count, unusedCount - 1,
+                       "標記為已使用之後，那張券不該再提供「檢視券碼」")
+        capture(app, name: "09b-wallet-used")
+
+        verifyUsedStatePropagatesAcrossTabs(app)
+
+        // 還原，讓後面的步驟與重跑時的起始狀態一致。
+        app.tabBars.buttons["券夾"].tap()
+        let restoreAgain = app.buttons["walletRestoreUsed"].firstMatch
+        XCTAssertTrue(restoreAgain.waitForExistence(timeout: timeout), "回券夾後找不到「還原成未使用」")
+        restoreAgain.tap()
+        settle(1.0)
+        XCTAssertEqual(app.buttons.matching(identifier: "檢視券碼").count, unusedCount,
+                       "還原後「檢視券碼」應該回來")
+
+        // 後面接著要按「關閉」離開券碼頁，但券碼頁已經在上面關掉了——
+        // 重新進一次，讓 captureWalletAndVoucher 的收尾維持原本的形狀。
+        app.buttons["檢視券碼"].firstMatch.tap()
+        _ = app.buttons["發送簡訊驗證碼"].waitForExistence(timeout: timeout)
+    }
+
+    /// 在券夾標記完之後，切到「任務」與「首頁」分頁，兩邊都要立刻反映「已使用」。
+    ///
+    /// **這一段是回歸測試，不是截圖**。原本每個 ViewModel 各自抄一份 `VoucherUsage.usedIDs()`，
+    /// 於是在券夾標記完切回任務分頁，任務那份還是舊的——連下拉重新整理都救不了，
+    /// 因為下拉只重抓官網資料，而「已使用」根本不在官網資料裡。
+    /// 修法是共用一份 `VoucherUsageStore`（`@Published`）；這個測試守的就是那件事。
+    private func verifyUsedStatePropagatesAcrossTabs(_ app: XCUIApplication) {
+        // 任務分頁：那一期的卡片要出現本機標記說明，且不再提供「檢視加碼券」。
+        app.tabBars.buttons["任務"].tap()
+        XCTAssertTrue(app.navigationBars["我的任務"].waitForExistence(timeout: timeout), "任務頁沒載入")
+        settle(1.0)
+        XCTAssertTrue(
+            app.staticTexts
+                .containing(NSPredicate(format: "label CONTAINS %@", "本機紀錄顯示"))
+                .firstMatch.exists,
+            "在券夾標記後，任務頁沒有跟著顯示「已使用」——跨分頁同步壞了"
+        )
+
+        // 下拉重新整理不該把標記洗掉（它不在官網資料裡，重抓也不會回來）。
+        app.swipeDown()
+        settle(1.5)
+        XCTAssertTrue(
+            app.staticTexts
+                .containing(NSPredicate(format: "label CONTAINS %@", "本機紀錄顯示"))
+                .firstMatch.exists,
+            "下拉重新整理之後標記不見了"
+        )
+
+        // 首頁：那一列要標成「已使用」，而且**不放任何按鈕**——
+        // 首頁只負責讓人看出哪張還沒用，還原的入口留在券夾與券碼頁。
+        app.tabBars.buttons["首頁"].tap()
+        XCTAssertTrue(app.staticTexts["加碼券"].waitForExistence(timeout: timeout), "首頁沒載入")
+        settle(1.0)
+        XCTAssertTrue(
+            app.staticTexts
+                .containing(NSPredicate(format: "label CONTAINS %@", "已使用 · 本機紀錄"))
+                .firstMatch.exists,
+            "在券夾標記後，首頁那一列沒有跟著顯示「已使用」"
+        )
+        XCTAssertFalse(app.buttons["還原"].exists, "首頁不該出現「還原」按鈕")
     }
 
     /// 11 我的資料（上半：隱私三點聲明 + 三個遮罩欄位）
@@ -292,7 +409,7 @@ final class ScreenshotTests: XCTestCase {
         profileButton.tap()
 
         XCTAssertTrue(app.navigationBars["我的資料"].waitForExistence(timeout: timeout), "我的資料頁沒載入")
-        _ = app.staticTexts["個資不外傳，健康資料不出這支手機"].waitForExistence(timeout: timeout)
+        _ = app.staticTexts["個資不外傳，只在登入時送給官方網站"].waitForExistence(timeout: timeout)
         settle(1.2)
         capture(app, name: "11-profile")
 
@@ -319,13 +436,17 @@ final class ScreenshotTests: XCTestCase {
     private func launch(
         demoMode: Bool,
         hasCompletedOnboarding: Bool,
-        agreedDisclaimerVersion: Int = disclaimerCurrentVersion
+        agreedDisclaimerVersion: Int = disclaimerCurrentVersion,
+        hasSeenWelcome: Bool = true
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "-demoModeEnabled", demoMode ? "YES" : "NO",
             "-hasCompletedOnboarding", hasCompletedOnboarding ? "YES" : "NO",
             "-disclaimerAgreedVersion", String(agreedDisclaimerVersion),
+            // 首次啟動順序是 歡迎 → 免責聲明 → 個資填寫；預設跳過歡迎頁，
+            // 只有專門要拍它／驗證順序的那一段才傳 NO。
+            "-hasSeenWelcome", hasSeenWelcome ? "YES" : "NO",
             // 素材一律繁體中文（台灣）。
             "-AppleLanguages", "(zh-Hant)",
             "-AppleLocale", "zh_Hant_TW",
