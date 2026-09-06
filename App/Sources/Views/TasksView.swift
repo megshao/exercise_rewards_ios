@@ -245,14 +245,11 @@ private struct TaskPeriodCard: View {
                 }
             }
         case .open:
-            // 上傳窗已過就不給 CTA。舊版只看 state，於是過期未上傳的期別照樣畫出按鈕，
-            // 使用者要一路點進去、選好照片、按下「確認上傳」，才會被
-            // `UploadService.upload` 的 `windowClosed` 擋下來——那是事後攔截，不是預防。
-            if hasEnded {
-                Text("本期上傳期間已結束")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.Colors.dim)
-            } else {
+            // 「還能不能上傳」是狀態與日曆的合取，規則與踩過的坑都在
+            // `TaskPeriod.canUpload(now:)`——那條規則刻意放在 Kit，因為 App target 沒有單元
+            // 測試 target，寫在這個 private 卡片裡的判斷沒有任何測試搆得到（示範資料裡也沒有
+            // 「已過期但仍 `.open`」的期別，UI 測試同樣驗不到）。這裡只負責二選一。
+            if period.canUpload(now: now) {
                 Button {
                     onUploadTap()
                 } label: {
@@ -262,6 +259,10 @@ private struct TaskPeriodCard: View {
                     }
                 }
                 .buttonStyle(.huihanPrimary)
+            } else {
+                Text("本期上傳期間已結束")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.Colors.dim)
             }
         case .redeemed, .pendingReview:
             // 已兌換／審核中：只提供「看截圖」回顧當時上傳的內容，不再提供「立即兌換」
@@ -292,6 +293,46 @@ private struct TaskPeriodCard: View {
             EmptyView()
         }
     }
+}
+
+// MARK: - Preview
+
+/// 上傳鈕的兩種樣子並排。**這個預覽是有目的的**：`TaskPeriodCard.now` 一直寫著
+/// 「預覽與測試可注入固定時間」，但在這之前沒有任何地方注入過它——而「已過期卻仍
+/// `.open`」正是示範資料（`MockTasksService.sample(now:)` 的 14 期）與 UI 測試都做不出來的
+/// 那張卡片。這裡用一個固定的 `now` 把它畫出來，至少讓排版與文案有地方可以肉眼回歸。
+///
+/// 判斷本身不靠這個預覽把關——它在 `TaskPeriod.canUpload(now:)`，由 `UploadWindowTests` 守著。
+#Preview("可上傳 vs 已關窗") {
+    // 台北時間 2026/09/07 09:00：9/1~9/6 那期已關窗，9/7~9/13 那期正開著。
+    let now = TaskPeriod.activityCalendar.date(
+        from: DateComponents(year: 2026, month: 9, day: 7, hour: 9)
+    )!
+
+    return ScrollView {
+        VStack(spacing: 16) {
+            TaskPeriodCard(
+                period: TaskPeriod(id: "preview-open", index: 2,
+                                   startDate: "2026/09/07", endDate: "2026/09/13",
+                                   state: .open, remainingText: "剩 6 天 15 小時可上傳"),
+                isHighlighted: true, isVoucherUsed: false,
+                onRedeemTap: {}, onScreenshotTap: {}, onVoucherTap: {}, onUploadTap: {},
+                now: now
+            )
+            // 官網對這張卡片照樣回 `NOT_UPLOADED` 與倒數字串——刻意兩個都給，
+            // 預覽才反映得出真實資料的樣子（倒數會被 `showsRemaining` 擋掉）。
+            TaskPeriodCard(
+                period: TaskPeriod(id: "preview-closed", index: 1,
+                                   startDate: "2026/09/01", endDate: "2026/09/06",
+                                   state: .open, remainingText: "剩 3 小時可上傳"),
+                isHighlighted: true, isVoucherUsed: false,
+                onRedeemTap: {}, onScreenshotTap: {}, onVoucherTap: {}, onUploadTap: {},
+                now: now
+            )
+        }
+        .padding(20)
+    }
+    .background(Theme.Colors.background)
 }
 
 // MARK: - ViewModel

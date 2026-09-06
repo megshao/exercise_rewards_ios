@@ -365,7 +365,9 @@ private struct TaskSummaryCard: View {
     private var statusLine: some View {
         switch task.state {
         case .open:
-            if hasEnded {
+            // 與任務頁的上傳鈕走同一條規則（`TaskPeriod.canUpload(now:)`，由
+            // `UploadWindowTests` 守著），兩頁不會再各自寫一次「.open 且未過期」的合取。
+            if !task.canUpload(now: now) {
                 // 官網對過期未上傳的卡片仍會回倒數字串，照著顯示等於告訴使用者「還有時間」。
                 Text("本期已結束，未上傳運動紀錄")
                     .font(.system(size: 12)).foregroundStyle(Theme.Colors.dim)
