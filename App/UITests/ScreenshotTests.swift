@@ -63,8 +63,27 @@ final class ScreenshotTests: XCTestCase {
 
     /// 依序拍完上架要用的 13 張畫面。刻意寫成單一測試方法，讓導覽順序固定、可重現。
     func testCaptureAppStoreScreenshots() throws {
+        try captureDisclaimer()
         try captureOnboardingAndLogin()
         try captureMainFlow()
+    }
+
+    // MARK: - 第零段：免責聲明
+
+    /// 以「從未同意過」的狀態啟動，拍使用者開 App 看到的第一個畫面。
+    private func captureDisclaimer() throws {
+        let app = launch(demoMode: false, hasCompletedOnboarding: false, agreedDisclaimerVersion: 0)
+
+        let checkbox = app.buttons["disclaimer.agreeCheckbox"]
+        XCTAssertTrue(checkbox.waitForExistence(timeout: timeout), "找不到免責聲明的同意勾選")
+        settle()
+        capture(app, name: "00-disclaimer")
+
+        // 順手驗證閘門：沒勾就不能繼續。
+        XCTAssertFalse(app.buttons["disclaimer.continue"].isEnabled, "未勾選時「同意並開始使用」不該可按")
+        checkbox.tap()
+        settle()
+        XCTAssertTrue(app.buttons["disclaimer.continue"].isEnabled, "勾選後「同意並開始使用」應可按")
     }
 
     // MARK: - 第一段：Onboarding 導覽 + 個資填寫
@@ -283,19 +302,30 @@ final class ScreenshotTests: XCTestCase {
         capture(app, name: "12-profile-security")
     }
 
+    /// 對應 App 端的 `DisclaimerView.currentVersion`。UI 測試 target 不連 App 原始碼，
+    /// 所以這裡是手抄的——App 端提版本號時，這裡要跟著改。
+    private static let disclaimerCurrentVersion = 1
+
     // MARK: - 工具
 
     /// 用固定的啟動參數啟動 App，讓每次跑的初始狀態都一樣。
     /// - `-demoModeEnabled`：`DemoMode.storageKey`，YES 代表整個 App 走 Mock 服務、不連網。
     /// - `-hasCompletedOnboarding`：`RootView` 用來決定要不要先跑一次導覽。
+    /// - `-disclaimerAgreedVersion`：免責聲明的同意版本。除了要拍那張聲明畫面之外，
+    ///   一律直接給當前版本號跳過，否則每個流程都要先點一次同意。
     ///
-    /// 這兩個值是走 `NSArgumentDomain`，優先權高於 App 自己寫進 UserDefaults 的值，
+    /// 這些值走 `NSArgumentDomain`，優先權高於 App 自己寫進 UserDefaults 的值，
     /// 因此不會被上一次執行留下的狀態污染。
-    private func launch(demoMode: Bool, hasCompletedOnboarding: Bool) -> XCUIApplication {
+    private func launch(
+        demoMode: Bool,
+        hasCompletedOnboarding: Bool,
+        agreedDisclaimerVersion: Int = disclaimerCurrentVersion
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "-demoModeEnabled", demoMode ? "YES" : "NO",
             "-hasCompletedOnboarding", hasCompletedOnboarding ? "YES" : "NO",
+            "-disclaimerAgreedVersion", String(agreedDisclaimerVersion),
             // 素材一律繁體中文（台灣）。
             "-AppleLanguages", "(zh-Hant)",
             "-AppleLocale", "zh_Hant_TW",

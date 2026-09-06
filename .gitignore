@@ -29,3 +29,6 @@ GoogleService-Info.plist
 *.xcarchive/
 .env
 .env.*
+
+# Claude Code 的本機設定與測試工具（含連官方站的探測腳本，不進公開 repo）
+.claude/

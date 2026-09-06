@@ -362,6 +362,9 @@ struct ProfileView: View {
         TasksCache.clear()
         // 遙測偏好也算「本機資料」：清除後回到預設的關閉狀態，並立刻停止收集。
         Telemetry.resetPreference()
+        // 免責聲明的同意紀錄也屬於「初次設定狀態」的一部分：清除後下次開 App
+        // 會再看到一次聲明。
+        DisclaimerConsent.reset()
         UserDefaults.standard.removeObject(forKey: "com.megshao.sportsrewards.health.didRequestAuthorization")
         // 官方站的登入 cookie 是持久化在 App 沙盒容器、跨啟動續用的；只清 Keychain 個資
         // 並不會登出。不一併清掉就與這顆按鈕（與隱私說明）承諾的「清除本機所有資料」不符。

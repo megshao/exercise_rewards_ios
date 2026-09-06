@@ -39,10 +39,17 @@ struct HuihanApp: App {
 /// App 根導覽：先跑一次 Onboarding（首次啟動），之後進到主要的 TabView。
 struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    /// 已同意的免責聲明版本；0 代表從未同意。用版本號而非布林，是為了日後修改
+    /// 聲明內容時能讓舊使用者重新同意（把 `DisclaimerView.currentVersion` 加一即可）。
+    @AppStorage(DisclaimerConsent.versionKey) private var agreedVersion = 0
 
     var body: some View {
         Group {
-            if hasCompletedOnboarding {
+            if agreedVersion < DisclaimerView.currentVersion {
+                // 擋在 Onboarding 之前：使用者填第一個欄位之前就該知道這是非官方工具、
+                // 以及活動問題該找誰。
+                DisclaimerView(onAgree: { DisclaimerConsent.record() })
+            } else if hasCompletedOnboarding {
                 RootTabView()
             } else {
                 OnboardingView(onFinish: { hasCompletedOnboarding = true })
