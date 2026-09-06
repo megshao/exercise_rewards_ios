@@ -1,6 +1,8 @@
 # App Store Connect 送審欄位（Sports Rewards v1.0.0）
 
-- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = 4（build 4 於 2026-09-06 上傳並掛上版本記錄；build 1–3 已作廢）
+- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = **5**（送審版）
+  - build 4 於 2026-09-06 上傳並掛上版本記錄，但**移除 HealthKit 等變更都在那之後**，因此 1.0.0 送審改用 build 5；build 1–4 皆作廢。
+  - build 5 對應 git tag `v1.0.0`。
 - **Bundle ID**：`com.megshao.sportsrewards`
 - **語系**：只提供「繁體中文（台灣）」一種 App Store 語系（App 本身鎖 zh-Hant，不提供英文介面）
 - **平台**：iOS 16.0 以上、僅 iPhone、僅直向
@@ -228,7 +230,7 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 - [ ] 隱私標籤已依 `privacy-labels.md` **2026-09-06 大改後**的版本填寫（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data／Other Diagnostic Data 四格改為 Yes / Not Linked / 不追蹤）
 - [ ] 隱私權政策網頁 §5「使用統計與當機回報」已上線，且與隱私標籤逐格對得上
 - [ ] Firebase 主控台端設定已完成（資料保留最短、關 Google Signals、關廣告個人化、關精細位置、不開 BigQuery）——見 `privacy-labels.md` §6 的 TODO
-- [x] 送審用的 archive 內**確實**含有正式專案的 `GoogleService-Info.plist`（build 4 的 IPA 已解包確認，`.template` 未被打包）
+- [ ] 送審用的 archive 內**確實**含有正式專案的 `GoogleService-Info.plist`（build 4 曾解包確認過；**build 5 要重新確認一次**，`.template` 不可被打包）
 ### 送審前剩下的（只剩隱私標籤要人工做）
 
 - [x] **App Review Information 的聯絡人**：REDACTED / REDACTED、`+886REDACTED`、`megshao0918@gmail.com`（見 `review-notes.md` §8）
