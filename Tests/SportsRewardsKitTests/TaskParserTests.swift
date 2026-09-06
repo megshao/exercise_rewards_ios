@@ -186,4 +186,43 @@ final class TaskParserTests: XCTestCase {
         // Assert
         XCTAssertEqual(periods.first?.voucherSummary, "全家便利商店／50+3元加碼券 & 贈品")
     }
+
+    // MARK: - 端到端回歸：真實頁面 + 真實日期
+
+    /// **回報的 bug（2026-09-07）**：拿官網真的回的那份 HTML，走完整條路徑
+    /// （解析 → 挑當期），9/7 當天必須選到第 2 期（9/7~9/13），而不是已經過完的第 1 期。
+    ///
+    /// 這張 fixture 正是踩雷的形狀：卡片 1→14 遞增，第 1 期已 `REDEEMABLE`、
+    /// 第 2 期仍 `NOT_STARTED`。舊的「取第一個非 notStarted」在這裡必然選錯。
+    func testCurrentPeriodOnTheRealPageAdvancesOnTheSeventh() throws {
+        let periods = try TaskParser.parse(html: loadFixture("member_tasks"))
+        let sept7 = TaskPeriod.activityCalendar
+            .date(from: DateComponents(year: 2026, month: 9, day: 7, hour: 9))!
+
+        let current = TaskPeriod.current(in: periods, now: sept7)
+
+        XCTAssertEqual(current?.index, 2)
+        XCTAssertEqual(current?.startDate, "2026/09/07")
+        XCTAssertEqual(current?.endDate, "2026/09/13")
+    }
+
+    /// 同一份頁面：第 1 期在 9/7 必須被判定為已結束，上傳 CTA 才會收起來。
+    func testFirstPeriodOnTheRealPageHasEndedOnTheSeventh() throws {
+        let periods = try TaskParser.parse(html: loadFixture("member_tasks"))
+        let sept7 = TaskPeriod.activityCalendar
+            .date(from: DateComponents(year: 2026, month: 9, day: 7, hour: 9))!
+
+        XCTAssertTrue(periods[0].hasEnded(now: sept7))
+        XCTAssertFalse(periods[1].hasEnded(now: sept7))
+    }
+
+    /// 官網每一期的日期都必須解析得出來。這條在官網改日期格式時會第一個亮紅燈，
+    /// 提醒我們當期判斷已經默默退回舊的狀態啟發式了。
+    func testEveryPeriodOnTheRealPageHasAParseableDateSpan() throws {
+        let periods = try TaskParser.parse(html: loadFixture("member_tasks"))
+        for period in periods {
+            XCTAssertNotNil(period.dateSpan,
+                            "第 \(period.index) 期的日期 \(period.startDate) ~ \(period.endDate) 解析失敗")
+        }
+    }
 }

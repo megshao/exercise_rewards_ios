@@ -82,6 +82,78 @@ public struct TaskPeriod: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+// MARK: - 期別的日期區間
+//
+// `startDate` / `endDate` 從官網來、型別是 `String`，在 v1.0.0 之前**沒有任何程式碼讀過它們**
+// ——只被 `Text(...)` 印出來。結果是「本週」與「上傳窗是否還開著」兩件事都改用狀態去猜，
+// 猜錯了就整整 14 期停在第 1 期（見 `HomeViewModel.highlightedPeriod`）。
+// 這個 extension 補上那塊缺口：把字串真的當日期用。
+extension TaskPeriod {
+    /// 活動所在時區的西曆行事曆。
+    ///
+    /// 官網的期別日期只有 `yyyy/MM/dd`、**不帶時區**，語意是台北當地的那一天。
+    /// 若跟著裝置時區跑，出國的使用者會在跨日前後看到錯誤的當期。
+    public static let activityCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        // 這個識別字在 Apple 平台一定存在；真的取不到才退回固定 +8，不讓它變成裝置時區。
+        calendar.timeZone = TimeZone(identifier: "Asia/Taipei")
+            ?? TimeZone(secondsFromGMT: 8 * 3600)
+            ?? .gmt
+        return calendar
+    }()
+
+    /// 把官網的 `yyyy/MM/dd` 解成當天零點（台北時間）。
+    ///
+    /// **刻意不用 `DateFormatter`**：它會吃裝置的行事曆設定，使用者若把系統切成民國曆，
+    /// `yyyy` 會被當成民國年解析（2026 → 西元 3937）。這裡只認純數字，沒有這個風險。
+    ///
+    /// 同時擋掉「日曆會自動進位」的坑：`2026/02/30` 交給 `Calendar` 會變成 3/2，
+    /// 因此解出來之後再回頭核對年月日三個欄位，對不上就視為解析失敗。
+    static func startOfDay(fromSiteDate text: String) -> Date? {
+        let parts = text.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0].count == 4,
+              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
+              let date = activityCalendar.date(from: DateComponents(year: year, month: month, day: day))
+        else { return nil }
+
+        let roundTrip = activityCalendar.dateComponents([.year, .month, .day], from: date)
+        guard roundTrip.year == year, roundTrip.month == month, roundTrip.day == day else { return nil }
+        return date
+    }
+
+    /// 這一期涵蓋的時間區間：`startDate` 當天零點起，到 `endDate` **當天結束**為止。
+    ///
+    /// 上界取隔天零點（半開區間）——官網的 `endDate` 是包含當天的，
+    /// 9/1~9/6 這一期在 9/6 23:59 仍然是進行中。
+    ///
+    /// 任一端解析失敗就回傳 `nil`。官網的 markup 不是契約（見 commit `c2db9b4`），
+    /// 呼叫端**必須**有一條不看日期的退路。
+    public var dateSpan: DateInterval? {
+        guard let start = Self.startOfDay(fromSiteDate: startDate),
+              let lastDay = Self.startOfDay(fromSiteDate: endDate),
+              let end = Self.activityCalendar.date(byAdding: .day, value: 1, to: lastDay),
+              start < end
+        else { return nil }
+        return DateInterval(start: start, end: end)
+    }
+
+    /// `now` 是否落在這一期之內（含起訖日當天）。日期解析不出來時回傳 `false`。
+    public func isCurrent(now: Date) -> Bool {
+        guard let span = dateSpan else { return false }
+        // 不用 `DateInterval.contains`：它的上界是閉的，會讓隔天零點整同時屬於兩期。
+        return span.start <= now && now < span.end
+    }
+
+    /// 這一期是否已經整個過完（`endDate` 當天已結束）。
+    ///
+    /// 日期解析不出來時回傳 `false`——寧可讓一個已過期的上傳鈕留著（送出時伺服器仍會擋，
+    /// 見 `UploadService.upload`），也不要因為官網改了日期格式就把還開著的窗誤擋掉。
+    public func hasEnded(now: Date) -> Bool {
+        guard let span = dateSpan else { return false }
+        return now >= span.end
+    }
+}
+
 /// 登入結果分流。
 public enum LoginOutcome: Equatable, Sendable {
     case success                 // 302 -> /member/tasks
