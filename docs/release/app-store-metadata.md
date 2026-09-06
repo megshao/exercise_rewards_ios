@@ -1,8 +1,9 @@
 # App Store Connect 送審欄位（Sports Rewards v1.0.0）
 
-- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = **5**（送審版）
-  - build 4 於 2026-09-06 上傳並掛上版本記錄，但**移除 HealthKit 等變更都在那之後**，因此 1.0.0 送審改用 build 5；build 1–4 皆作廢。
-  - build 5 對應 git tag `v1.0.0`。
+- **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = **6**（送審版）
+  - build 4 於 2026-09-06 上傳並掛上版本記錄，但**移除 HealthKit 等變更都在那之後**，因此 1.0.0 不使用 build 4。
+  - build 5 曾在本機封存過，未上傳；隨後又修掉「本週任務不會換期」與「過期期別仍可點上傳」兩個 bug，因此送審用 build 6。build 1–5 皆作廢。
+  - build 6 對應 git tag `v1.0.0`。
 - **Bundle ID**：`com.megshao.sportsrewards`
 - **語系**：只提供「繁體中文（台灣）」一種 App Store 語系（App 本身鎖 zh-Hant，不提供英文介面）
 - **平台**：iOS 16.0 以上、僅 iPhone、僅直向
