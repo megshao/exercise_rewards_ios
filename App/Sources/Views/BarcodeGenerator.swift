@@ -2,10 +2,11 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import UIKit
 
-/// 用 CoreImage 依 `data-format` 即時生成券碼圖。官網前端本身是用 JsBarcode/node-qrcode
-/// 依 `data-value`/`data-format` 產生，App 端沒有
-/// 那兩個套件，改用系統內建的 CoreImage 濾鏡在本機重畫同一組資料——**條碼是純粹依號碼值算出
-/// 的圖形**，不是官網資產，本地重畫並不違反「不得引用外部網域」的限制。
+/// 用 CoreImage 依 `data-format` 即時生成券碼圖。
+///
+/// **條碼是純粹依號碼值算出的圖形**，不是需要下載的圖片資產——所以拿到號碼與格式之後，
+/// 用系統內建的 CoreImage 濾鏡在本機畫出來就行，不必（也不該）為了一張條碼多開一條
+/// 對外連線。
 ///
 /// 兩種 `format`（分流依據見 VoucherFigure.format 的原始字串）：
 /// - `CODE_128` → `CICode128BarcodeGenerator`

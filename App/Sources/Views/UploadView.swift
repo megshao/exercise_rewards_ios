@@ -235,7 +235,7 @@ final class UploadViewModel: ObservableObject {
             Telemetry.logEvent(.uploadResult(outcome: Self.outcome(for: uploadResult),
                                              periodIndex: periodIndex,
                                              durationMs: Telemetry.elapsedMs(since: startedAt)))
-            // N9：上傳端點回了非 200／302。「頁面沒有 file 欄位」不算錯誤（當期不可上傳是常態）。
+            // 上傳端點回了非 200／302。「頁面沒有 file 欄位」不算錯誤（當期不可上傳是常態）。
             if case .httpError(let status) = uploadResult.failure {
                 Telemetry.recordNonFatal(.upload, endpoint: .upload, status: status)
             }

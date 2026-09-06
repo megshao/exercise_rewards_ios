@@ -314,7 +314,7 @@ struct ProfileView: View {
     }
 
     private var footer: some View {
-        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 開了使用統計才會連 Firebase")
+        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 使用統計開著時會連 Firebase")
             .font(.system(size: 11.5))
             .foregroundStyle(Theme.Colors.dim)
             .multilineTextAlignment(.center)
@@ -728,7 +728,7 @@ final class ProfileViewModel: ObservableObject {
         case clear
     }
 
-    /// N10：Keychain 失敗走 Crashlytics 非致命錯誤，不進 Analytics。
+    /// Keychain 失敗走 Crashlytics 非致命錯誤，不進 Analytics。
     ///
     /// 只送 `op` 與 `OSStatus`（例如 `errSecInteractionNotAllowed` = -25308，高頻代表
     /// 有背景讀取時機的問題）。**`Profile` 內容與 `data` 絕不附帶**；JSON 解碼失敗也只記

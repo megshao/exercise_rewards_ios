@@ -1,7 +1,7 @@
 import XCTest
 @testable import SportsRewardsKit
 
-/// **效能回歸測試（H1）。**
+/// **效能回歸測試。**
 ///
 /// 四個 HTML parser 吃的都是官方站回傳的 HTML——那是**不受信任的輸入**。官網被入侵、
 /// 或使用者裝置信任了 MITM 憑證（本專案刻意不做 certificate pinning，理由見 README）
@@ -23,7 +23,7 @@ import XCTest
 /// 逐條修 regex 擋不住之後新加的 parser，把輸入長度夾住才擋得住。
 final class HTMLParserReDoSTests: XCTestCase {
 
-    /// 對抗輸入的長度。稽核報告用的量級，也遠大於任何真實欄位。
+    /// 對抗輸入的長度。遠大於任何真實欄位的量級。
     private static let adversarialLength = 4 * 1024
     /// 每個樣式的時間上限。修好之後實測都在 2 ms 以內。
     private static let budget: TimeInterval = 0.1
@@ -63,7 +63,7 @@ final class HTMLParserReDoSTests: XCTestCase {
         }
     }
 
-    /// 空白與非空白交錯的變體（稽核報告中最慢的一種形狀）。
+    /// 空白與非空白交錯的變體（實測最慢的一種形狀）。
     func testTaskParserRemainingTextWithMixedWhitespaceRun() {
         let filler = String(repeating: " a  b ", count: Self.adversarialLength / 6)
         let html = #"<li class="period-card"><span class="period-remaining">"# + filler

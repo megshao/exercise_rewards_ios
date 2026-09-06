@@ -8,7 +8,7 @@ import Foundation
 /// 內含 hidden input `vendorId`、`item` 與 `_csrf`（見 `Fixtures/redeem.html`）。
 /// 2026-08-27 起一家商店可以有多個品項，因此以「表單」而非「商家」為單位解析。
 public enum RedeemParser {
-    // ReDoS 防線（H1）：`[^>]*` 在「大量未閉合 `<form `／`<input `」的惡意頁面上是
+    // ReDoS 防線：`[^>]*` 在「大量未閉合 `<form `／`<input `」的惡意頁面上是
     // O(n²)（實測 48 KB → 1.9 秒）。屬性內不可能有裸 `<`，改用 `[^<>]{0,2000}` 後
     // 掃描會在下一個 `<` 停住，成本與整頁長度脫鉤。
     private static let formOpenTagPattern = #"<form\b[^<>]{0,2000}>"#

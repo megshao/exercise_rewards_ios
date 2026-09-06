@@ -241,7 +241,7 @@ private struct VoucherFigureView: View {
                     .foregroundStyle(Theme.Colors.danger)
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 20)
-                    // E24 + N12：只送 format 分類。**`figure.value`（券碼）絕不送。**
+                    // E24：只送 format 分類。**`figure.value`（券碼）絕不送。**
                     // 出現未知 format＝官網換了新券種，是最直接的改版訊號。
                     .onAppear {
                         let format = BarcodeFormat(format: figure.format)
@@ -383,7 +383,7 @@ final class VoucherViewModel: ObservableObject {
                                               format: BarcodeFormat(figures: fetched.figures)))
         } catch {
             enterCodeErrorMessage = "驗證成功，但券碼載入失敗，請重新整理"
-            // N5：使用者正站在櫃檯前，這一段壞掉最該立刻知道。
+            // 使用者正站在櫃檯前，這一段壞掉最該立刻知道。
             let reason = Telemetry.reportFailure(error, endpoint: .voucherView)
             Telemetry.logEvent(.voucherReveal(outcome: reason == .siteParse ? .parseError : .error,
                                               figureCount: 0, format: .other))

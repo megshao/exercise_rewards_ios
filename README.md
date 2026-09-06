@@ -94,7 +94,7 @@ cd App && xcodebuild test -project SportsRewards.xcodeproj \
 2. **之後**才進 Onboarding，輸入示範三碼進入示範模式；
 3. 從這裡開始，事件一律不送、收集旗標關閉。
 
-這個時序改不掉——示範模式也走 `finish()`，無法用 `hasCompletedOnboarding` 事先區分；要避開就得把初始化延到真實登入成功，那會失去整個 onboarding 漏斗的資料。`configure()` 裡的示範模式守衛只在「冷啟動時已經處於示範模式」那條路上生效。這件事已在 [`docs/release/review-notes.md`](docs/release/review-notes.md) 對審查員主動說明。
+這個時序改不掉——示範模式也走 `finish()`，無法用 `hasCompletedOnboarding` 事先區分；要避開就得把初始化延到真實登入成功，那會失去整個 onboarding 漏斗的資料。`configure()` 裡的示範模式守衛只在「冷啟動時已經處於示範模式」那條路上生效。這件事我們選擇主動講在前面，而不是等人自己發現一個沒被解釋過的 Google 連線。
 
 ## 安全設計
 
