@@ -52,7 +52,7 @@ targets:
         CFBundleLocalizations:
           - zh-Hant
         CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "3"
+        CFBundleVersion: "4"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -99,7 +99,7 @@ targets:
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         SWIFT_STRICT_CONCURRENCY: complete
         DEVELOPMENT_ASSET_PATHS: ""
     postCompileScripts: []
