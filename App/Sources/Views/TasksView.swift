@@ -42,7 +42,9 @@ struct TasksView: View {
         .navigationTitle("我的任務")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            await viewModel.refresh()
+            // 下拉是使用者的明確意圖，一律真的打網路。節流只該擋自動觸發的抓取——
+            // 否則轉圈動畫照跑、正常結束，看起來像刷新過了，實際什麼都沒做。
+            await viewModel.refresh(force: true)
         }
         .onAppear { Telemetry.screenAppeared(.tasks) }
         .task {
@@ -57,7 +59,10 @@ struct TasksView: View {
             }
             .environment(\.appEnvironment, environment)
         }
-        .sheet(item: $redeemPeriod) { period in
+        .sheet(item: $redeemPeriod, onDismiss: {
+            // 與上傳同一個模式：兌換成功後官網會改成 REDEEMED，不重抓就會停在「可兌換」。
+            Task { await viewModel.refresh(force: true) }
+        }) { period in
             NavigationStack {
                 RedeemView(taskID: period.id, periodIndex: period.index)
             }
@@ -69,7 +74,12 @@ struct TasksView: View {
             }
             .environment(\.appEnvironment, environment)
         }
-        .sheet(item: $uploadPeriod) { period in
+        .sheet(item: $uploadPeriod, onDismiss: {
+            // 上傳成功後官網會把該期改成 UNDER_REVIEW，但 App 這邊不會自己知道。
+            // 沒有這一行，徽章會一直停在「未上傳」——而且因為首頁與這裡共用同一個
+            // 節流時鐘，連下拉刷新都可能被擋掉，使用者無從自救。
+            Task { await viewModel.refresh(force: true) }
+        }) { period in
             NavigationStack {
                 UploadView(taskID: period.id, periodIndex: period.index)
             }
@@ -93,7 +103,7 @@ struct TasksView: View {
                 .foregroundStyle(Theme.Colors.muted)
                 .multilineTextAlignment(.center)
             Button {
-                Task { await viewModel.refresh() }
+                Task { await viewModel.refresh(force: true) }
             } label: {
                 Text("重新載入")
             }
@@ -253,7 +263,12 @@ final class TasksViewModel: ObservableObject {
     }
 
     /// 本地優先：先秀快取；距上次更新未滿 60 秒則不再發 request。
-    /// - Parameter force: 忽略節流（保留給明確需要立即更新的情境；一般下拉刷新用預設 false）。
+    /// - Parameter force: 忽略節流。**使用者主動觸發的刷新（下拉、重試鈕、上傳後）一律傳
+    ///   true**；預設的 false 只給畫面出現時的自動抓取用。
+    ///
+    ///   節流的時鐘是 `TasksCache` 的單一時戳，`HomeView` 與本頁共用它但各存各的資料——
+    ///   所以首頁刷新過就會把這裡的 60 秒重新計時。這是為什麼「等超過 60 秒再下拉」
+    ///   對使用者不是可靠的自救方式。
     func refresh(force: Bool = false) async {
         guard let tasks else { return }
         // 1. 先顯示快取（若目前空）

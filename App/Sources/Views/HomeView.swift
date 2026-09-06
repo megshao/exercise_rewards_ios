@@ -34,7 +34,8 @@ struct HomeView: View {
         }
         .refreshable {
             viewModel.refreshProfileState()
-            await viewModel.loadWeeklySummary()
+            // 下拉是明確意圖，忽略節流（理由同 TasksView 的 refreshable）。
+            await viewModel.loadWeeklySummary(force: true)
             await viewModel.loadHealthSummary()
         }
     }
