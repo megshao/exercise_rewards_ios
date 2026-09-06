@@ -4,8 +4,12 @@ import SportsRewardsKit
 @main
 struct HuihanApp: App {
     /// 目前生效的環境。正式為 `DefaultAppEnvironment()`（真實 AuthService/TasksService/
-    /// KeychainStore/HealthKitReader）；審查員輸入示範帳號後切成 `DemoMode.makeEnvironment()`。
+    /// KeychainStore）；審查員輸入示範帳號後切成 `DemoMode.makeEnvironment()`。
     @StateObject private var envStore = AppEnvironmentStore()
+
+    /// 「已使用」標記的單一真相來源。首頁／任務／券夾是同時活著的三個分頁，
+    /// 必須共用同一份才會一起更新（見 `VoucherUsageStore` 的說明）。
+    @StateObject private var voucherUsage = VoucherUsageStore()
 
     /// 唯一一次 Firebase 初始化。沒有 GoogleService-Info.plist 時會安全跳過（不會 crash），
     /// 使用者同意免責聲明之前不會初始化 Firebase，也不會送出任何東西。細節見 Telemetry.swift 檔頭。
@@ -29,6 +33,13 @@ struct HuihanApp: App {
             }
             .environment(\.appEnvironment, envStore.environment)
             .environmentObject(envStore)
+            .environmentObject(voucherUsage)
+            // 進出示範模式時 `AppEnvironmentStore` 會清掉持久化的「已使用」標記
+            // （示範資料與真實資料的期別 UUID 不可混用）。這裡把畫面上那份一起歸零，
+            // 否則標記會留在畫面上直到下次冷啟動。
+            .onChange(of: envStore.isDemo) { _ in
+                voucherUsage.clear()
+            }
             .preferredColorScheme(.light) // 設計為白底單一主題，鎖淺色避免深色模式白底白字
             // 全 App 鎖繁體中文（台灣）：系統提供的元件與數字/日期格式不會跟著裝置語系跑掉。
             .environment(\.locale, Locale(identifier: "zh_Hant_TW"))
@@ -59,7 +70,7 @@ struct RootView: View {
     }
 }
 
-/// 主要 4 個分頁：首頁、任務、健康、券夾（對齊設計稿的 tabbar）。
+/// 主要 3 個分頁：首頁、任務、券夾。
 ///
 struct RootTabView: View {
     var body: some View {
@@ -79,13 +90,6 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                HealthView()
-            }
-            .tabItem {
-                Label("健康", systemImage: "heart.fill")
-            }
-
-            NavigationStack {
                 WalletView()
             }
             .tabItem {
@@ -99,4 +103,5 @@ struct RootTabView: View {
     RootTabView()
         .environment(\.appEnvironment, DefaultAppEnvironment())
         .environmentObject(AppEnvironmentStore())
+        .environmentObject(VoucherUsageStore())
 }

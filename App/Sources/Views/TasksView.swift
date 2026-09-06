@@ -5,6 +5,10 @@ import SportsRewardsKit
 /// 對齊設計稿。
 struct TasksView: View {
     @Environment(\.appEnvironment) private var environment
+    /// 「已使用」標記的共用真相來源。**這一頁踩過的坑**：先前 ViewModel 各自抄一份，
+    /// 在券夾標記完切回這頁就不會更新，連下拉重新整理都沒用——因為下拉只重抓官網資料，
+    /// 而「已使用」根本不在官網資料裡（見 `VoucherUsageStore`）。
+    @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = TasksViewModel()
     @State private var screenshotPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
@@ -27,6 +31,8 @@ struct TasksView: View {
                         TaskPeriodCard(
                             period: period,
                             isHighlighted: period.index == viewModel.highlightedPeriodIndex,
+                            // 標記過已使用的券不再提供「檢視加碼券」（見 VoucherUsage）。
+                            isVoucherUsed: voucherUsage.isUsed(period),
                             // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
                             onRedeemTap: { redeemPeriod = period },
                             onScreenshotTap: { screenshotPeriod = period },
@@ -67,12 +73,17 @@ struct TasksView: View {
                 RedeemView(taskID: period.id, periodIndex: period.index)
             }
             .environment(\.appEnvironment, environment)
+            // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
+            .environmentObject(voucherUsage)
         }
+        // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
+        // 不論在哪一頁寫入，這一頁都會立刻重畫。
         .sheet(item: $voucherPeriod) { period in
             NavigationStack {
-                VoucherView(taskID: period.id, source: .tasks)
+                VoucherView(taskID: period.id, source: .tasks, periodIndex: period.index)
             }
             .environment(\.appEnvironment, environment)
+            .environmentObject(voucherUsage)
         }
         .sheet(item: $uploadPeriod, onDismiss: {
             // 上傳成功後官網會把該期改成 UNDER_REVIEW，但 App 這邊不會自己知道。
@@ -118,6 +129,8 @@ struct TasksView: View {
 private struct TaskPeriodCard: View {
     let period: TaskPeriod
     let isHighlighted: Bool
+    /// 使用者是否已在 App 內把這期的券標記為「已使用」（本機狀態）。
+    let isVoucherUsed: Bool
     let onRedeemTap: () -> Void
     let onScreenshotTap: () -> Void
     let onVoucherTap: () -> Void
@@ -135,7 +148,9 @@ private struct TaskPeriodCard: View {
                         .foregroundStyle(Theme.Colors.muted)
                 }
                 Spacer()
-                if isHighlighted, let remainingText = period.remainingText {
+                // 官網對已走完審核的期別（可兌換／已兌換）照樣回傳上傳窗倒數，
+                // 顯示出來會讓人以為還有東西要上傳——見 `TaskState.showsUploadCountdown`。
+                if showsRemaining, let remainingText = period.remainingText {
                     Text(remainingText)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Theme.Colors.primaryDark)
@@ -144,15 +159,32 @@ private struct TaskPeriodCard: View {
                 }
             }
 
-            if isHighlighted {
+            // 上面那格被倒數佔走時，徽章補在下一行；沒被佔走就不用重複顯示。
+            if showsRemaining, period.remainingText != nil {
                 TaskStateBadge(state: period.state)
+            }
+
+            // 官網卡片上的「兌換內容：通路／品項」。官網原文，只顯示、不進遙測。
+            if let summary = period.voucherSummary {
+                Text("兌換內容：\(summary)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if isVoucherUsed {
+                Text("你已在 App 內標記為使用完畢（本機紀錄顯示，使用與否以條碼能否使用為主）。")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.Colors.dim)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let uploadedAt = period.uploadedAt {
                 Text(reviewSummary(uploadedAt: uploadedAt, reviewedAt: period.reviewedAt))
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.Colors.muted)
-            } else if period.state == .pendingReview, let remainingText = period.remainingText, !isHighlighted {
+            } else if period.state == .pendingReview, let remainingText = period.remainingText,
+                      !isHighlighted {
                 Text(remainingText)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.Colors.dim)
@@ -169,6 +201,9 @@ private struct TaskPeriodCard: View {
         )
         .shadow(color: Color.black.opacity(isHighlighted ? 0.08 : 0.04), radius: isHighlighted ? 20 : 10, x: 0, y: isHighlighted ? 10 : 4)
     }
+
+    /// 這張卡要不要在右上角顯示倒數：只有本週高亮、而且該狀態的倒數還有意義時才顯示。
+    private var showsRemaining: Bool { isHighlighted && period.state.showsUploadCountdown }
 
     private func reviewSummary(uploadedAt: String, reviewedAt: String?) -> String {
         if let reviewedAt {
@@ -225,7 +260,9 @@ private struct TaskPeriodCard: View {
                     }
                     .buttonStyle(.huihanSecondary)
 
-                    if period.state == .redeemed {
+                    // 標記過已使用的券不再給「檢視加碼券」——按了也只是再走一次 OTP
+                    // 看一張自己已經用掉的條碼。
+                    if period.state == .redeemed && !isVoucherUsed {
                         Button {
                             onVoucherTap()
                         } label: {

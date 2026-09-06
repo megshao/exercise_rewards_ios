@@ -9,7 +9,6 @@ public protocol AppEnvironment: Sendable {
     var redeem: RedeemServicing { get }
     var voucher: VoucherServicing { get }
     var profileStore: ProfileStoring { get }
-    var health: HealthReading { get }
     var upload: UploadServicing { get }
 
     /// 清掉官方站的登入 session（cookie）。「立即清除本機資料」與登出都要呼叫，
@@ -27,7 +26,6 @@ public struct DefaultAppEnvironment: AppEnvironment {
     public let redeem: RedeemServicing
     public let voucher: VoucherServicing
     public let profileStore: ProfileStoring
-    public let health: HealthReading
     public let upload: UploadServicing
 
     /// 正式環境才有的共用 HTTP client（cookie jar 就在它身上）。Preview／測試／示範模式
@@ -35,8 +33,8 @@ public struct DefaultAppEnvironment: AppEnvironment {
     private let http: HTTPClienting?
 
     /// 正式環境：共用一個 HTTP client 串起 Auth / Tasks / Redeem / Voucher，確保登入後的
-    /// session cookie 一路帶著；健康資料唯讀接 HealthKit（never transmitted）；上傳接真實
-    /// UploadService（multipart POST /member/upload，file 欄位 screenshot）。
+    /// session cookie 一路帶著；上傳接真實 UploadService
+    /// （multipart POST /member/upload，file 欄位 screenshot）。
     public init() {
         let http = URLSessionHTTPClient()
         self.auth = AuthService(http: http)
@@ -44,7 +42,6 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.redeem = RedeemService(http: http)
         self.voucher = VoucherService(http: http)
         self.profileStore = KeychainStore()
-        self.health = HealthKitReader()
         self.upload = UploadService(http: http)
         self.http = http
     }
@@ -56,7 +53,6 @@ public struct DefaultAppEnvironment: AppEnvironment {
         redeem: RedeemServicing,
         voucher: VoucherServicing,
         profileStore: ProfileStoring = KeychainStore(),
-        health: HealthReading = HealthKitReader(),
         upload: UploadServicing = UploadServiceStub()
     ) {
         self.auth = auth
@@ -64,7 +60,6 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.redeem = redeem
         self.voucher = voucher
         self.profileStore = profileStore
-        self.health = health
         self.upload = upload
         self.http = nil
     }

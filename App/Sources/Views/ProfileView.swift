@@ -10,6 +10,7 @@ import SportsRewardsKit
 struct ProfileView: View {
     @Environment(\.appEnvironment) private var environment
     @EnvironmentObject private var envStore: AppEnvironmentStore
+    @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = ProfileViewModel()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showClearConfirm = false
@@ -68,10 +69,10 @@ struct ProfileView: View {
 
     // MARK: - 隱私聲明
 
-    /// 明確聲明個資與健康資料的界線。
+    /// 明確聲明個資的界線。
     ///
     /// **這段文字改過一次，原因要留著**：加了 Firebase（匿名使用統計）之後，原本第一點的
-    /// 「也不會提供給任何第三方」就不再是一句無條件為真的話了。個資與健康資料的部分完全沒變
+    /// 「也不會提供給任何第三方」就不再是一句無條件為真的話了。個資的部分完全沒變
     /// ——仍然一個位元都不外傳；變的是「會有不含個資的操作事件送給 Firebase」。
     /// 所以這裡把界線拆成兩段講清楚，而不是把兩件事混在一句籠統的保證裡。
     private var privacyBanner: some View {
@@ -79,7 +80,7 @@ struct ProfileView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(Theme.Colors.success)
-                Text("個資不外傳，健康資料不出這支手機")
+                Text("個資不外傳，只在登入時送給官方網站")
                     .font(.system(size: 13.5, weight: .bold))
                     .foregroundStyle(Color(hex: 0x186C3E))
             }
@@ -87,8 +88,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 5) {
                 privacyBullet("本 App 沒有伺服器也沒有後台。你的個資不會上傳雲端、不會同步 iCloud、不會寫進任何紀錄，也不會給第三方——這一點沒有例外。")
                 privacyBullet("以下三個欄位只在你登入時，由這支手機直接送到官方網站 500.gov.tw；平常以加密方式存在這支手機（Keychain），可隨時用下方「立即清除本機資料」永久刪除。")
-                privacyBullet("Apple 健康的步數、距離、運動時間只在這支手機上顯示，連「今天達標了沒」都不會被送出去。")
-                privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase，用來修 bug。裡面沒有個資、沒有健康數據、沒有你上傳的截圖與券碼，不想送可以在下面關掉。")
+                privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase，用來修 bug。裡面沒有個資、沒有你上傳的截圖與券碼，不想送可以在下面關掉。")
             }
         }
         .padding(14)
@@ -264,8 +264,8 @@ struct ProfileView: View {
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.Colors.text)
                 Text(telemetryEnabled
-                     ? "開啟中 · 送出操作事件與當機報告給 Google Firebase · 不含個資、健康數據、截圖、券碼 · 可隨時關掉"
-                     : "已關閉 · 目前不會有任何資料送到 Google · 重新打開也不含個資、健康數據、截圖、券碼")
+                     ? "開啟中 · 送出操作事件與當機報告給 Google Firebase · 不含個資、截圖、券碼 · 可隨時關掉"
+                     : "已關閉 · 目前不會有任何資料送到 Google · 重新打開也不含個資、截圖、券碼")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.Colors.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -357,7 +357,7 @@ struct ProfileView: View {
             .padding(.leading, 4)
     }
 
-    /// 清除本機所有資料：刪 Keychain 個資、重置 onboarding／健康授權旗標，回初次設定。
+    /// 清除本機所有資料：刪 Keychain 個資、重置 onboarding 旗標，回初次設定。
     private func clearLocalData() {
         // E26 必須在**這一行**送出：後面的 `Telemetry.resetPreference()` 會把偏好關掉並重置
         // app instance ID，那之後就再也送不出去了。順序＝先記錄、再重置、最後回到未同意狀態。
@@ -365,11 +365,17 @@ struct ProfileView: View {
         envStore.exitDemo()
         try? environment.profileStore.clear()
         TasksCache.clear()
+        // 「這張券我用過了」的本機標記也算本機資料。exitDemo() 在非示範模式是 no-op，
+        // 不能靠它順手清掉，所以這裡明確再清一次。走 store 而非直接寫 UserDefaults，
+        // 這樣三個分頁的畫面會立刻跟著歸零。
+        voucherUsage.clear()
         // 遙測偏好也算「本機資料」：清除後回到預設的關閉狀態，並立刻停止收集。
         Telemetry.resetPreference()
         // 免責聲明的同意紀錄也屬於「初次設定狀態」的一部分：清除後下次開 App
         // 會再看到一次聲明。
         DisclaimerConsent.reset()
+        // 舊版（1.0.0 build 4 以前）曾寫入的 HealthKit 授權旗標。功能已移除，
+        // 但既有裝置上這把 key 還在，一併清掉才符合「清除本機所有資料」的承諾。
         UserDefaults.standard.removeObject(forKey: "com.megshao.sportsrewards.health.didRequestAuthorization")
         // 官方站的登入 cookie 是持久化在 App 沙盒容器、跨啟動續用的；只清 Keychain 個資
         // 並不會登出。不一併清掉就與這顆按鈕（與隱私說明）承諾的「清除本機所有資料」不符。

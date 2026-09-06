@@ -61,11 +61,6 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        # 讀取步數以協助判斷是否達標（HealthKit，唯讀，never transmitted，不會被上傳）
-        NSHealthShareUsageDescription: 讀取步數以判斷今日是否達標
-        # HealthKit entitlement 要求同時提供寫入用途字串（即使唯讀）。
-        # 本 App 從不寫入健康資料，字串照實說明。
-        NSHealthUpdateUsageDescription: 本 App 不會寫入任何健康資料，只讀取步數判斷今日是否達標
         # --- Firebase 隱私設定（鍵名與語意見 Firebase「Configure Analytics data collection」文件）---
         # 預設不收集：App 啟動時 Telemetry.configure() 會依使用者偏好再開啟。
         # 使用者沒有主動打開「傳送匿名使用統計」之前，SDK 一個位元組都不會送。
@@ -85,11 +80,6 @@ targets:
               NSExceptionAllowsInsecureHTTPLoads: false
               NSExceptionRequiresForwardSecrecy: true
               NSExceptionMinimumTLSVersion: TLSv1.2
-    entitlements:
-      path: Generated/SportsRewards.entitlements
-      properties:
-        com.apple.developer.healthkit: true
-        com.apple.developer.healthkit.access: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.megshao.sportsrewards

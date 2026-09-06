@@ -10,16 +10,21 @@ struct VoucherView: View {
     let taskID: String
     /// 這個畫面是從哪裡打開的（券夾／任務／兌換完成）。只用於 E20，不含任何識別碼。
     let source: VoucherSource
+    /// 這一期的期別（只用來組「標記為已使用」的說明文字）。
+    let periodIndex: Int?
 
-    init(taskID: String, source: VoucherSource = .wallet) {
+    init(taskID: String, source: VoucherSource = .wallet, periodIndex: Int? = nil) {
         self.taskID = taskID
         self.source = source
+        self.periodIndex = periodIndex
     }
 
     @Environment(\.appEnvironment) private var environment
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = VoucherViewModel()
     @FocusState private var isOtpFieldFocused: Bool
+    /// 本機「已使用」標記的共用真相來源。官網沒有這個狀態（見 `VoucherUsageStore`）。
+    @EnvironmentObject private var voucherUsage: VoucherUsageStore
 
     var body: some View {
         ScrollView {
@@ -198,10 +203,52 @@ struct VoucherView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            markUsedCard
+
             Text("離開此頁後，如需再次查看券碼，請重新完成簡訊驗證。")
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.Colors.dim)
         }
+    }
+
+    /// 「用掉了嗎」——出示完條碼之後才問，這是使用者唯一知道答案的時機。
+    ///
+    /// **為什麼要有這個**：官網沒有「已使用／已核銷」狀態（實測見 `VoucherUsage` 的說明），
+    /// 所以 App 無從得知這張券是否已在門市抵用。標記純粹是本機紀錄，
+    /// **券到底還能不能用，以現場條碼掃得過為準**——這一點必須在畫面上講清楚，
+    /// 否則使用者會以為按了就等於作廢、或反過來把標記當成券的真實狀態。
+    @ViewBuilder
+    private var markUsedCard: some View {
+        let isMarkedUsed = voucherUsage.isUsed(id: taskID)
+
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                Image(systemName: isMarkedUsed ? "checkmark.circle.fill" : "questionmark.circle")
+                    .foregroundStyle(isMarkedUsed ? Theme.Colors.success : Theme.Colors.primary)
+                Text(isMarkedUsed ? "已標記為使用完畢" : "已經在門市用掉了嗎？")
+                    .font(.system(size: 13.5, weight: .bold))
+            }
+
+            Text(isMarkedUsed
+                 ? "這張券在 App 內會顯示「已使用」，清單上也不再出現「顯示條碼」。這是本機紀錄，使用與否以條碼能否使用為主。"
+                 : "標記之後，這張券在 App 內會變成「已使用」、清單上不再顯示「顯示條碼」，方便你分辨哪幾張還沒用。\n這是本機紀錄，使用與否以條碼能否使用為主，隨時可以還原。")
+                .font(.system(size: 11.5))
+                .foregroundStyle(Theme.Colors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                let used = voucherUsage.toggle(id: taskID)
+                // E29：只送方向，不帶期別 UUID／期數。
+                Telemetry.logEvent(.voucherMarkUsed(used: used))
+            } label: {
+                Text(isMarkedUsed ? "還原成未使用" : "標記為已使用")
+            }
+            // 券夾的券卡上有同樣文案的按鈕，加 id 讓 UI 測試能明確指到券碼頁這一顆。
+            .accessibilityIdentifier("voucherMarkUsedToggle")
+            .buttonStyle(.huihanSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
     }
 }
 

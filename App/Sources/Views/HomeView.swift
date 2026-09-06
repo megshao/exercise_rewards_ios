@@ -1,21 +1,24 @@
 import SwiftUI
 import SportsRewardsKit
 
-/// 首頁：一鍵登入 CTA、今日步數圓環占位、本週任務摘要卡。
-/// 對齊設計稿。
+/// 首頁：一鍵登入 CTA、本週任務摘要卡、加碼券清單（最多五列）。
 struct HomeView: View {
     @Environment(\.appEnvironment) private var environment
     @EnvironmentObject private var envStore: AppEnvironmentStore
+    /// 「已使用」標記的共用真相來源。三個分頁同時活著，各自快照會不同步（見 `VoucherUsageStore`）。
+    @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = HomeViewModel()
     @State private var showProfile = false
+    @State private var redeemPeriod: TaskPeriod?
+    @State private var voucherPeriod: TaskPeriod?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
-                stepsRingCard
                 loginCTA
                 weeklyTaskSection
+                voucherSection
             }
             .padding(20)
         }
@@ -28,15 +31,29 @@ struct HomeView: View {
         .onAppear { Telemetry.screenAppeared(.home) }
         .task {
             viewModel.configure(auth: environment.auth, tasks: environment.tasks,
-                                 profileStore: environment.profileStore, health: environment.health,
-                                 envStore: envStore)
+                                 profileStore: environment.profileStore, envStore: envStore)
             await viewModel.bootstrap()
         }
         .refreshable {
             viewModel.refreshProfileState()
             // 下拉是明確意圖，忽略節流（理由同 TasksView 的 refreshable）。
             await viewModel.loadWeeklySummary(force: true)
-            await viewModel.loadHealthSummary()
+        }
+        // 兌換完官網會把該期改成 REDEEMED，不重抓的話這一列會停在「尚未兌換」。
+        .sheet(item: $redeemPeriod, onDismiss: {
+            Task { await viewModel.loadWeeklySummary(force: true) }
+        }) { period in
+            NavigationStack { RedeemView(taskID: period.id, periodIndex: period.index) }
+                .environment(\.appEnvironment, environment)
+                // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
+                .environmentObject(voucherUsage)
+        }
+        // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
+        // 在券碼頁寫入的當下這一頁就已經重畫了。
+        .sheet(item: $voucherPeriod) { period in
+            NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
+                .environment(\.appEnvironment, environment)
+                .environmentObject(voucherUsage)
         }
     }
 
@@ -64,123 +81,11 @@ struct HomeView: View {
         }
     }
 
-    /// 今日步數卡：已連結 Apple 健康才顯示真實數字；未連結時整個環與圖案改為
-    /// 淺灰半透明的「未連結」占位，不再顯示任何看起來像真實數據的數字。
-    private var stepsRingCard: some View {
-        HStack(spacing: 22) {
-            switch viewModel.healthLink {
-            case .linked:
-                connectedRing
-            case .checking, .notLinked:
-                placeholderRing
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                switch viewModel.healthLink {
-                case .linked:
-                    connectedDetail
-                case .checking:
-                    Text("讀取健康資料中…")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.Colors.muted)
-                case .notLinked:
-                    notLinkedDetail
-                }
-            }
-        }
-        // E. 卡片寬度一致：舊版沒有 Spacer/maxWidth，內容較短時會比本週任務卡窄，這裡強制滿版。
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle()
-    }
-
-    private var connectedRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color(hex: 0xECEEF2), lineWidth: 13)
-            Circle()
-                .trim(from: 0, to: viewModel.stepsProgress)
-                .stroke(Theme.Colors.ringGradient, style: StrokeStyle(lineWidth: 13, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            VStack(spacing: 2) {
-                Text("\(viewModel.todaySteps)")
-                    .font(Theme.displayFont(30, weight: .heavy))
-                Text("今日步數")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.Colors.muted)
-            }
-        }
-        .frame(width: 120, height: 120)
-    }
-
-    /// 未連結（或仍在確認授權）時的占位圖案：淺灰虛線環 + 灰色步行圖示，整體半透明，
-    /// 一眼就看得出「這裡還沒有資料」而不是「今天走了 0 步」。
-    private var placeholderRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color(hex: 0xD8DCE3),
-                        style: StrokeStyle(lineWidth: 13, lineCap: .round, dash: [2, 10]))
-            VStack(spacing: 4) {
-                Image(systemName: "figure.walk")
-                    .font(.system(size: 30, weight: .semibold))
-                if viewModel.healthLink == .notLinked {
-                    Text("未連結")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-            }
-            .foregroundStyle(Theme.Colors.dim)
-        }
-        .frame(width: 120, height: 120)
-        .opacity(0.55)
-        .accessibilityLabel(viewModel.healthLink == .notLinked ? "尚未連結 Apple 健康" : "讀取健康資料中")
-    }
-
-    private var connectedDetail: some View {
-        Group {
-            if viewModel.hasReachedGoal {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                    Text("已達今日目標")
-                        .font(.system(size: 12, weight: .bold))
-                }
-                .foregroundStyle(Theme.Colors.success)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 5)
-                .background(Theme.Colors.successBackground)
-                .clipShape(Capsule())
-            }
-            Text("目標 \(viewModel.goalSteps) 步\n距離 \(viewModel.distanceText) · 運動 \(viewModel.activeMinutes) 分")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.Colors.muted)
-        }
-    }
-
-    private var notLinkedDetail: some View {
-        Group {
-            Text("尚未連結 Apple 健康")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Theme.Colors.text)
-            Text("連結後才會顯示今日步數、距離與運動時間。\n健康數據只在本機顯示，不會被送出。")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.Colors.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            NavigationLink {
-                HealthView()
-            } label: {
-                HStack(spacing: 4) {
-                    Text("前往連結")
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                }
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.Colors.primary)
-            }
-        }
-    }
-
+    /// 登入狀態列。整塊靠左對齊，與首頁其他區塊（問候語、本週任務、加碼券）同一條左邊界；
+    /// 只有全寬按鈕本來就滿版，不受影響。
     @ViewBuilder
     private var loginCTA: some View {
-        VStack(spacing: 9) {
+        VStack(alignment: .leading, spacing: 9) {
             if !viewModel.isProfileComplete {
                 // 個資未填齊：引導去填寫，不顯示登入按鈕。
                 NavigationLink {
@@ -199,7 +104,7 @@ struct HomeView: View {
                     Text("登入中…").foregroundStyle(Theme.Colors.muted)
                 }
                 .font(.system(size: 14))
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 6)
             } else if viewModel.hasLoggedIn {
                 // 已自動登入：不顯示登入按鈕。
@@ -210,6 +115,7 @@ struct HomeView: View {
                         .foregroundStyle(Theme.Colors.muted)
                 }
                 .font(.system(size: 13))
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else if viewModel.loginResultIsError {
                 // 自動登入失敗：提供手動重試。
                 Button {
@@ -233,13 +139,15 @@ struct HomeView: View {
                     .foregroundStyle(Theme.Colors.dim)
             }
             .font(.system(size: 12))
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if let message = viewModel.loginResultMessage {
                 Text(message)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(viewModel.loginResultIsError ? Theme.Colors.danger : Theme.Colors.success)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4)
             }
         }
@@ -271,6 +179,153 @@ struct HomeView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.Colors.muted)
             }
+        }
+    }
+
+    /// 加碼券區塊：把「可兌換」與「已兌換」兩種期別合成同一份清單。
+    ///
+    /// 排序與截斷的規則都在 `HomeViewModel.sortedVoucherRows`／`voucherRows(usedIDs:)`，
+    /// 這裡只負責畫。超過五列時顯示「查看全部」導向券夾，避免首頁被 14 期塞滿。
+    private var voucherSection: some View {
+        let all = viewModel.allVoucherRows(usedIDs: voucherUsage.usedIDs)
+        let rows = Array(all.prefix(HomeViewModel.voucherRowLimit))
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("加碼券")
+                    .font(Theme.displayFont(16, weight: .bold))
+                Spacer()
+                if all.count > HomeViewModel.voucherRowLimit {
+                    NavigationLink {
+                        WalletView()
+                    } label: {
+                        Text("查看全部 \(all.count) 張 ›")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.Colors.primary)
+                    }
+                }
+            }
+
+            if viewModel.isLoadingSummary {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else if rows.isEmpty {
+                Text("目前沒有加碼券。完成任務並兌換後，加碼券會出現在這裡。")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.Colors.muted)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(rows, id: \.index) { period in
+                        VoucherRowCard(
+                            period: period,
+                            isUsed: voucherUsage.isUsed(period),
+                            onRedeemTap: { redeemPeriod = period },
+                            onVoucherTap: { voucherPeriod = period }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// 首頁的加碼券單列：一列一期，左側期別／兌換內容，右側動作鈕。
+///
+/// - 尚未兌換 → 「去兌換」開 RedeemView（二次確認在該頁）。
+/// - 已兌換 → 「顯示條碼」開 VoucherView（每次都要重走一次簡訊 OTP）。
+/// - 已兌換且**使用者自己標記過已使用** → 整列轉灰、標「已使用」、**不放任何按鈕**。
+///   官網沒有這個狀態（見 `VoucherUsage` 的說明），所以只能靠使用者告訴 App；
+///   要還原請到券夾或券碼頁。
+private struct VoucherRowCard: View {
+    let period: TaskPeriod
+    let isUsed: Bool
+    let onRedeemTap: () -> Void
+    let onVoucherTap: () -> Void
+
+    private var isRedeemed: Bool { period.state == .redeemed }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            icon
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("第 \(period.index) 期加碼券")
+                        .font(Theme.displayFont(14.5, weight: .bold))
+                        .foregroundStyle(isUsed ? Theme.Colors.muted : Theme.Colors.text)
+                    if isUsed {
+                        StatusBadge(text: "已使用",
+                                    foreground: Theme.Colors.dim,
+                                    background: Color(hex: 0xEEF0F3))
+                    }
+                }
+                // 官網卡片上的「兌換內容：通路／品項」。是官網原文，只顯示、不進遙測。
+                if let summary = period.voucherSummary {
+                    Text(summary)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Theme.Colors.muted)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(statusText)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(statusColor)
+            }
+
+            Spacer(minLength: 8)
+
+            action
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isUsed ? Color(hex: 0xFAFBFC) : Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
+                .stroke(Theme.Colors.line, lineWidth: 1)
+        )
+    }
+
+    private var icon: some View {
+        let name = isUsed ? "checkmark" : (isRedeemed ? "ticket.fill" : "gift.fill")
+        let tint: Color = isUsed ? Theme.Colors.dim : (isRedeemed ? Theme.Colors.primary : Theme.Colors.success)
+        let background: Color = isUsed ? Color(hex: 0xEEF0F3)
+            : (isRedeemed ? Theme.Colors.card2 : Theme.Colors.successBackground)
+        return Image(systemName: name)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 36, height: 36)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+
+    private var statusText: String {
+        if isUsed { return "已使用 · 本機紀錄，以條碼能否使用為主" }
+        return isRedeemed ? "已兌換 · 可出示條碼使用" : "任務完成 · 尚未兌換"
+    }
+
+    private var statusColor: Color {
+        if isUsed { return Theme.Colors.dim }
+        return isRedeemed ? Theme.Colors.muted : Theme.Colors.success
+    }
+
+    /// 已標記使用的列**不放任何按鈕**：首頁只負責讓人一眼看出「哪幾張還沒用」。
+    /// 標記錯了要改回來是修正動作，入口留在券夾與券碼頁就夠了——在首頁多一顆「還原」
+    /// 會讓同一區同時出現「去用它」與「我標錯了」兩種語意的按鈕。
+    @ViewBuilder
+    private var action: some View {
+        if !isUsed {
+            Button(action: isRedeemed ? onVoucherTap : onRedeemTap) {
+                Text(isRedeemed ? "顯示條碼" : "去兌換")
+                    .font(Theme.displayFont(12.5, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(isRedeemed ? Theme.Colors.primary : Theme.Colors.success)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -324,7 +379,7 @@ private struct TaskSummaryCard: View {
             Text("已兌換 · 券已存入券夾")
                 .font(.system(size: 12)).foregroundStyle(Theme.Colors.muted)
         case .notStarted, .unknown:
-            if let t = task.remainingText {
+            if task.state.showsUploadCountdown, let t = task.remainingText {
                 Text(t).font(.system(size: 12)).foregroundStyle(Theme.Colors.muted)
             }
         }
@@ -440,6 +495,10 @@ enum RemainingTime {
 // MARK: - TaskState UI helpers (shared with TasksView)
 
 extension TaskState {
+    // `showsUploadCountdown` 定義在 SportsRewardsKit 的 `TaskState` 上：
+    // 那是「官網這個欄位在這個狀態下還有沒有意義」的判斷，屬領域規則而非排版，
+    // 放在 Kit 才有單元測試守得住（見 `TaskStateTests`）。
+
     var badgeText: String {
         switch self {
         case .notStarted: return "尚未開始"
@@ -492,72 +551,74 @@ final class HomeViewModel: ObservableObject {
     private var didAutoLogin = false
 
     @Published var isLoadingSummary = false
-    @Published var currentWeekTask: TaskPeriod?
 
-    /// 健康連結狀態：`checking` 是還沒問出授權結果（避免冷啟動瞬間閃出「未連結」）。
-    enum HealthLinkState { case checking, linked, notLinked }
+    /// 首頁的加碼券區塊要跨期別排序，因此保留整份清單而非只留高亮那一期。
+    @Published var periods: [TaskPeriod] = []
 
-    // 今日健康摘要：只有 `.linked` 時才有真實資料，未連結一律不顯示數字。
-    @Published private(set) var healthSummary: HealthSummary?
-    @Published private(set) var healthLink: HealthLinkState = .checking
 
-    let goalSteps = 8_000
+    /// 本週要高亮的那一期（第一個非 notStarted，找不到就用最新一期）。
+    var currentWeekTask: TaskPeriod? { Self.highlightedPeriod(in: periods) }
 
-    var todaySteps: Int { healthSummary?.steps ?? 0 }
-    var activeMinutes: Int { healthSummary?.exerciseMinutes ?? 0 }
-    var distanceText: String {
-        let km = (healthSummary?.distanceMeters ?? 0) / 1_000.0
-        return String(format: "%.1f km", km)
+    /// 首頁加碼券清單最多顯示幾列。超過的部分請使用者去券夾看完整清單。
+    static let voucherRowLimit = 5
+
+    /// 排序後但**未截斷**的完整清單。呼叫端自己 `prefix(voucherRowLimit)`，
+    /// 未截斷的長度用來判斷要不要顯示「查看全部」入口。
+    func allVoucherRows(usedIDs: Set<String>) -> [TaskPeriod] {
+        Self.sortedVoucherRows(in: periods, usedIDs: usedIDs)
     }
-    var stepsProgress: Double { min(1.0, Double(todaySteps) / Double(goalSteps)) }
-    var hasReachedGoal: Bool { todaySteps >= goalSteps }
+
+    /// 可兌換（尚未兌換）與已兌換的期別，依三段優先序排序：
+    ///
+    /// 1. **尚未兌換**（`REDEEMABLE`）——還要動手才拿得到券，最該先看到
+    /// 2. **已兌換、還沒用掉**（`REDEEMED` 且未標記）——手上真正能用的券
+    /// 3. **已標記使用完畢**——只是留著給使用者對帳，排最後
+    ///
+    /// 同一段內再依建立時間由舊到新。期別 index 就是建立順序（第 1 期最早、第 14 期最晚），
+    /// 所以用 index 遞增即可，不需要解析 `startDate` 字串。
+    ///
+    /// **為什麼「已使用」要排最後**：首頁只有五列。用過的券如果照原順序卡在前面，
+    /// 就會把還沒用的券擠出畫面——而那正是使用者打開 App 想找的東西。
+    static func sortedVoucherRows(in periods: [TaskPeriod], usedIDs: Set<String>) -> [TaskPeriod] {
+        /// 0 = 尚未兌換、1 = 已兌換未使用、2 = 已標記使用。
+        func rank(_ period: TaskPeriod) -> Int {
+            if period.state == .redeemable { return 0 }
+            return usedIDs.contains(period.id) ? 2 : 1
+        }
+
+        return periods
+            .filter { $0.state == .redeemable || $0.state == .redeemed }
+            // 非當期的卡片後端沒有 UUID，點進兌換／券碼頁都會失敗，因此不列出來。
+            .filter { !$0.id.isEmpty }
+            .sorted { lhs, rhs in
+                let lhsRank = rank(lhs)
+                let rhsRank = rank(rhs)
+                if lhsRank != rhsRank { return lhsRank < rhsRank }
+                return lhs.index < rhs.index
+            }
+    }
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
         case 5..<12: return "早安，動起來！"
         case 12..<18: return "午安，動起來！"
-        default: return "晚安，別忘了今天的步數！"
+        default: return "晚安，今天運動了嗎？"
         }
     }
 
     private var auth: AuthServicing?
     private var tasks: TasksServicing?
     private var profileStore: ProfileStoring?
-    private var health: HealthReading?
     private weak var envStore: AppEnvironmentStore?
 
     func configure(auth: AuthServicing, tasks: TasksServicing, profileStore: ProfileStoring,
-                   health: HealthReading, envStore: AppEnvironmentStore) {
+                   envStore: AppEnvironmentStore) {
         guard self.auth == nil else { return }
         self.auth = auth
         self.tasks = tasks
         self.profileStore = profileStore
-        self.health = health
         self.envStore = envStore
-    }
-
-    /// 讀取今日健康摘要（唯讀，需已授權）。未授權或讀取失敗都歸類為「未連結」，
-    /// 由 UI 顯示淺灰半透明占位圖案，不視為錯誤、也不顯示假數字。
-    func loadHealthSummary() async {
-        guard let health else { return }
-        await loadHealthSummary(using: health)
-    }
-
-    /// 剛切進示範模式時，ViewModel 還握著切換前的 reader，因此要能指定用哪一個。
-    func loadHealthSummary(using health: HealthReading) async {
-        guard await health.isAuthorized() else {
-            healthLink = .notLinked
-            healthSummary = nil
-            return
-        }
-        do {
-            healthSummary = try await health.summary(for: Date())
-            healthLink = .linked
-        } catch {
-            healthLink = .notLinked
-            healthSummary = nil
-        }
     }
 
     /// 本地優先 + 節流：先秀快取；距上次更新未滿 60 秒（且已有資料）就不發 request。
@@ -567,21 +628,21 @@ final class HomeViewModel: ObservableObject {
     /// 剛登入完還解析失敗，就不可能是 session 過期了。
     func loadWeeklySummary(force: Bool = false) async {
         guard let tasks else { return }
-        if currentWeekTask == nil, let cached = TasksCache.load() {
-            currentWeekTask = Self.highlightedPeriod(in: cached)
+        if periods.isEmpty, let cached = TasksCache.load() {
+            periods = cached
         }
-        guard force || TasksCache.canRefresh() || currentWeekTask == nil else { return }
-        let hadCache = currentWeekTask != nil
-        isLoadingSummary = currentWeekTask == nil
+        guard force || TasksCache.canRefresh() || periods.isEmpty else { return }
+        let hadCache = !periods.isEmpty
+        isLoadingSummary = periods.isEmpty
         defer { isLoadingSummary = false }
         let startedAt = DispatchTime.now()
         do {
-            let periods = try await tasks.fetchTasks()
-            currentWeekTask = Self.highlightedPeriod(in: periods)
-            TasksCache.save(periods)
+            let fetched = try await tasks.fetchTasks()
+            periods = fetched
+            TasksCache.save(fetched)
             TasksTelemetry.reportSuccess(
                 source: force ? .postLogin : .homeRefresh,
-                periods: periods,
+                periods: fetched,
                 highlighted: currentWeekTask,
                 hadCache: hadCache,
                 startedAt: startedAt
@@ -613,7 +674,7 @@ final class HomeViewModel: ObservableObject {
         // 本地優先：先秀快取的本週任務（有快取代表先前登入過，樂觀視為已登入）。
         var hadCache = false
         if let cached = TasksCache.load() {
-            currentWeekTask = Self.highlightedPeriod(in: cached)
+            periods = cached
             hasLoggedIn = true
             hadCache = true
         }
@@ -623,15 +684,15 @@ final class HomeViewModel: ObservableObject {
         if isProfileComplete && !didAutoLogin {
             didAutoLogin = true
             // 節流：距上次更新未滿 60 秒且已有快取，就不發請求。
-            if TasksCache.canRefresh() || currentWeekTask == nil {
+            if TasksCache.canRefresh() || periods.isEmpty {
                 let startedAt = DispatchTime.now()
                 do {
-                    let periods = try await tasks?.fetchTasks() ?? []
-                    guard !periods.isEmpty else { throw AppError.parsing("empty task list") }
+                    let fetched = try await tasks?.fetchTasks() ?? []
+                    guard !fetched.isEmpty else { throw AppError.parsing("empty task list") }
                     hasLoggedIn = true
-                    currentWeekTask = Self.highlightedPeriod(in: periods)
-                    TasksCache.save(periods)
-                    TasksTelemetry.reportSuccess(source: .homeBootstrap, periods: periods,
+                    periods = fetched
+                    TasksCache.save(fetched)
+                    TasksTelemetry.reportSuccess(source: .homeBootstrap, periods: fetched,
                                                  highlighted: currentWeekTask, hadCache: hadCache,
                                                  startedAt: startedAt)
                 } catch {
@@ -645,7 +706,6 @@ final class HomeViewModel: ObservableObject {
                 }
             }
         }
-        await loadHealthSummary()
     }
 
     /// 使用者手動點「重新登入」時呼叫。
@@ -689,10 +749,9 @@ final class HomeViewModel: ObservableObject {
                 hasLoggedIn = true
                 loginResultIsError = false
                 loginResultMessage = silent ? nil : "示範模式已啟用，顯示的是範例資料"
-                if let periods = try? await envStore.environment.tasks.fetchTasks() {
-                    currentWeekTask = Self.highlightedPeriod(in: periods)
+                if let fetched = try? await envStore.environment.tasks.fetchTasks() {
+                    periods = fetched
                 }
-                await loadHealthSummary(using: envStore.environment.health)
                 return
             }
 

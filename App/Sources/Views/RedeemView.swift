@@ -3,6 +3,7 @@ import SportsRewardsKit
 
 /// 兌換好禮：列出可兌換的商家品項，點「兌換」需先二次確認
 /// 警語（兌換後不可更換、需簡訊驗證出示券碼）才會真的送出表單。
+
 ///
 /// 兌換成功（`RedeemResult.submitted == true`）後導向 `VoucherView(taskID:)`——該期已經是
 /// state=REDEEMED，要看券碼需再走一次簡訊 OTP 驗證（VoucherView 自己的狀態機負責）。
@@ -11,6 +12,9 @@ struct RedeemView: View {
     let periodIndex: Int?
 
     @Environment(\.appEnvironment) private var environment
+    /// 這一頁自己不用它，但兌換成功後開的 `VoucherView` 需要——sheet 的內容在這個
+    /// codebase 一律顯式注入依賴（見同檔的 `.environment(\.appEnvironment, …)`）。
+    @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = RedeemViewModel()
     @State private var showVoucher = false
 
@@ -61,9 +65,10 @@ struct RedeemView: View {
         }
         .sheet(isPresented: $showVoucher) {
             NavigationStack {
-                VoucherView(taskID: taskID, source: .redeemResult)
+                VoucherView(taskID: taskID, source: .redeemResult, periodIndex: periodIndex)
             }
             .environment(\.appEnvironment, environment)
+            .environmentObject(voucherUsage)
         }
     }
 

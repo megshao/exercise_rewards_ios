@@ -55,7 +55,6 @@ enum DemoMode {
             redeem: MockRedeemService(delaySeconds: 0.4),
             voucher: MockVoucherService(delaySeconds: 0.4),
             profileStore: InMemoryProfileStore(seed: profile),
-            health: MockHealthReader(),
             upload: MockUploadService()
         )
     }
@@ -136,7 +135,11 @@ final class AppEnvironmentStore: ObservableObject {
         guard !isDemo else { return }
         defaults.set(true, forKey: DemoMode.storageKey)
         // 真實任務快取不能留在示範畫面上（反之亦然），兩個方向都清。
+        // 「已使用」標記也一樣：它是綁期別 UUID 的，示範資料與真實資料不可混用。
         TasksCache.clear()
+        VoucherUsage.clear()
+        // 這裡清的是持久層；畫面上那份由 `HuihanApp` 監看 `isDemo` 一起歸零
+        // （`AppEnvironmentStore` 刻意不持有 View 層的 store）。
         environment = DemoMode.makeEnvironment()
         isDemo = true
         // 示範模式一律不送遙測與當機報告，SDK 層也一起關掉（不只靠 Telemetry 的閘門）。
@@ -147,6 +150,7 @@ final class AppEnvironmentStore: ObservableObject {
         guard isDemo else { return }
         defaults.set(false, forKey: DemoMode.storageKey)
         TasksCache.clear()
+        VoucherUsage.clear()
         environment = DefaultAppEnvironment()
         isDemo = false
         // 離開示範模式後，收集狀態回到使用者自己的偏好。

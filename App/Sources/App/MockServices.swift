@@ -77,6 +77,9 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
     ///
     /// 狀態分佈刻意涵蓋全部 5 種狀態，讓審查員與截圖素材都看得到完整流程：
     /// 已兌換 3 期（券夾有券可看）／可兌換 1 期／審核中 1 期／可上傳 1 期／尚未開始 8 期。
+    ///
+    /// 「已使用」不在這份資料裡——它不是官網的狀態，而是使用者在 App 內自己標記的
+    /// 本機旗標（見 `VoucherUsage`），因此示範模式一開始三張券都是未使用。
     /// `id` 比照真實後端：只有當期與已結束的期別有 UUID，尚未開始的期別為空字串
     /// （空字串會讓卡片不顯示需要 UUID 的按鈕，與正式站行為一致）。
     public static let defaultSample: [TaskPeriod] = [
@@ -273,54 +276,6 @@ public final class MockVoucherService: VoucherServicing, @unchecked Sendable {
             "加碼券使用期限自取得後起至115年12月31日24時止，逾期視同放棄，恕不補發、展延、折換現金或更換其他等值商品。",
             "抵用時應開啟本人帳號之有效加碼券頁面，並依合作店家現場流程完成抵用，不得以紙本列印、手機截圖、翻拍或其他非活動網站即時畫面方式抵用。"
         ]
-    )
-}
-
-/// 假的健康資料讀取器，回傳範例的今日健康摘要，供 UI 開發與 Preview 使用。
-public final class MockHealthReader: HealthReading, @unchecked Sendable {
-    public enum Scenario: Sendable, Equatable {
-        case authorized
-        case notAuthorized
-    }
-
-    private var scenario: Scenario
-    private let sample: HealthSummary
-    private let delayNanoseconds: UInt64
-
-    public init(
-        scenario: Scenario = .authorized,
-        sample: HealthSummary = MockHealthReader.defaultSample,
-        delaySeconds: Double = 0.4
-    ) {
-        self.scenario = scenario
-        self.sample = sample
-        self.delayNanoseconds = UInt64(delaySeconds * 1_000_000_000)
-    }
-
-    public func isAuthorized() async -> Bool {
-        scenario == .authorized
-    }
-
-    public func requestAuthorization() async throws {
-        try await Task.sleep(nanoseconds: delayNanoseconds)
-        scenario = .authorized
-    }
-
-    public func summary(for date: Date) async throws -> HealthSummary {
-        try await Task.sleep(nanoseconds: delayNanoseconds)
-        return HealthSummary(
-            date: date,
-            steps: sample.steps,
-            distanceMeters: sample.distanceMeters,
-            exerciseMinutes: sample.exerciseMinutes
-        )
-    }
-
-    public static let defaultSample = HealthSummary(
-        date: Date(),
-        steps: 9_688,
-        distanceMeters: 6_400,
-        exerciseMinutes: 42
     )
 }
 

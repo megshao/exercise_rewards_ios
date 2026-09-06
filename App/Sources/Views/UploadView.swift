@@ -6,9 +6,8 @@ import SportsRewardsKit
 /// 上傳運動紀錄。
 ///
 /// 隱私設計：
-/// 不用 HealthKit 數據產圖上傳，改成讓使用者從相簿**自選**一張運動紀錄截圖 → 預覽 →
-/// 「確認上傳」。這裡完全不會讀取／使用 HealthKit 資料（HealthKit read-only, never
-/// transmitted，健康數據只在 HealthView/HomeView 本機顯示）。
+/// 讓使用者從相簿**自選**一張運動紀錄截圖 → 預覽 → 「確認上傳」。
+/// 上傳的內容完全由使用者挑選，App 不會自己產生任何圖卡。
 struct UploadView: View {
     let taskID: String
     let periodIndex: Int?
@@ -159,7 +158,7 @@ final class UploadViewModel: ObservableObject {
         Telemetry.setCrashKey(.uploadStage(.idle))
     }
 
-    /// 讀取使用者從相簿選取的截圖。只接受圖片資料本身，不去讀取任何 HealthKit 或個資欄位。
+    /// 讀取使用者從相簿選取的截圖。只接受圖片資料本身，不去讀取任何個資欄位。
     ///
     /// **E11 只送二元結果（picked / unreadable）。** 刻意不送的東西：`data.count`、
     /// `UIImage.size`、原始格式（HEIC/JPEG）、`jpegDataUnder5MB` 的壓縮迭代次數

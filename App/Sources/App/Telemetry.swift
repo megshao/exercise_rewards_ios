@@ -18,24 +18,15 @@ import FirebaseCrashlytics
 // **哪些資料絕對不准進來**（新增事件前請逐條對照）：
 //   1. 個資：身分證號、出生日期、手機號碼、姓名、email、健保卡號——這三欄是 App 唯一收集的
 //      個資，只在登入當下直送 500.gov.tw，任何形式（原文、雜湊、截斷、拼接）都不得進入遙測。
-//   2. HealthKit 衍生值：步數、距離、卡路里、運動分鐘，以及**任何由它們算出來的東西**——
-//      包含「達標了沒」這種布林值、達標百分比、達標時間、甚至「健康頁是不是 ready 狀態」。
-//      衍生的布林值一樣是健康資料，這是本檔案最容易被說服放寬的一條，見下方「為什麼」。
-//   3. 官方站識別碼：登入 session / cookie / CSRF token、期別 UUID（`TaskPeriod.id`）、
+//   2. 官方站識別碼：登入 session / cookie / CSRF token、期別 UUID（`TaskPeriod.id`）、
 //      `vendorId` / `itemId`、S3 presigned URL 與其 host。
-//   4. 券碼：兌換碼、券序號、條碼內容、OTP、以及任何可以拿去核銷的字串。
-//   5. 自由文字：使用者輸入的任何內容、**官網回傳的任何原文**（`.notice--error`、OTP 錯誤
+//   3. 券碼：兌換碼、券序號、條碼內容、OTP、以及任何可以拿去核銷的字串。
+//   4. 自由文字：使用者輸入的任何內容、**官網回傳的任何原文**（`.notice--error`、OTP 錯誤
 //      訊息、`Voucher.notices`、`remainingText`、商家名／品項名）。官網文字是不可信輸入，
 //      可能回顯遮罩後的手機號或日期，一律先分類成本檔案自己定義的封閉列舉再送。
 //
-// **為什麼 HealthKit 資料（含衍生布林）不可外傳**：這不是我們的偏好，是 Apple 的硬性規定。
-// App Store Review Guideline 5.1.3(i) 與 HealthKit 使用條款明訂：從 HealthKit 讀到的資料
-// 不得分享給第三方。`goal_met: true` 是從步數算出來的，本質上就是健康資料的一個位元；
-// 「匿名彙總」「只送布林」都不能豁免。需要知道「使用者有沒有在用健康分頁」時，
-// 只送**流程動作**（按了連結按鈕、看了哪個畫面），不送授權結果、不送達標與否。
-//
 // **為什麼閘門擋不住這件事、需要你自己守**：`gate` 的敏感樣式掃描只掃字串
-// （`Redact.sensitiveKinds`）。`.bool(true)` 與 `.int(8000)` 是掃不到的——所以「不埋」
+// （`Redact.sensitiveKinds`）。`.bool(true)` 與 `.int(1)` 是掃不到的——所以「不埋」
 // 必須發生在寫下 `case` 的那一刻，而不是指望送出前被攔下來。
 
 // MARK: - 值域列舉
@@ -51,7 +42,6 @@ enum ScreenName: String, Sendable, CaseIterable {
     case onboardingForm = "onboarding_form"
     case home
     case tasks
-    case health
     case wallet
     case profile
     case upload
@@ -66,7 +56,6 @@ enum ScreenName: String, Sendable, CaseIterable {
         case .onboardingWelcome, .onboardingForm: return .onboarding
         case .home: return .home
         case .tasks: return .tasks
-        case .health: return .health
         case .wallet: return .wallet
         case .profile: return .profile
         case .upload: return .upload
@@ -83,7 +72,6 @@ enum ScreenClass: String, Sendable {
     case onboarding = "OnboardingView"
     case home = "HomeView"
     case tasks = "TasksView"
-    case health = "HealthView"
     case wallet = "WalletView"
     case profile = "ProfileView"
     case upload = "UploadView"
@@ -466,8 +454,6 @@ struct AnalyticsValue: Sendable {
 enum AnalyticsEvent: Sendable {
     // E1
     /// 畫面瀏覽。只帶封閉列舉的畫面名，不帶任何畫面上的資料。
-    /// **健康頁不帶任何狀態參數**（不區分未授權／已連結）：`ready` 等於「`summary()` 查得到
-    /// 資料」，是 HealthKit 授權結果的間接訊號。
     /// **upload / redeem / voucher / screenshot 不帶 taskID。**
     case screenViewed(ScreenName)
 
@@ -510,19 +496,8 @@ enum AnalyticsEvent: Sendable {
         durationMs: Int
     )
 
-    // E9
-    /// 按下「連結 Apple 健康」。**這是 UI 動作，不是 HealthKit 資料**——
-    /// 按鈕按下的當下 HealthKit 還沒被呼叫。無參數。
-    case healthLinkTap
-
-    // ⛔️ E10 `health_link_result`（授權流程的結果）**刻意不實作**。
-    // 這裡的判準是：健康相關只埋**流程動作**，不埋授權結果。理由：
-    //   1. `completed` / `unavailable` / `error` 三選一就是在描述 HealthKit 授權流程的
-    //      結果，即使 Apple 設計上不揭露「使用者按了允許還是不允許」，這仍然是
-    //      「從 HealthKit API 取得的資訊」，屬 5.1.3(i) 要保護的範圍。
-    //   2. `unavailable`（`isHealthDataAvailable() == false`）雖然只是裝置能力，
-    //      但混在同一個事件裡就無法在資料端切乾淨。
-    //   3. E9 的次數已足以估算「多少人願意連結健康」，不需要這個事件。
+    // ⛔️ E9 `health_link_tap` / E10 `health_link_result` 已隨「連結 Apple 健康」功能一起
+    // 移除。本 App 不再讀取 HealthKit，因此也不存在任何健康相關的事件。
 
     // E11
     /// 從相簿選圖的結果。只送二元結果。
@@ -580,6 +555,14 @@ enum AnalyticsEvent: Sendable {
     /// 條碼畫不出來。新的未知 format 出現＝官網改版訊號。
     case barcodeRenderFailed(format: BarcodeFormat)
 
+    // E29
+    /// 使用者自己把某張加碼券標記為「已使用」（或還原）。
+    ///
+    /// **為什麼可以送**：官網沒有「已使用」狀態，這個標記純粹是使用者在 App 內按的一個開關，
+    /// 是 UI 動作而非任何官網資料。**只送方向（標記／還原）**——
+    /// 不帶期別 UUID、不帶期數、不帶 `voucherSummary`（那是官網原文與通路品項）。
+    case voucherMarkUsed(used: Bool)
+
     // E25
     /// 儲存個資到 Keychain 的結果。`draft` 不進 facade。
     case profileSave(outcome: TelemetryOutcome)
@@ -610,7 +593,6 @@ enum AnalyticsEvent: Sendable {
         case .registerRedirect: return "register_redirect"
         case .tutorialComplete: return AnalyticsEventTutorialComplete
         case .tasksFetch: return "tasks_fetch"
-        case .healthLinkTap: return "health_link_tap"
         case .uploadPick: return "upload_pick"
         case .uploadSubmit: return "upload_submit"
         case .uploadResult: return "upload_result"
@@ -625,6 +607,7 @@ enum AnalyticsEvent: Sendable {
         case .voucherOtpVerify: return "voucher_otp_verify"
         case .voucherReveal: return "voucher_reveal"
         case .barcodeRenderFailed: return "barcode_render_failed"
+        case .voucherMarkUsed: return "voucher_mark_used"
         case .profileSave: return "profile_save"
         case .localDataClear: return "local_data_clear"
         case .siteError: return "site_error"
@@ -640,7 +623,7 @@ enum AnalyticsEvent: Sendable {
                 AnalyticsParameterScreenClass: .code(screen.screenClass),
             ]
 
-        case .tutorialBegin, .registerRedirect, .tutorialComplete, .healthLinkTap, .localDataClear:
+        case .tutorialBegin, .registerRedirect, .tutorialComplete, .localDataClear:
             return [:]
 
         case .onboardingValidationFailed(let field):
@@ -744,6 +727,9 @@ enum AnalyticsEvent: Sendable {
                 "format": .code(format),
             ]
 
+        case .voucherMarkUsed(let used):
+            return ["used": .bool(used)]
+
         case .barcodeRenderFailed(let format):
             return ["format": .code(format)]
 
@@ -773,8 +759,6 @@ enum AnalyticsEvent: Sendable {
 ///
 /// - user property 會**附加在往後所有事件上**，是最容易不小心變成準識別碼的地方：
 ///   幾個布林的組合就足以把裝置切成很小的群，跟「匿名」的承諾方向相反。
-/// - **不要為 HealthKit 授權結果設 user property**：user property 會黏在往後每一個
-///   事件上，等於把健康資料的一個位元散佈到整個資料集，直接踩 Guideline 5.1.3(i)。
 /// - 連看起來無害的旗標（例如「onboarding 完成了沒」）也不要設：漏斗用
 ///   `tutorial_begin` / `tutorial_complete` 兩個事件就算得出來，不需要常駐屬性。
 ///   開了第一個先例之後，後面每一個都會有它自己的理由。
@@ -787,8 +771,7 @@ enum UserProperty: Sendable {}
 ///
 /// **禁止成為 custom key 的東西**（列出來讓後人不用再想一次）：`Profile` 任何欄位、
 /// taskID／UUID、`vendorId`／`itemId`、OTP、券碼、S3 URL、cookie／CSRF、
-/// `HealthSummary` 任何數值、**健康連結狀態**、圖片資訊、官網任何文字、
-/// Analytics 的 app instance ID。
+/// 圖片資訊、官網任何文字、Analytics 的 app instance ID。
 enum CrashKey: Sendable {
     case buildChannel(BuildChannel)
     /// 理論上回報時恆為 false（示範模式已關閉收集）；保留作為不變量檢查——

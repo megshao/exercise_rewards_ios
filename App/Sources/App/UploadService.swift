@@ -35,8 +35,7 @@ public struct UploadResult: Equatable, Sendable {
 /// `multipart POST /member/upload`。
 ///
 /// 隱私注意：`imageData` 只會是使用者主動從相簿選取的截圖（`PhotosPicker`），
-/// **絕不是** HealthKit 讀出的數值——HealthKit 步數/距離/運動分鐘只在 HealthView/HomeView
-/// 本機顯示用來判斷達標，never leaves the device。
+/// **絕不是** App 自己產生的內容——送出去的一律是使用者親自挑選的那一張圖檔。
 public protocol UploadServicing: Sendable {
     /// - Parameters:
     ///   - taskID: 目前所在期別的 id（僅供 UI 顯示用；後端 `/member/upload` 會自動綁「當前可

@@ -6,7 +6,7 @@ import os
 /// - 呼叫端只能傳「已遮罩或非敏感」的訊息；提供 category 分流。
 /// - release build 下 debug/info 不輸出敏感層級（僅保留 error 的非敏感訊息）。
 public enum LogCategory: String, Sendable {
-    case auth, network, tasks, redeem, voucher, health, ui, security
+    case auth, network, tasks, redeem, voucher, ui, security
 }
 
 public struct SecureLog: Sendable {
