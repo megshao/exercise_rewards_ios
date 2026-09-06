@@ -71,9 +71,15 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
 
     /// 示範模式（App Store 審查）與 Preview 用的完整 14 期範例資料。
     ///
-    /// 陣列順序刻意把「本週那一期」放在第一個：`HomeViewModel.highlightedPeriod` 取的是
-    /// 第一個非 `.notStarted` 的期別，首頁「本週任務」與任務頁置頂高亮都依它決定。
-    /// 其餘期別依 1→14 排在後面（`TasksViewModel.sorted` 會再排一次）。
+    /// **日期是依「今天」動態算出來的**：第 6 期永遠涵蓋當下所在那一週（週一～週日，
+    /// 台北時間），其餘 13 期以它為基準前後各推一週。示範模式因此永遠有一個真正的當期，
+    /// 不會像寫死日期那樣過幾天就整份過期。
+    ///
+    /// **為什麼順序改回 1→14**：舊版刻意把當期塞到陣列第 0 位，好讓當時
+    /// 「取第一個非 `.notStarted`」的 `HomeViewModel.highlightedPeriod` 剛好選中它。
+    /// 那等於用示範資料把正式站的 bug 蓋住——正式站回的是 1→14，第 1 期一旦不是
+    /// `.notStarted` 就永遠被選中，當期再也不前進，而截圖測試跑的是這份被排好的資料，
+    /// 完全驗不到。現在當期由日期決定，示範資料跟正式資料走同一條路徑。
     ///
     /// 狀態分佈刻意涵蓋全部 5 種狀態，讓審查員與截圖素材都看得到完整流程：
     /// 已兌換 3 期（券夾有券可看）／可兌換 1 期／審核中 1 期／可上傳 1 期／尚未開始 8 期。
@@ -82,43 +88,104 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
     /// 本機旗標（見 `VoucherUsage`），因此示範模式一開始三張券都是未使用。
     /// `id` 比照真實後端：只有當期與已結束的期別有 UUID，尚未開始的期別為空字串
     /// （空字串會讓卡片不顯示需要 UUID 的按鈕，與正式站行為一致）。
-    public static let defaultSample: [TaskPeriod] = [
-        // 本週：可上傳，倒數中。
-        TaskPeriod(id: "demo-period-06", index: 6, startDate: "10/06", endDate: "10/12",
-                   state: .open, remainingText: "剩 2 天 7 小時可上傳"),
+    public static var defaultSample: [TaskPeriod] { sample() }
 
-        // 已完成並兌換：券夾裡看得到 3 張加碼券。
-        // `voucherSummary` 比照官網任務卡上的「兌換內容：通路／品項」那一行。
-        TaskPeriod(id: "demo-period-01", index: 1, startDate: "09/01", endDate: "09/07",
-                   state: .redeemed, uploadedAt: "09/03 21:42", reviewedAt: "09/05 10:18 通過",
-                   voucherSummary: "示範超商 A／50+3元加碼券"),
-        TaskPeriod(id: "demo-period-02", index: 2, startDate: "09/08", endDate: "09/14",
-                   state: .redeemed, uploadedAt: "09/10 07:55", reviewedAt: "09/12 14:03 通過",
-                   voucherSummary: "示範超商 C／指定雞胸果昔兌換券"),
-        TaskPeriod(id: "demo-period-03", index: 3, startDate: "09/15", endDate: "09/21",
-                   state: .redeemed, uploadedAt: "09/18 20:11", reviewedAt: "09/19 09:26 通過",
-                   voucherSummary: "示範超市 D／50元加碼券"),
+    /// - Parameter now: 「今天」的基準時間。第 6 期會涵蓋它。測試可注入固定時間。
+    static func sample(now: Date = Date()) -> [TaskPeriod] {
+        let weeks = weekRanges(currentIndex: 6, now: now)
+        func start(_ index: Int) -> String { siteDate(weeks[index - 1].start) }
+        func end(_ index: Int) -> String { siteDate(weeks[index - 1].end) }
 
-        // 審核通過、尚未兌換：券夾「可兌換」區與任務頁的「立即兌換」按鈕都由這期驅動。
-        TaskPeriod(id: "demo-period-04", index: 4, startDate: "09/22", endDate: "09/28",
-                   state: .redeemable, remainingText: "剩 3 天 5 小時可兌換",
-                   uploadedAt: "09/24 19:30", reviewedAt: "09/26 11:47 通過"),
+        /// 該期第 `day` 天的 `MM/dd HH:mm`——官網「上傳時間／審核時間」就是這個格式。
+        /// 跟著期別日期一起算，才不會出現「第 1 期是 8 月、上傳時間卻寫 9 月」。
+        func stamp(_ index: Int, day: Int, _ hour: Int, _ minute: Int) -> String {
+            let base = weeks[index - 1].start
+            let date = demoCalendar.date(byAdding: .day, value: day, to: base) ?? base
+            let parts = demoCalendar.dateComponents([.month, .day], from: date)
+            return String(format: "%02d/%02d %02d:%02d", parts.month ?? 0, parts.day ?? 0, hour, minute)
+        }
 
-        // 已上傳、等待審核。
-        TaskPeriod(id: "demo-period-05", index: 5, startDate: "09/29", endDate: "10/05",
-                   state: .pendingReview, remainingText: "已上傳 · 5 個工作日內完成審核",
-                   uploadedAt: "10/01 22:08"),
+        return [
+            // 已完成並兌換：券夾裡看得到 3 張加碼券。
+            // `voucherSummary` 比照官網任務卡上的「兌換內容：通路／品項」那一行。
+            TaskPeriod(id: "demo-period-01", index: 1, startDate: start(1), endDate: end(1),
+                       state: .redeemed, uploadedAt: stamp(1, day: 2, 21, 42),
+                       reviewedAt: stamp(1, day: 4, 10, 18) + " 通過",
+                       voucherSummary: "示範超商 A／50+3元加碼券"),
+            TaskPeriod(id: "demo-period-02", index: 2, startDate: start(2), endDate: end(2),
+                       state: .redeemed, uploadedAt: stamp(2, day: 2, 7, 55),
+                       reviewedAt: stamp(2, day: 4, 14, 3) + " 通過",
+                       voucherSummary: "示範超商 C／指定雞胸果昔兌換券"),
+            TaskPeriod(id: "demo-period-03", index: 3, startDate: start(3), endDate: end(3),
+                       state: .redeemed, uploadedAt: stamp(3, day: 3, 20, 11),
+                       reviewedAt: stamp(3, day: 4, 9, 26) + " 通過",
+                       voucherSummary: "示範超市 D／50元加碼券"),
 
-        // 尚未開始的 8 期（後端此時不給 UUID，維持空字串）。
-        TaskPeriod(id: "", index: 7, startDate: "10/13", endDate: "10/19", state: .notStarted),
-        TaskPeriod(id: "", index: 8, startDate: "10/20", endDate: "10/26", state: .notStarted),
-        TaskPeriod(id: "", index: 9, startDate: "10/27", endDate: "11/02", state: .notStarted),
-        TaskPeriod(id: "", index: 10, startDate: "11/03", endDate: "11/09", state: .notStarted),
-        TaskPeriod(id: "", index: 11, startDate: "11/10", endDate: "11/16", state: .notStarted),
-        TaskPeriod(id: "", index: 12, startDate: "11/17", endDate: "11/23", state: .notStarted),
-        TaskPeriod(id: "", index: 13, startDate: "11/24", endDate: "11/30", state: .notStarted),
-        TaskPeriod(id: "", index: 14, startDate: "12/01", endDate: "12/07", state: .notStarted),
-    ]
+            // 審核通過、尚未兌換：券夾「可兌換」區與任務頁的「立即兌換」按鈕都由這期驅動。
+            TaskPeriod(id: "demo-period-04", index: 4, startDate: start(4), endDate: end(4),
+                       state: .redeemable, remainingText: "剩 3 天 5 小時可兌換",
+                       uploadedAt: stamp(4, day: 2, 19, 30),
+                       reviewedAt: stamp(4, day: 4, 11, 47) + " 通過"),
+
+            // 已上傳、等待審核。
+            TaskPeriod(id: "demo-period-05", index: 5, startDate: start(5), endDate: end(5),
+                       state: .pendingReview, remainingText: "已上傳 · 5 個工作日內完成審核",
+                       uploadedAt: stamp(5, day: 2, 22, 8)),
+
+            // 本週：可上傳，倒數中。倒數字串同樣依這一期的結束時間算，避免與日期矛盾。
+            TaskPeriod(id: "demo-period-06", index: 6, startDate: start(6), endDate: end(6),
+                       state: .open,
+                       remainingText: uploadRemainingText(periodEnd: weeks[5].end, now: now)),
+
+            // 尚未開始的 8 期（後端此時不給 UUID，維持空字串）。
+            TaskPeriod(id: "", index: 7, startDate: start(7), endDate: end(7), state: .notStarted),
+            TaskPeriod(id: "", index: 8, startDate: start(8), endDate: end(8), state: .notStarted),
+            TaskPeriod(id: "", index: 9, startDate: start(9), endDate: end(9), state: .notStarted),
+            TaskPeriod(id: "", index: 10, startDate: start(10), endDate: end(10), state: .notStarted),
+            TaskPeriod(id: "", index: 11, startDate: start(11), endDate: end(11), state: .notStarted),
+            TaskPeriod(id: "", index: 12, startDate: start(12), endDate: end(12), state: .notStarted),
+            TaskPeriod(id: "", index: 13, startDate: start(13), endDate: end(13), state: .notStarted),
+            TaskPeriod(id: "", index: 14, startDate: start(14), endDate: end(14), state: .notStarted),
+        ]
+    }
+
+    /// 示範資料共用的行事曆：跟正式資料同一個時區（`TaskPeriod.activityCalendar`），
+    /// 並把一週之始設為週一——官網的期別就是週一到週日。
+    private static var demoCalendar: Calendar {
+        var calendar = TaskPeriod.activityCalendar
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    /// 14 期的起訖日，第 `currentIndex` 期涵蓋 `now` 所在的那一週。
+    private static func weekRanges(currentIndex: Int, now: Date) -> [(start: Date, end: Date)] {
+        let calendar = demoCalendar
+        let thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start
+            ?? calendar.startOfDay(for: now)
+        return (1...14).map { index in
+            let start = calendar.date(byAdding: .day, value: (index - currentIndex) * 7, to: thisWeek) ?? thisWeek
+            let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start
+            return (start, end)
+        }
+    }
+
+    /// 官網格式 `yyyy/MM/dd`——`TaskPeriod.dateSpan` 就是照這個格式解析的。
+    private static func siteDate(_ date: Date) -> String {
+        let parts = demoCalendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d/%02d/%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// 「剩 N 天 M 小時可上傳」。上傳窗到期別最後一天結束為止，與 `TaskPeriod.hasEnded(now:)` 同界。
+    private static func uploadRemainingText(periodEnd: Date, now: Date) -> String? {
+        let calendar = demoCalendar
+        guard let closesAt = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: periodEnd)),
+              closesAt > now
+        else { return nil }
+        let seconds = Int(closesAt.timeIntervalSince(now))
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        return days > 0 ? "剩 \(days) 天 \(hours) 小時可上傳" : "剩 \(hours) 小時可上傳"
+    }
 }
 
 /// 假的兌換服務，回傳範例商家品項清單，供 UI 開發與 Preview 使用。

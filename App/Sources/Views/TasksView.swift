@@ -135,6 +135,12 @@ private struct TaskPeriodCard: View {
     let onScreenshotTap: () -> Void
     let onVoucherTap: () -> Void
     let onUploadTap: () -> Void
+    /// 判斷「這一期是否已經過完」的基準時間。預設當下，預覽與測試可注入固定時間。
+    var now: Date = Date()
+
+    /// 上傳窗已經過完。官網對這種卡片照樣回 `NOT_UPLOADED`（→ `.open`）且照樣附倒數字串，
+    /// 所以「還能不能上傳」不能只看 state——見 `TaskPeriod.hasEnded(now:)`。
+    private var hasEnded: Bool { period.hasEnded(now: now) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -155,13 +161,13 @@ private struct TaskPeriodCard: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Theme.Colors.primaryDark)
                 } else {
-                    TaskStateBadge(state: period.state)
+                    TaskStateBadge(state: period.state, hasEnded: hasEnded)
                 }
             }
 
             // 上面那格被倒數佔走時，徽章補在下一行；沒被佔走就不用重複顯示。
             if showsRemaining, period.remainingText != nil {
-                TaskStateBadge(state: period.state)
+                TaskStateBadge(state: period.state, hasEnded: hasEnded)
             }
 
             // 官網卡片上的「兌換內容：通路／品項」。官網原文，只顯示、不進遙測。
@@ -203,7 +209,8 @@ private struct TaskPeriodCard: View {
     }
 
     /// 這張卡要不要在右上角顯示倒數：只有本週高亮、而且該狀態的倒數還有意義時才顯示。
-    private var showsRemaining: Bool { isHighlighted && period.state.showsUploadCountdown }
+    // 已經過完的期別不顯示倒數：官網對過期卡片仍會回「剩 N 小時」，那是一個早就關掉的窗。
+    private var showsRemaining: Bool { isHighlighted && period.state.showsUploadCountdown && !hasEnded }
 
     private func reviewSummary(uploadedAt: String, reviewedAt: String?) -> String {
         if let reviewedAt {
@@ -238,15 +245,24 @@ private struct TaskPeriodCard: View {
                 }
             }
         case .open:
-            Button {
-                onUploadTap()
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.up.circle.fill")
-                    Text("上傳運動紀錄")
+            // 上傳窗已過就不給 CTA。舊版只看 state，於是過期未上傳的期別照樣畫出按鈕，
+            // 使用者要一路點進去、選好照片、按下「確認上傳」，才會被
+            // `UploadService.upload` 的 `windowClosed` 擋下來——那是事後攔截，不是預防。
+            if hasEnded {
+                Text("本期上傳期間已結束")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.Colors.dim)
+            } else {
+                Button {
+                    onUploadTap()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.up.circle.fill")
+                        Text("上傳運動紀錄")
+                    }
                 }
+                .buttonStyle(.huihanPrimary)
             }
-            .buttonStyle(.huihanPrimary)
         case .redeemed, .pendingReview:
             // 已兌換／審核中：只提供「看截圖」回顧當時上傳的內容，不再提供「立即兌換」
             // （已兌換過的期別無法重複兌換；審核中則尚未進入可兌換狀態）。

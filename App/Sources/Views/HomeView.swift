@@ -333,6 +333,10 @@ private struct VoucherRowCard: View {
 /// 首頁用的本週任務摘要卡（精簡版，完整卡片見 TasksView）。
 private struct TaskSummaryCard: View {
     let task: TaskPeriod
+    /// 判斷「這一期是否已經過完」的基準時間。預設當下，預覽與測試可注入固定時間。
+    var now: Date = Date()
+
+    private var hasEnded: Bool { task.hasEnded(now: now) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -345,7 +349,7 @@ private struct TaskSummaryCard: View {
                         .foregroundStyle(Theme.Colors.muted)
                 }
                 Spacer()
-                TaskStateBadge(state: task.state)
+                TaskStateBadge(state: task.state, hasEnded: hasEnded)
             }
 
             // 進度時間軸：上傳 → 審核 → 兌換（依狀態上色）。取代舊的百分比條，
@@ -361,7 +365,11 @@ private struct TaskSummaryCard: View {
     private var statusLine: some View {
         switch task.state {
         case .open:
-            if let t = task.remainingText, let h = RemainingTime.hours(from: t) {
+            if hasEnded {
+                // 官網對過期未上傳的卡片仍會回倒數字串，照著顯示等於告訴使用者「還有時間」。
+                Text("本期已結束，未上傳運動紀錄")
+                    .font(.system(size: 12)).foregroundStyle(Theme.Colors.dim)
+            } else if let t = task.remainingText, let h = RemainingTime.hours(from: t) {
                 Text(t)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(RemainingTime.color(forHours: h))
@@ -533,9 +541,19 @@ extension TaskState {
 
 struct TaskStateBadge: View {
     let state: TaskState
+    /// 上傳窗已經過完的期別。官網對這種卡片照樣回 `NOT_UPLOADED`（→ `.open`），
+    /// 直接顯示「未上傳」會讓使用者以為還來得及補傳，所以這裡換成「已結束」。
+    /// 預設 false，讓不需要判斷日期的呼叫端維持原樣。
+    var hasEnded: Bool = false
 
     var body: some View {
-        StatusBadge(text: state.badgeText, foreground: state.badgeForeground, background: state.badgeBackground)
+        if state == .open, hasEnded {
+            StatusBadge(text: "已結束",
+                        foreground: Theme.Colors.dim,
+                        background: Theme.Colors.disabledBackground)
+        } else {
+            StatusBadge(text: state.badgeText, foreground: state.badgeForeground, background: state.badgeBackground)
+        }
     }
 }
 
@@ -660,9 +678,12 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    /// 挑出「本週」要高亮的那一期：第一個非 notStarted 的期別，找不到就用最新一期。
-    static func highlightedPeriod(in periods: [TaskPeriod]) -> TaskPeriod? {
-        periods.first(where: { $0.state != .notStarted }) ?? periods.max(by: { $0.index < $1.index })
+    /// 挑出「本週」要高亮的那一期。規則與踩過的坑都在 `TaskPeriod.current(in:now:)`
+    /// ——那是領域規則不是排版，放在 Kit 才有單元測試守得住（見 `PeriodSelectionTests`）。
+    ///
+    /// - Parameter now: 判斷基準時間。預設當下；測試與預覽可注入固定時間。
+    static func highlightedPeriod(in periods: [TaskPeriod], now: Date = Date()) -> TaskPeriod? {
+        TaskPeriod.current(in: periods, now: now)
     }
 
     /// 進入 App 時的啟動流程（只做一次）：
