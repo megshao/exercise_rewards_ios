@@ -301,13 +301,29 @@ final class VendorIntroViewModel: ObservableObject {
         }
     }
 
+    /// 版型認不出來時的警報。
+    ///
+    /// **為什麼要在這裡發**：`VendorIntroParser` 兩種版型都對不上時不再丟例外，
+    /// 而是退到純文字給出最小可用結果（讓使用者至少看得到東西）。那個決定的代價是
+    /// **失敗不再自動變成例外**，所以「官網換版型了」這件事必須由呼叫端自己回報，
+    /// 否則就變成一個沒人知道的降級。
+    ///
+    /// 只送 `layout` 這個封閉列舉，不送標題、分類名或任何官網文字。
+    private func reportLayoutDrift(_ intro: VendorIntro) {
+        guard intro.layout == .unrecognised else { return }
+        Telemetry.recordNonFatal(.vendorIntroLayout, endpoint: .vendorIntro,
+                                 extras: ["layout": .code(intro.layout)])
+    }
+
     func load() async {
         guard let redeem else { return }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            intro = try await redeem.vendorIntro(path: introPath)
+            let loaded = try await redeem.vendorIntro(path: introPath)
+            intro = loaded
+            reportLayoutDrift(loaded)
         } catch {
             // 這一頁是純資訊，載不到不影響兌換本身，因此只提示、不擋流程。
             errorMessage = "無法載入可兌換商品清單，請稍後再試。"

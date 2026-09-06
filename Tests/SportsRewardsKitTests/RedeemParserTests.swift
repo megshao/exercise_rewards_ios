@@ -184,4 +184,72 @@ final class RedeemParserTests: XCTestCase {
                         "/intro/vendor-5.html",
                         nil])
     }
+
+    // MARK: - 切列邊界的韌性
+
+    /// 官網把 class 加上修飾詞、調換順序、或在 `<li>` 上多加屬性，都不該讓切列失敗。
+    ///
+    /// **為什麼這件事值得一個測試**：切列失敗不會丟錯誤——`parse` 會退回切表單的路徑，
+    /// 品項照樣解析成功、兌換照樣可用，只是每一列的 `introPath` 都變成 nil，
+    /// 「兌換品項」按鈕靜默消失。那種退化沒有任何警報，只有使用者回報才會被發現。
+    func testIntroPathSurvivesClassAttributeVariations() throws {
+        let variants = [
+            #"<li class="item-row item-row--featured">"#,
+            #"<li class="row item-row">"#,
+            #"<li data-index="1" class="item-row" data-vendor="1">"#,
+            #"<li class='item-row'>"#,
+            #"<li  class = "item-row" >"#,
+        ]
+
+        for openTag in variants {
+            let html = """
+            <ul class="item-list">
+              \(openTag)
+                <div class="item-row__actions">
+                  <a href="/registrant/intro/vendor-1.html" class="btn item-row__intro">兌換品項</a>
+                  <form class="item-row__form" data-vendor-name="示範超商 A" data-item-name="測試品項 A1">
+                    <input type="hidden" name="vendorId" value="1">
+                    <input type="hidden" name="item" value="test-item-0001">
+                  </form>
+                </div>
+              </li>
+            </ul>
+            """
+
+            // Act
+            let options = try RedeemParser.parse(html: html)
+
+            // Assert
+            XCTAssertEqual(options.count, 1, "切列失敗：\(openTag)")
+            XCTAssertEqual(options.first?.introPath, "/intro/vendor-1.html",
+                           "切列退回 form 邊界，introPath 掉了：\(openTag)")
+        }
+    }
+
+    /// 每一列各自的連結不可以互相沾染，即使 class 寫法不同。
+    func testEachRowKeepsItsOwnIntroPathWithVariedClasses() throws {
+        let html = """
+        <ul class="item-list">
+          <li class="item-row item-row--first">
+            <a href="/registrant/intro/vendor-1.html" class="btn item-row__intro">兌換品項</a>
+            <form class="item-row__form" data-vendor-name="A" data-item-name="A1">
+              <input type="hidden" name="vendorId" value="1">
+              <input type="hidden" name="item" value="a1">
+            </form>
+          </li>
+          <li class="item-row">
+            <form class="item-row__form" data-vendor-name="B" data-item-name="B1">
+              <input type="hidden" name="vendorId" value="2">
+              <input type="hidden" name="item" value="b1">
+            </form>
+          </li>
+        </ul>
+        """
+
+        // Act
+        let options = try RedeemParser.parse(html: html)
+
+        // Assert
+        XCTAssertEqual(options.map(\.introPath), ["/intro/vendor-1.html", nil])
+    }
 }

@@ -157,13 +157,17 @@ enum TaskStateClass: String, Sendable {
 }
 
 /// 合作商家分類。**由公開的商家名稱比對出來的分類**，不是官網的 `vendorId`。
-/// 分類邏輯與 `RedeemView.VendorLogo` 的品牌色比對同源；認不出來一律 `other`，
-/// 絕不 fallback 成原始名稱。
-enum Vendor: String, Sendable {
+/// 認不出來一律 `other`，絕不 fallback 成原始名稱。
+///
+/// **這是全 App 唯一的商家名稱比對表**。`RedeemView.VendorLogo` 的品牌色與縮寫也走它——
+/// 先前兩邊各有一份 `contains` 判斷，結果漂掉了：logo 認得萬家福／樂家康，
+/// 遙測卻把它們算成 `other`。要新增商家就只改這裡。
+enum Vendor: String, Sendable, CaseIterable {
     case familyMart = "family_mart"
     case sevenEleven = "seven_eleven"
     case hilife
     case pxmart
+    case wanjiafu
     case other
 
     /// - Parameter vendorName: 官網回傳的商家名稱。**只用來做分類，不會被送出。**
@@ -174,6 +178,7 @@ enum Vendor: String, Sendable {
         }
         if vendorName.contains("萊爾富") { self = .hilife; return }
         if vendorName.contains("全聯") { self = .pxmart; return }
+        if vendorName.contains("萬家福") || vendorName.contains("樂家康") { self = .wanjiafu; return }
         self = .other
     }
 }
@@ -201,14 +206,21 @@ enum HostClass: String, Sendable {
 enum BarcodeFormat: String, Sendable {
     case code128
     case qr
+    case aztec
+    case pdf417
     /// 一張券同時含兩種符號集（萊爾富兩段式）。
     case mixed
     case other
 
+    /// 這裡的分類要與 `BarcodeGenerator` 認得的 format 一致，否則
+    /// `barcode_render_failed(format:)` 會把「畫得出來卻失敗」與「根本不支援」混在一起，
+    /// 那個事件就失去判斷依據的作用了。
     init(format: String) {
         switch format.uppercased() {
         case "CODE_128": self = .code128
         case "QR_CODE": self = .qr
+        case "AZTEC": self = .aztec
+        case "PDF_417", "PDF417": self = .pdf417
         default: self = .other
         }
     }
@@ -856,6 +868,8 @@ enum TelemetryIssue: String, Sendable {
     case tasksParse = "tasks_parse"
     case redeem = "redeem"
     case vendorIntro = "vendor_intro"
+    case redeemIntroMissing = "redeem_intro_missing"
+    case vendorIntroLayout = "vendor_intro_layout"
     case csrfMissing = "csrf_missing"
     case voucherView = "voucher_view"
     case voucherNotice = "voucher_notice"
@@ -896,6 +910,8 @@ enum TelemetryIssue: String, Sendable {
         case .screenshotRedirect: return 12
         // 接在既有序號後面。上面那句「不要重排」的意思就是：新的往後加，不要插隊。
         case .vendorIntro: return 13
+        case .redeemIntroMissing: return 14
+        case .vendorIntroLayout: return 15
         case .keychain: return 20
         case .profileDecode: return 21
         case .cacheDecode: return 22

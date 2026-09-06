@@ -28,6 +28,12 @@ import Foundation
 ///
 /// 版型 A 有就用 A，沒有才找 B——不是「猜哪一種」，而是「A 的標記存在與否」這個確定的訊號。
 ///
+/// **兩種都對不上時不丟例外，改退到純文字**（`<li>`／`<p>` 的可見文字兜成單一分類），
+/// 並在 `VendorIntro.layout` 標成 `.unrecognised`。理由：這一頁是純資訊，
+/// 讓使用者看到「這家大概能換什麼」比看到一個錯誤畫面有用。
+/// 代價是失敗不再自動變成例外，所以 `.unrecognised` 就是要求呼叫端自己回報的契約
+/// （見 `VendorIntroView`）。真的連一個字都撈不到才丟 `AppError.parsing`。
+///
 /// ## ReDoS 防線
 ///
 /// 與 `TaskParser` / `RedeemParser` 同一套規矩（相鄰量詞字元集合不重疊、量詞一律有上限、
@@ -45,25 +51,70 @@ public enum VendorIntroParser {
     private static let tableBodyPattern = #"<tbody\b[^<>]{0,200}>"#
     private static let cellPattern = #"<td\b[^<>]{0,200}>([^<]{0,2000})<"#
     private static let noticePattern = #"<aside\b[^<>]{0,200}\bclass\s{0,8}=\s{0,8}["'][^"']{0,120}notice[^"']{0,120}["'][^<>]{0,200}>"#
+    private static let mainOpenTagPattern = #"<main\b[^<>]{0,400}>"#
+    /// 退路用：任何 `<li>` 的可見文字（不要求 `data-name`）。
+    private static let plainListItemPattern = #"<li\b[^<>]{0,400}>([^<]{0,500})<"#
     private static let paragraphPattern = #"<p\b[^<>]{0,200}>([^<]{0,2000})<"#
 
     /// 解析整頁 HTML。
-    /// - Throws: `AppError.parsing` 當兩種版型的標記都找不到時（代表官網換版型了）。
+    /// - Throws: `AppError.parsing` 只在**連純文字都撈不到**時（頁面根本不是商品頁）。
     public static func parse(html: String) throws -> VendorIntro {
-        let categories = parseDetailCategories(html).isEmpty
-            ? parseTableCategories(html)
-            : parseDetailCategories(html)
+        var layout = VendorIntroLayout.itemList
+        var categories = parseDetailCategories(html)
+
+        if categories.isEmpty {
+            categories = parseTableCategories(html)
+            layout = .categoryTable
+        }
+        if categories.isEmpty {
+            categories = parseFallbackCategories(html)
+            layout = .unrecognised
+        }
 
         guard !categories.isEmpty else {
-            throw AppError.parsing("no category-card or table row found in vendor intro HTML")
+            throw AppError.parsing("no category-card, table row or item text found in vendor intro HTML")
         }
 
         return VendorIntro(
             title: text(in: html, pattern: titlePattern) ?? "可兌換商品",
             subtitle: text(in: html, pattern: heroSubtitlePattern),
             categories: categories,
-            notices: parseNotices(html)
+            notices: parseNotices(html),
+            layout: layout
         )
+    }
+
+    // MARK: - 兩種版型都對不上時的最小可用結果
+
+    /// 把頁面裡的 `<li>`（沒有就退 `<p>`）可見文字兜成單一分類。
+    ///
+    /// 刻意**不猜分類結構**：既然版型認不出來，就不要假裝知道哪個是類別、哪個是品項。
+    /// 只給一個「商品資訊」分類把撈到的文字逐條列出，讓使用者至少看得到內容，
+    /// 同時由 `layout == .unrecognised` 通知工程師該更新解析器了。
+    ///
+    /// 排除頁尾注意事項與導覽文字：`<aside class="notice">` 那一段另外解析，
+    /// 這裡只掃 `<main>`（沒有 `<main>` 才退回整頁）。
+    private static func parseFallbackCategories(_ html: String) -> [VendorIntroCategory] {
+        let scope = range(of: mainOpenTagPattern, in: html).map { tag in
+            let tail = String(html[tag.upperBound...])
+            return tail.range(of: "</main>").map { String(tail[..<$0.lowerBound]) } ?? tail
+        } ?? html
+
+        // 注意事項在 `<aside class="notice">` 裡，會被 parseNotices 另外撈走，
+        // 這裡先切掉避免同一段文字出現兩次。
+        let body = range(of: noticePattern, in: scope).map { String(scope[..<$0.lowerBound]) } ?? scope
+
+        var items = allGroups(in: body, pattern: plainListItemPattern)
+        if items.isEmpty {
+            items = allGroups(in: body, pattern: paragraphPattern)
+        }
+
+        let cleaned = items
+            .map { HTMLEntities.decode($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !cleaned.isEmpty else { return [] }
+
+        return [VendorIntroCategory(name: "商品資訊", items: cleaned, statedCount: nil, isAllItems: true)]
     }
 
     // MARK: - 版型 A：<details> 分類卡

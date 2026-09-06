@@ -35,6 +35,11 @@ public enum RedeemParser {
     /// 介紹頁 path 的白名單樣式。見 `introPath(in:)` 說明為什麼是白名單。
     private static let allowedIntroPathPattern = #"^/intro/[A-Za-z0-9._-]{1,64}\.html$"#
 
+    /// 品項列的開頭標籤。**刻意不比對完整字串** `<li class="item-row"`——
+    /// 見 `splitRowBlocks` 的說明。
+    private static let itemRowOpenTagPattern =
+        #"<li\b[^<>]{0,400}\bclass\s{0,8}=\s{0,8}["'][^"']{0,300}\bitem-row\b[^"']{0,300}["'][^<>]{0,400}>"#
+
     /// 解析整頁 HTML，回傳依出現順序排列的兌換品項清單。
     /// - Throws: `AppError.parsing` 當頁面內完全找不到任何 `item-row__form` 表單時。
     public static func parse(html: String) throws -> [RedeemOption] {
@@ -46,23 +51,39 @@ public enum RedeemParser {
         return blocks.compactMap(parseBlock)
     }
 
-    /// 把整份 HTML 依 `<li class="item-row"` 切成一列一列。切法與 `TaskParser.splitCards` 相同：
+    /// 把整份 HTML 依品項列的 `<li>` 開頭切成一列一列。切法與 `TaskParser.splitCards` 相同：
     /// 每一塊從標記開始，到下一個標記／`</ul>`／文件尾為止。
     ///
     /// 只保留**真的含有 `item-row__form`** 的塊，這樣 `parse` 才能用「切得到列嗎」
     /// 決定要不要退回舊路徑，而不會被一列不含表單的 `item-row` 誤導。
+    ///
+    /// **為什麼用正則而不是比對 `<li class="item-row"` 這個完整字串**（這裡改過一次）：
+    /// 完整字串比對把 class 屬性的寫法也當成契約的一部分。官網只要改成
+    /// `class="item-row item-row--featured"`、調換 class 順序、或在 `<li>` 上多加一個屬性，
+    /// 切列就會全部失敗 → `parse` 退回切表單的路徑 → **品項照樣解析成功、兌換照樣可用，
+    /// 但每一列的 `introPath` 都變成 nil，「兌換品項」按鈕靜默消失**，而且不會丟出任何錯誤。
+    /// 那種失敗只有使用者回報才會被發現，所以邊界改成「class 裡有 `item-row` 這個 token」。
+    ///
+    /// ReDoS 防線同檔案其他樣式：屬性用 `[^<>]`／`[^"']` 且量詞都有上限。
     private static func splitRowBlocks(_ html: String) -> [String] {
-        let marker = "<li class=\"item-row\""
-        var blocks: [String] = []
-        var searchStart = html.startIndex
+        guard let tagRegex = try? NSRegularExpression(
+            pattern: itemRowOpenTagPattern,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else {
+            return []
+        }
+        let fullRange = NSRange(html.startIndex..<html.endIndex, in: html)
+        let starts = tagRegex.matches(in: html, range: fullRange).compactMap {
+            Range($0.range, in: html)?.lowerBound
+        }
+        guard !starts.isEmpty else { return [] }
 
-        while let markerRange = html.range(of: marker, range: searchStart..<html.endIndex) {
-            let blockStart = markerRange.lowerBound
-            let nextSearchStart = markerRange.upperBound
+        var blocks: [String] = []
+        for (offset, blockStart) in starts.enumerated() {
             let blockEnd: String.Index
-            if let nextMarker = html.range(of: marker, range: nextSearchStart..<html.endIndex) {
-                blockEnd = nextMarker.lowerBound
-            } else if let closeUL = html.range(of: "</ul>", range: nextSearchStart..<html.endIndex) {
+            if offset + 1 < starts.count {
+                blockEnd = starts[offset + 1]
+            } else if let closeUL = html.range(of: "</ul>", range: blockStart..<html.endIndex) {
                 blockEnd = closeUL.lowerBound
             } else {
                 blockEnd = html.endIndex
@@ -71,7 +92,6 @@ public enum RedeemParser {
             if block.range(of: itemRowFormClassPattern, options: [.regularExpression, .caseInsensitive]) != nil {
                 blocks.append(block)
             }
-            searchStart = nextSearchStart
         }
         return blocks
     }

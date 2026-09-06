@@ -234,8 +234,17 @@ private struct VendorRow: View {
 }
 
 /// 商家色塊 logo，依商家名稱對應設計稿的品牌色；辨識不出的商家用中性灰底。
+///
+/// **名稱比對走 `Vendor(vendorName:)`，這裡不再自己判斷一次**。先前這支與遙測各有一份
+/// `contains` 判斷，結果漂掉了：logo 認得萬家福／樂家康，遙測卻把它們算成 `other`。
+/// 現在只有一份比對表（見 `Vendor`），要新增商家就只改那裡。
+///
+/// 認不出來的商家（`.other`）不是壞事——那正是「官網新增合作店家」的正常樣子：
+/// 灰底加名稱前兩字，功能完全不受影響。
 private struct VendorLogo: View {
     let vendorName: String
+
+    private var vendor: Vendor { Vendor(vendorName: vendorName) }
 
     var body: some View {
         Text(shortLabel)
@@ -247,22 +256,25 @@ private struct VendorLogo: View {
     }
 
     private var color: Color {
-        if vendorName.contains("全家") { return Color(hex: 0x0A8F4E) }
-        if vendorName.contains("7-11") || vendorName.localizedCaseInsensitiveContains("7-eleven") {
-            return Color(hex: 0xE8501F)
+        switch vendor {
+        case .familyMart: return Color(hex: 0x0A8F4E)
+        case .sevenEleven: return Color(hex: 0xE8501F)
+        case .hilife: return Color(hex: 0xC1121F)
+        case .pxmart: return Color(hex: 0xE4002B)
+        case .wanjiafu: return Theme.Colors.primary
+        case .other: return Theme.Colors.dim
         }
-        if vendorName.contains("萊爾富") { return Color(hex: 0xC1121F) }
-        if vendorName.contains("全聯") { return Color(hex: 0xE4002B) }
-        if vendorName.contains("萬家福") || vendorName.contains("樂家康") { return Theme.Colors.primary }
-        return Theme.Colors.dim
     }
 
+    /// 認得的商家用固定縮寫（設計稿指定）；認不出來的退成名稱前兩字。
     private var shortLabel: String {
-        if vendorName.contains("全家") { return "全家" }
-        if vendorName.contains("7-11") || vendorName.localizedCaseInsensitiveContains("7-eleven") { return "7-11" }
-        if vendorName.contains("萊爾富") { return "萊爾富" }
-        if vendorName.contains("全聯") { return "全聯" }
-        return String(vendorName.prefix(2))
+        switch vendor {
+        case .familyMart: return "全家"
+        case .sevenEleven: return "7-11"
+        case .hilife: return "萊爾富"
+        case .pxmart: return "全聯"
+        case .wanjiafu, .other: return String(vendorName.prefix(2))
+        }
     }
 }
 
@@ -315,11 +327,29 @@ final class RedeemViewModel: ObservableObject {
             // E15：`option_count` 是官網目錄大小（全體使用者一樣），不是個人資料。
             Telemetry.logEvent(.redeemOptions(outcome: loaded.isEmpty ? .empty : .ok,
                                               reason: nil, optionCount: loaded.count))
+            reportIntroLinkDrift(loaded)
         } catch {
             errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
             let reason = Telemetry.reportFailure(error, endpoint: .redeem)
             Telemetry.logEvent(.redeemOptions(outcome: .error, reason: reason, optionCount: 0))
         }
+    }
+
+    /// 「解析成功但一個介紹頁連結都沒有」的警報。
+    ///
+    /// **為什麼需要它**：這是這條路徑上唯一**不會丟出錯誤**的失敗。官網目前每一家都有
+    /// 「兌換品項」連結；如果切列邊界對不上官網的 class 寫法，`RedeemParser` 會退回
+    /// 切表單的路徑——品項照樣解析成功、兌換照樣可用、`redeem_options` 照樣回報 `ok`，
+    /// 只是每一列的 `introPath` 都變成 nil，按鈕靜默消失。沒有這個警報，
+    /// 只有使用者回報才會發現。
+    ///
+    /// 只送一個整數（品項數），不送商家名、品項名或任何路徑——官網文字一律不進遙測。
+    /// 官網日後若真的把連結全部撤掉，這裡會開始固定作響；那時要做的是更新這個判斷，
+    /// 而不是把它拿掉。
+    private func reportIntroLinkDrift(_ loaded: [RedeemOption]) {
+        guard !loaded.isEmpty, loaded.allSatisfy({ $0.introPath == nil }) else { return }
+        Telemetry.recordNonFatal(.redeemIntroMissing, endpoint: .redeem,
+                                 extras: ["options": .int(loaded.count)])
     }
 
     func confirmRedeem() async {

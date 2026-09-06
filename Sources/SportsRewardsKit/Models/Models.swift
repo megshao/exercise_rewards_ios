@@ -147,13 +147,33 @@ public struct VendorIntro: Equatable, Sendable {
     public let categories: [VendorIntroCategory]
     /// 頁尾「兌換注意事項」的每一段。
     public let notices: [String]
+    /// 這一頁是用哪一種版型解析出來的。`.unrecognised` 代表兩種已知版型都對不上、
+    /// 靠純文字兜出來的——呼叫端**必須**為它發警報（見 `VendorIntroLayout`）。
+    public let layout: VendorIntroLayout
 
-    public init(title: String, subtitle: String?, categories: [VendorIntroCategory], notices: [String]) {
+    public init(title: String, subtitle: String?, categories: [VendorIntroCategory],
+                notices: [String], layout: VendorIntroLayout = .itemList) {
         self.title = title
         self.subtitle = subtitle
         self.categories = categories
         self.notices = notices
+        self.layout = layout
     }
+}
+
+/// 廠商商品頁的版型。
+///
+/// **為什麼要把它變成資料的一部分**：`.unrecognised` 是「官網換版型了」這件事唯一的訊號。
+/// 舊做法是兩種版型都對不上就丟 `AppError.parsing`——警報有了，但使用者只看到一個錯誤畫面。
+/// 現在改成退到純文字仍然給出內容，代價是**失敗不再自動變成例外**，
+/// 所以這個欄位就是要求呼叫端自己回報的那份契約。
+public enum VendorIntroLayout: String, Sendable {
+    /// `<details data-category>` 分類卡 + `<li data-name>` 逐項清單（全家／7-11／萊爾富）。
+    case itemList = "item_list"
+    /// `類別名稱 / 商品名稱（列舉）` 表格（全聯／萬家福・樂家康）。
+    case categoryTable = "category_table"
+    /// 兩種都對不上，靠 `<li>`／`<p>` 純文字兜出來的最小可用結果。
+    case unrecognised
 }
 
 /// 商品頁上的一個分類。

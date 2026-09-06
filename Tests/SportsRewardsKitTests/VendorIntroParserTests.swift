@@ -145,10 +145,15 @@ final class VendorIntroParserTests: XCTestCase {
 
     // MARK: - 失敗路徑
 
-    /// 兩種版型的標記都不在＝官網換版型了，要丟 parsing 讓上層有機會報警，
-    /// 而不是安靜地回一頁空清單。
-    func testThrowsParsingWhenNeitherLayoutIsPresent() throws {
-        let html = "<html><body><h1>某頁</h1><p>沒有分類卡也沒有表格</p></body></html>"
+    /// **契約改過一次，理由留著**：兩種版型都不在時，原本是丟 `AppError.parsing`
+    /// 讓上層報警。現在改成退到純文字仍給出內容（見下方 `.unrecognised` 的測試），
+    /// 因為這一頁是純資訊，讓使用者看到「大概能換什麼」比看到錯誤畫面有用。
+    /// 報警的責任因此轉移到 `VendorIntro.layout`——呼叫端看到 `.unrecognised` 要自己回報。
+    ///
+    /// 只有**連一段可讀文字都撈不到**時才還是丟例外：那種頁面根本不是商品頁
+    /// （被導去登入頁、拿到錯誤頁），硬湊一個空清單給使用者看沒有意義。
+    func testThrowsParsingWhenThereIsNothingToShowAtAll() throws {
+        let html = "<html><body><h1>某頁</h1><div><span>沒有清單也沒有段落</span></div></body></html>"
 
         XCTAssertThrowsError(try VendorIntroParser.parse(html: html)) { error in
             guard case AppError.parsing = error else {
@@ -167,5 +172,72 @@ final class VendorIntroParserTests: XCTestCase {
         XCTAssertEqual(intro.title, "可兌換商品")
         XCTAssertNil(intro.subtitle)
         XCTAssertTrue(intro.notices.isEmpty)
+    }
+
+    // MARK: - 認不出版型時的最小可用結果
+
+    /// 兩種已知版型都對不上時**不丟例外**，退到純文字仍給出內容，
+    /// 並把 `layout` 標成 `.unrecognised` 讓呼叫端發警報。
+    func testFallsBackToPlainTextWhenLayoutIsUnrecognised() throws {
+        let html = """
+        <main>
+          <h1>示範超商 Z可兌換商品</h1>
+          <section class="catalog">
+            <ul class="new-markup">
+              <li><span>示範品項 A</span>示範品項 A</li>
+              <li>示範品項 B</li>
+              <li>示範品項 C</li>
+            </ul>
+          </section>
+          <aside class="notice"><h2>兌換注意事項</h2><p>依門市現場公告為準。</p></aside>
+        </main>
+        """
+
+        let intro = try VendorIntroParser.parse(html: html)
+
+        XCTAssertEqual(intro.layout, .unrecognised)
+        XCTAssertEqual(intro.title, "示範超商 Z可兌換商品")
+        XCTAssertEqual(intro.categories.count, 1)
+        XCTAssertEqual(intro.categories.first?.name, "商品資訊")
+        XCTAssertTrue(intro.categories.first?.items.contains("示範品項 B") == true)
+    }
+
+    /// 退路不可以把頁尾注意事項也當成品項——那段由 `notices` 另外解析。
+    func testFallbackExcludesNoticeText() throws {
+        let html = """
+        <main>
+          <h1>示範超商 Z</h1>
+          <ul><li>示範品項 A</li></ul>
+          <aside class="notice"><p>依門市現場公告為準。</p></aside>
+        </main>
+        """
+
+        let intro = try VendorIntroParser.parse(html: html)
+
+        XCTAssertEqual(intro.notices, ["依門市現場公告為準。"])
+        XCTAssertFalse(intro.categories.first?.items.contains("依門市現場公告為準。") == true)
+    }
+
+    /// 沒有 `<li>` 時退一步用 `<p>`。
+    func testFallbackUsesParagraphsWhenThereAreNoListItems() throws {
+        let html = """
+        <main>
+          <h1>示範超商 Z</h1>
+          <section><p>示範品項 A</p><p>示範品項 B</p></section>
+        </main>
+        """
+
+        let intro = try VendorIntroParser.parse(html: html)
+
+        XCTAssertEqual(intro.layout, .unrecognised)
+        XCTAssertEqual(intro.categories.first?.items, ["示範品項 A", "示範品項 B"])
+    }
+
+    /// 已知版型要標對，不能全部落到 `.unrecognised`。
+    func testKnownLayoutsAreLabelled() throws {
+        XCTAssertEqual(try VendorIntroParser.parse(html: try loadFixture("vendor_intro_details")).layout,
+                       .itemList)
+        XCTAssertEqual(try VendorIntroParser.parse(html: try loadFixture("vendor_intro_table")).layout,
+                       .categoryTable)
     }
 }
