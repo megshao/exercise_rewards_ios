@@ -3,7 +3,10 @@ import SportsRewardsKit
 
 /// 兌換好禮：列出可兌換的商家品項，點「兌換」需先二次確認
 /// 警語（兌換後不可更換、需簡訊驗證出示券碼）才會真的送出表單。
-
+///
+/// 每一列另有「兌換品項」，開 `VendorIntroView` 看該通路的加碼券能換哪些商品——
+/// 對應官網同一列的那顆按鈕（官網是另開瀏覽器視窗，這裡改成 App 內的 sheet，
+/// 使用者不會被帶離兌換流程）。
 ///
 /// 兌換成功（`RedeemResult.submitted == true`）後導向 `VoucherView(taskID:)`——該期已經是
 /// state=REDEEMED，要看券碼需再走一次簡訊 OTP 驗證（VoucherView 自己的狀態機負責）。
@@ -17,6 +20,7 @@ struct RedeemView: View {
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = RedeemViewModel()
     @State private var showVoucher = false
+    @State private var introOption: RedeemOption?
 
     init(taskID: String, periodIndex: Int? = nil) {
         self.taskID = taskID
@@ -70,6 +74,13 @@ struct RedeemView: View {
             .environment(\.appEnvironment, environment)
             .environmentObject(voucherUsage)
         }
+        // 只有 introPath 不是 nil 的品項才點得出這個 sheet（見 VendorRow）。
+        .sheet(item: $introOption) { option in
+            NavigationStack {
+                VendorIntroView(introPath: option.introPath ?? "", vendorName: option.vendorName)
+            }
+            .environment(\.appEnvironment, environment)
+        }
     }
 
     private var warningBanner: some View {
@@ -104,7 +115,8 @@ struct RedeemView: View {
                         option: option,
                         isSubmitting: viewModel.isSubmitting,
                         // E16：確認 alert 出現的那一刻。
-                        onRedeem: { viewModel.selectOption(option) }
+                        onRedeem: { viewModel.selectOption(option) },
+                        onIntro: { introOption = option }
                     )
                 }
             }
@@ -156,14 +168,18 @@ struct RedeemView: View {
     }
 }
 
-/// 單一商家品項列：logo 色塊、品項名、兌換鈕（對齊設計稿的 `.store`）。
+/// 單一商家品項列：logo 色塊、品項名、「兌換品項」與「兌換」兩顆鈕。
+///
+/// 「兌換品項」只在該商家真的有介紹頁時出現（`option.introPath != nil`）——
+/// 這與官網的規則一致：靜態頁存在與否就是唯一的開關，不自己拼網址。
 private struct VendorRow: View {
     let option: RedeemOption
     let isSubmitting: Bool
     let onRedeem: () -> Void
+    let onIntro: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 10) {
             VendorLogo(vendorName: option.vendorName)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -172,16 +188,35 @@ private struct VendorRow: View {
                 Text(option.itemName)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.Colors.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            Spacer(minLength: 4)
+
+            if option.introPath != nil {
+                Button(action: onIntro) {
+                    Text("兌換品項")
+                        .font(Theme.displayFont(13, weight: .bold))
+                        .foregroundStyle(Theme.Colors.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Theme.Colors.card2)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Theme.Colors.primary.opacity(0.35), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("查看\(option.vendorName)可兌換商品")
+            }
 
             Button(action: onRedeem) {
                 Text("兌換")
                     .font(Theme.displayFont(13, weight: .bold))
             }
             .foregroundStyle(.white)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(isSubmitting ? Theme.Colors.dim : Theme.Colors.primary)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

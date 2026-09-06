@@ -47,6 +47,7 @@ enum ScreenName: String, Sendable, CaseIterable {
     case upload
     case screenshot
     case redeem
+    case vendorIntro = "vendor_intro"
     case voucher
 
     /// GA4 的 `screen_class`。固定為對應的 Swift 型別名（**常數，不是變數**）：
@@ -61,6 +62,7 @@ enum ScreenName: String, Sendable, CaseIterable {
         case .upload: return .upload
         case .screenshot: return .screenshot
         case .redeem: return .redeem
+        case .vendorIntro: return .vendorIntro
         case .voucher: return .voucher
         }
     }
@@ -77,6 +79,7 @@ enum ScreenClass: String, Sendable {
     case upload = "UploadView"
     case screenshot = "ScreenshotView"
     case redeem = "RedeemView"
+    case vendorIntro = "VendorIntroView"
     case voucher = "VoucherView"
 }
 
@@ -125,6 +128,8 @@ enum Endpoint: String, Sendable {
     case upload
     case screenshot
     case redeem
+    /// 廠商可兌換商品頁（`/intro/vendor-{id}.html`）。是靜態頁，樣板不含檔名。
+    case vendorIntro = "vendor_intro"
     case voucher
     case voucherResend = "voucher_resend"
     case voucherView = "voucher_view"
@@ -850,6 +855,7 @@ enum TelemetryIssue: String, Sendable {
     case tasksPartial = "tasks_partial"
     case tasksParse = "tasks_parse"
     case redeem = "redeem"
+    case vendorIntro = "vendor_intro"
     case csrfMissing = "csrf_missing"
     case voucherView = "voucher_view"
     case voucherNotice = "voucher_notice"
@@ -888,6 +894,8 @@ enum TelemetryIssue: String, Sendable {
         case .egress: return 10
         case .upload: return 11
         case .screenshotRedirect: return 12
+        // 接在既有序號後面。上面那句「不要重排」的意思就是：新的往後加，不要插隊。
+        case .vendorIntro: return 13
         case .keychain: return 20
         case .profileDecode: return 21
         case .cacheDecode: return 22
@@ -1466,6 +1474,7 @@ enum Telemetry {
         switch endpoint {
         case .tasks: return .tasksNoCards
         case .redeem: return .redeem
+        case .vendorIntro: return .vendorIntro
         case .voucher, .voucherResend: return .voucherNotice
         case .voucherView: return .voucherView
         case .screenshot: return .screenshotRedirect
