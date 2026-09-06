@@ -1,7 +1,7 @@
 # Sports Rewards
 
 協助參加台灣運動部「揮汗有禮・全民動起來」運動幣加碼活動的 iOS App：
-一鍵登入官方「我的任務」、免重複輸入個資、連結 Apple 健康看今日步數是否達標。
+一鍵登入官方「我的任務」、免重複輸入個資、在同一頁看完本週任務與手上的加碼券。
 
 > **這是非官方工具，與運動部及任何政府機關沒有隸屬、合作、贊助或授權關係。**
 > 活動規則與最終權益一律以官方公告為準。
@@ -21,12 +21,12 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 
 ## 這個 App 怎麼看待你的資料
 
-一句話：**開發者沒有任何自建後端**，收不到也看不到你的個資與健康數據。
+一句話：**開發者沒有任何自建後端**，收不到也看不到你的個資。
 
 - **個資只收三欄**（身分證號／出生日期／手機），只存 iOS Keychain（`WhenUnlockedThisDeviceOnly`、不同步 iCloud、不隨備份轉移），只在你按下登入時由裝置直送 `500.gov.tw`。姓名、Email、健保卡卡號一律不收。
-- **HealthKit 唯讀且不外傳**：步數／距離／運動時間只在畫面上顯示與本機判斷達標，不上傳、不用於合成任何要上傳的圖片。
+- **完全不讀健康資料**：App 不申請 HealthKit 權限、不含 HealthKit entitlement，也沒有任何讀取健康資料的程式碼路徑。上傳的運動紀錄一律由使用者自己從相簿挑選。
 - **上傳的圖一律重新編碼**，把 EXIF（含 GPS）整段丟掉；編碼失敗時報錯而不是退回原檔。
-- **遙測綁在免責聲明的同意之後**：首次啟動先擋一張免責聲明，上面明寫「會把匿名操作紀錄與當機報告送給 Google Firebase」，按下同意才初始化 Firebase。同意之後**預設是開的**，可隨時到「我的資料 › 安全與隱私」關掉。這不是 opt-in，是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。個資與 HealthKit 衍生值（連「今日是否達標」的布林都算）在任何情況下都不進遙測。
+- **遙測綁在免責聲明的同意之後**：首次啟動先擋一張免責聲明，上面明寫「會把匿名操作紀錄與當機報告送給 Google Firebase」，按下同意才初始化 Firebase。同意之後**預設是開的**，可隨時到「我的資料 › 安全與隱私」關掉。這不是 opt-in，是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。個資在任何情況下都不進遙測。
 
 細節見下方[安全設計](#安全設計)，或直接讀[隱私權政策](https://megshao.github.io/sports_rewards_ios/privacy.html)。
 
@@ -102,17 +102,17 @@ cd App && xcodebuild test -project SportsRewards.xcodeproj \
 
 | 面向 | 措施 |
 |---|---|
-| 個資外洩 | 三欄個資只存 Keychain；無自建後端；個資與 HealthKit 資料任何形式都不進遙測 |
+| 個資外洩 | 三欄個資只存 Keychain；無自建後端；個資任何形式都不進遙測 |
 | Log 洩漏 | 唯一入口 `SecureLog`，敏感值先過 `Redact`，`debug` 僅 DEBUG build；App 與 Kit 內無 `print`／`NSLog`（UI 截圖測試除外） |
 | 網路面 | ATS 強制 https；白名單只允許 `500.gov.tw`，其餘 `blockedEgress`；response body 限 2 MB。詳見[網路出口](#網路出口) |
 | 中間人／降級 | 官方站 302 的 `Location` 是 `http://`，client 一律正規化回 https 再送，避免掉 Secure cookie |
 | 不受信任的 HTML | 四個 parser 一律把官網回應當不受信任輸入。詳見 [parser 的三條規則](#parser-的三條規則) |
 | 上傳的圖片 | 一律 `UIImage.jpegData` 重新編碼去除 EXIF／GPS；編碼失敗報錯，不退回原檔 |
 | 裝置遺失 | iOS 鎖屏 + Keychain `WhenUnlockedThisDeviceOnly`（裝置上鎖時連 App 自己都讀不到）+「立即清除本機資料」。**不做 App 內生物辨識鎖**——登入三碼本來就是使用者記得的資料，再擋一次只是重複擋自己人 |
-| 健康資料 | HealthKit 唯讀，從不寫入、從不外傳、不用於合成上傳內容 |
+| 健康資料 | **完全不接觸**。無 HealthKit entitlement、無權限提示、無讀取路徑 |
 | 資料誠信 | 不繞過戶役政／健保卡／簡訊 OTP，也不提供任何可竄改運動數據的入口 |
 | 供應鏈 | 唯一第三方相依 firebase-ios-sdk 12.18.0。詳見[相依關係](#相依關係) |
-| 遙測 | 初始化綁在免責聲明同意之後（同意前 Firebase 一行程式碼都不執行），同意後預設開啟、隨時可關；單一出口 + 封閉列舉 + 六道閘門；個資與 HealthKit 衍生值零外傳。詳見[遙測](#遙測) |
+| 遙測 | 初始化綁在免責聲明同意之後（同意前 Firebase 一行程式碼都不執行），同意後預設開啟、隨時可關；單一出口 + 封閉列舉 + 六道閘門；個資零外傳。詳見[遙測](#遙測) |
 
 ### 網路出口
 
@@ -149,7 +149,7 @@ SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 Ap
 
 選的是 **`FirebaseAnalyticsCore`** 而不是 `FirebaseAnalytics`：底層是 `GoogleAppMeasurementCore`，**結構上不含 IDFA 收集能力**——這是連結期的保證，不是 Info.plist 旗標的保證。Release 二進位已用 `otool -l` 驗證沒有連結 `AdSupport`、`AppTrackingTransparency`、`AdServices`，因此不會、也無法出現 ATT 提示。
 
-其餘仍是純 Foundation / SwiftUI / HealthKit；不使用 `LocalAuthentication`，不使用 WebKit／`WKWebView`。
+其餘仍是純 Foundation / SwiftUI；不使用 HealthKit，不使用 `LocalAuthentication`，不使用 WebKit／`WKWebView`。
 
 ### 遙測
 
@@ -171,7 +171,7 @@ SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 Ap
 
 送出前共**六道閘門**：示範模式 → 截圖模式 → 使用者關閉 → 未初始化 → 參數命中 `Redact` 敏感樣式 → 整數超出允許值域（最後兩道在 DEBUG build 直接 `assertionFailure`）。
 
-**個資與 HealthKit 資料完全不進遙測**：連「今日是否達標」這種由步數推導的布林值都不送，因為 Apple 禁止把健康資料分享給第三方。唯一沾到健康的是 `health_link_tap`——「按了連結 Apple 健康的按鈕」這個 UI 動作，按下當下 HealthKit 尚未被呼叫。授權結果不送，也不設定任何 user property。
+**個資完全不進遙測**，也不設定任何 user property。App 不讀取任何健康資料，因此遙測裡也不存在健康相關的事件（原本的 `health_link_tap` 已隨功能一併移除）。
 
 ## 授權
 

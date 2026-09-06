@@ -3,6 +3,11 @@
 > **狀態**：設計提案（尚未實作、未改任何程式碼）。撰寫日期 2026-09-06。
 > 對應程式碼：`develop` 工作樹（`d94ae6e` 之後，含未提交的 `DemoMode.swift` 與 View 改動）。
 > 本文件是「若要加 Firebase，只能這樣加」的邊界規格；它**不是**「應該加 Firebase」的結論——見 §0。
+>
+> ⚠️ **2026-09-06 更新（v1.1）**：健康連結功能已整個移除。本文件裡所有關於 HealthKit 的段落
+> ——G4、§1.1 的不可量測宣告、E9／E10、以及「為什麼健康衍生值不可外傳」的論證——**前提都已不存在**。
+> 個別條目已就地標註；那些「刻意不送」的規則**仍然有效**（作為日後若有人加回健康功能的既定判準），
+> 但目前 App 根本沒有健康資料可送。
 
 ---
 
@@ -45,7 +50,7 @@
 | G1 | 首次啟動有多少人走到填表、多少人送出、送出後結果分布（成功／三碼不符／未註冊／網路／官網異常）？卡在哪一步？ | `tutorial_begin`、`onboarding_validation_failed`、`login`、`login_failed`、`register_redirect`、`tutorial_complete` | 決定要不要做 Phase 2 註冊、Onboarding 文案是否需要改 |
 | G2 | 一鍵登入（自動／手動）的成功率與耗時？失敗原因是使用者端（三碼錯）、網路、還是官網？ | `login`、`login_failed`（含 `trigger`、`duration_ms`） | PRD §10「一鍵登入 < 5 秒」的唯一可量測方式 |
 | G3 | 任務清單抓取成功率？使用者大多停在哪一個狀態（未上傳／審核中／可兌換／已兌換）？ | `tasks_fetch` | 知道審核卡多久、活動期別推進到哪 |
-| G4 | 多少人走完 Apple 健康連結流程？連了健康卻從未上傳的比例？ | `health_link_tap`、`health_link_result` ＋ GA4 受眾「觸發 A 未觸發 B」 | 判斷健康頁是否有價值；**注意 §1.1 的限制** |
+| ~~G4~~ | ~~多少人走完 Apple 健康連結流程？連了健康卻從未上傳的比例？~~ | ~~`health_link_tap`、`health_link_result`~~ | **v1.1 起作廢**：健康連結功能已移除，這個問題不再存在 |
 | G5 | 上傳漏斗：開啟上傳頁 → 選到圖 → 按確認 → 官網接受／拒絕？拒絕原因分布？ | `screen_view(upload)`、`upload_pick`、`upload_submit`、`upload_result` | 這是 App 的核心價值；官網拒絕率高代表要改說明文案 |
 | G6 | 兌換漏斗：看到品項 → 點兌換 → 確認／取消 → 送出成功？各商家被選的比例？ | `redeem_options`、`redeem_select`、`redeem_cancel`、`redeem_submit`、`redeem_result` | 二次確認 alert 是否嚇跑人；商家熱門度 |
 | G7 | OTP 驗證流程：簡訊發送失敗率、輸錯率、用罄率、券碼頁解析成功率、條碼畫不出來的比例？ | `voucher_open`、`voucher_otp_send`、`voucher_otp_verify`、`voucher_reveal`、`barcode_render_failed` | 這段官網最容易改版；也是使用者站在櫃檯最緊張的一段 |
@@ -56,7 +61,7 @@
 
 ### 1.1 明確宣告「無法量測」的目標
 
-- **PRD §2.3 North Star「每週達標上傳的連續週數」與輔助指標「從達標到上傳完成的中位時間 < 30 秒」不可量測。** 兩者都需要「達標」的時間戳，而達標是 HealthKit 步數／距離／分鐘推導出來的布林值——硬規則 2 直接擋掉。能量測的只有「上傳完成率」與「上傳耗時」，不能與達標綁在一起。
+- **（v1.1 起連資料來源都沒有了）PRD §2.3 North Star「每週達標上傳的連續週數」與輔助指標「從達標到上傳完成的中位時間 < 30 秒」不可量測。** 兩者都需要「達標」的時間戳，而達標是 HealthKit 步數／距離／分鐘推導出來的布林值——硬規則 2 直接擋掉。能量測的只有「上傳完成率」與「上傳耗時」，不能與達標綁在一起。
 - **「多少人達標卻沒上傳」不可量測**，同上。只能退一步量「連結了健康卻沒上傳」（G4），而且 G4 量的是「走完授權流程」不是「授權成功」——HealthKit 依隱私設計不揭露讀取授權結果（`HealthKitReader.swift:30-33` 的註解），App 自己也不知道。
 
 ---
@@ -111,7 +116,7 @@
 
 | enum | 值 | 說明 |
 |---|---|---|
-| `Screen` | `onboarding_welcome` `onboarding_form` `home` `tasks` `health` `wallet` `profile` `upload` `screenshot` `redeem` `voucher` | 對應 11 個 View |
+| `Screen` | `onboarding_welcome` `onboarding_form` `home` `tasks` `wallet` `profile` `upload` `screenshot` `redeem` `vendor_intro` `voucher` | 對應 11 個 View（v1.1：`health` 移除、`vendor_intro` 新增） |
 | `LoginTrigger` | `onboarding` `auto` `manual` | `OnboardingViewModel.submitTapped` ／ `HomeViewModel.bootstrap→performLogin(silent:true)` ／ `HomeViewModel.loginTapped` |
 | `FailReason` | `invalid_credentials` `not_registered` `network` `site_status` `site_parse` `csrf_missing` `blocked_egress` `redirect_loop` `response_too_large` `session_probable` `unknown` | 由 `Telemetry.classify(error)` 從 `AppError` 映射；**只取 case，不取 associated value** |
 | `Endpoint` | `access` `login` `logout` `tasks` `upload` `screenshot` `redeem` `voucher` `voucher_resend` `voucher_view` | 路徑**樣板**，永遠不含 UUID |
@@ -124,7 +129,7 @@
 
 | # | 事件名 | 觸發時機（檔案 → 動作） | 參數（名稱：型別＝值域） | 目標 | 隱私檢核 |
 |---|---|---|---|---|---|
-| E1 | `screen_view` | 每個 View 的 `.onAppear`（11 個畫面） | `screen_name: Screen`、`screen_class: String`（固定為 Swift 型別名，如 `HealthView`，常數非變數） | G1–G8 通用 | R1 無欄位；R2 **`health` 畫面不帶任何狀態參數**（不區分未授權／已連結）；R3 `upload/redeem/voucher/screenshot` 畫面**不帶 taskID**；R4 n/a |
+| E1 | `screen_view` | 每個 View 的 `.onAppear`（11 個畫面） | `screen_name: Screen`、`screen_class: String`（固定為 Swift 型別名，如 `TasksView`，常數非變數） | G1–G8 通用 | R1 無欄位；R3 `upload/redeem/voucher/screenshot/vendor_intro` 畫面**不帶 taskID**、也不帶介紹頁路徑或商家名；R4 n/a<br>**v1.1**：`health` 畫面已移除，新增 `vendor_intro`（可兌換商品頁） |
 | E2 | `tutorial_begin` | `OnboardingViewModel.startTapped()` | 無 | G1 | 無資料 |
 | E3 | `onboarding_validation_failed` | `OnboardingViewModel.submitTapped()` 內 `validate()` 回非 nil | `field: enum = empty \| id_no \| birth_date \| phone` | G1 | R1：只說「哪個欄位格式不對」，**不送長度、不送第一碼、不送使用者輸入**；四種值都無法反推任何字元 |
 | E4 | `login` | `AuthService.login` 回 `.success`（三個觸發點） | `method = "gov_500_form"`（常數）、`trigger: LoginTrigger`、`duration_ms: Int` | G1 G2 | R1：憑證完全不經過 facade；R3：不帶 cookie／JSESSIONID／CSRF |
@@ -132,8 +137,9 @@
 | E6 | `register_redirect` | `OnboardingView.notRegisteredCard` 的「前往官網註冊」按下（`openURL`） | 無 | G1 | 無資料；開啟的是固定 URL |
 | E7 | `tutorial_complete` | `OnboardingViewModel.finish()`（真實登入成功路徑） | 無 | G1 | R5：示範帳號進入的 `finish()` 會被 `isDemo` 閘門擋掉——注意 `enterDemoIfSentinel` 在 `finish()` **之前**已把 `isDemo` 設為 true，順序正確 |
 | E8 | `tasks_fetch` | `TasksServicing.fetchTasks()` 的五個呼叫點回來時 | `source: enum = home_bootstrap \| home_refresh \| post_login \| tasks_tab \| wallet`、`outcome: enum = ok \| error`、`reason: FailReason`（error 時）、`period_count: Int`（0–14）、`current_period: Int`（1–14，`HomeViewModel.highlightedPeriod` 的 `index`）、`current_state: TaskStateClass`、`had_cache: Bool`、`duration_ms: Int` | G3 G9 | R1 無個資；R3：**不帶 `TaskPeriod.id`（UUID）**、不帶 `remainingText`／`uploadedAt`（官網文字）；`current_period` 是活動週次（全體使用者同一週）不是個人識別；`current_state` 是官網狀態機的 enum，屬 Usage Data。§2.4：`home_bootstrap` 的 parse 失敗歸 `session_probable` |
-| E9 | `health_link_tap` | `HealthViewModel.requestAuthorizationTapped()` 進入時 | 無 | G4 | R2：**這是 UI 動作，不是 HealthKit 資料**——按鈕按下時 HealthKit 尚未被呼叫 |
-| E10 | `health_link_result` | `requestAuthorization()` 回傳或 throw | `result: enum = completed \| unavailable \| error` | G4 | R2 **邊界案例，需明知而為**：`completed` 只代表 `store.requestAuthorization` 沒有 throw（系統授權表關閉），**不代表使用者允許**；HealthKit 依設計不揭露讀取授權結果，App 也拿不到。`unavailable` 是 `HKHealthStore.isHealthDataAvailable() == false`（裝置能力，如 iPad）。**不送任何 `summary()` 結果、不送 HKError code**。若對灰色地帶零容忍，砍掉 E10 只留 E9，G4 改用 E9 估算 |
+| ~~E9~~ | ~~`health_link_tap`~~ | **v1.1 已刪除**（健康連結功能整個移除，沒有這個按鈕了） | — | ~~G4~~ | — |
+| E29 | `voucher_mark_used` | 使用者在券碼頁或券夾按下「標記為已使用」／「還原成未使用」 | `used: Bool`（標記或還原） | — | **這是 UI 動作，不是官網資料**：官網沒有「已使用」狀態，這個旗標完全由使用者自己在 App 內按出來，存在本機。R1 **不帶期別 UUID／期數／`voucherSummary`**（後者是官網原文＋通路品項） |
+| ~~E10~~ | ~~`health_link_result`~~ | **從未實作，v1.1 起連前提都不存在**。當初的判斷是「授權結果仍是從 HealthKit API 取得的資訊」，屬 5.1.3(i) 要保護的範圍，因此刻意不做 | — | ~~G4~~ | — |
 | E11 | `upload_pick` | `UploadViewModel.loadPickedImage()` 結束 | `outcome: enum = picked \| unreadable` | G5 | R4：**只送二元結果**。不送 `data.count`、`UIImage.size`、原格式（HEIC/JPEG）、`jpegDataUnder5MB` 迭代次數（迭代次數可反推檔案大小，屬衍生資訊）、`PhotosPickerItem.itemIdentifier`、EXIF |
 | E12 | `upload_submit` | `UploadViewModel.confirmUpload()` 進入時 | `period_index: Int` | G5 | R3：`taskID` 不送（UploadView 有 `periodIndex` 可用）；R4：無檔案資訊 |
 | E13 | `upload_result` | `confirmUpload()` 得到 `UploadResult` 或 throw | `outcome: enum = submitted \| window_closed \| csrf_missing \| site_rejected \| http_error \| network \| unknown`、`period_index: Int`、`duration_ms: Int` | G5 G9 | R1／R3：`UploadService.errorNotice(in:)` 抓到的官網 `.notice--error` **原文不送**（官網文字可能含日期、檔名回顯等），只分類成 `site_rejected`；`window_closed` 對應「頁面沒有 file 欄位」；R4：無檔案資訊 |
@@ -167,7 +173,7 @@
 | 今日步數、距離、運動分鐘、本週平均步數（`HealthSummary`、`weeklyAverageSteps`） | 「使用者平均走多少」很像產品洞察 | **R2** | 無。這是 Apple 明文禁止分享給第三方的資料 |
 | `hasReachedGoal`、`GoalEvaluation.met`、「達標橫幅曝光」、達標百分比 `stepsPercentText` | 「達標率」是 PRD 的 North Star | **R2**（由 HealthKit 推導的布林值同樣是 HealthKit 衍生資料） | 無；§1.1 已宣告不可量測 |
 | 達標 → 上傳的時間差、「達標當天是否上傳」 | PRD 輔助指標「< 30 秒」 | **R2**（需要達標時間戳） | 只量 `upload_submit → upload_result` 的耗時 |
-| `screen_view(health)` 帶 `state = unauthorized \| ready` | 想知道健康頁多少人是已連結狀態 | **R2 邊界**：`ready` 意味著 `summary()` 成功回傳，是「查得到 HealthKit 資料」的間接訊號 | 用 E9／E10（授權流程動作）估算 |
+| ~~`screen_view(health)` 帶 `state = unauthorized \| ready`~~ | 想知道健康頁多少人是已連結狀態 | **R2 邊界**：`ready` 意味著 `summary()` 成功回傳，是「查得到 HealthKit 資料」的間接訊號 | **v1.1 起不適用**：健康頁與整個功能都已移除 |
 | HealthKit 查詢錯誤（`HKError`、`HealthKitReaderError`）送 Crashlytics 非致命 | 想知道健康讀取為何失敗 | **R2 邊界**：錯誤碼是「從 HealthKit API 取得的資訊」；`errorAuthorizationDenied` 等於揭露授權結果 | 不送。`HealthKitReader` 已把良性錯誤吞成 0，其餘 throw 只在本機顯示「讀取健康資料失敗」 |
 | 身分證字號的任何片段：第一碼（縣市）、性別碼、長度、`Redact.idNo` 遮罩結果、雜湊 | 想做地區分布 | **R1**（明文列出連雜湊與遮罩片段都不行） | 無 |
 | 出生年份／年齡區間 | 年齡分布 | **R1**（出生日期的衍生值） | 無 |
@@ -225,7 +231,7 @@
 
 ### 5.4 非致命錯誤（`record(error:)`）
 
-所有非致命錯誤都先包成自訂的 `TelemetryError`（`NSError` 子型別），domain 固定為下表四個之一，`code` 為 enum rawValue，`userInfo` **只放**下表列出的鍵（全部 enum／Int）。**絕不直接傳 `AppError`、`URLError`、`KeychainError`、`DecodingError`、`HKError` 原物件**。
+所有非致命錯誤都先包成自訂的 `TelemetryError`（`NSError` 子型別），domain 固定為下表四個之一，`code` 為 enum rawValue，`userInfo` **只放**下表列出的鍵（全部 enum／Int）。**絕不直接傳 `AppError`、`URLError`、`KeychainError`、`DecodingError` 原物件**。（`HKError` 已不存在——v1.1 移除了 HealthKit。）
 
 每個 (domain, code, endpoint) 組合**每個 App session 只回報一次**，避免下拉刷新把同一個改版訊號洗成幾千筆。
 

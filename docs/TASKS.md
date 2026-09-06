@@ -15,7 +15,7 @@
 > - **為什麼改**：本 App 靠刮官網 HTML 運作，官網一改版功能就整組失效；沒有遙測時，我們只能等使用者來信
 >   才知道解析器壞了。需要一條「官網改版時最早的警報」。量測設計見 `docs/analytics-plan.md`。
 > - **變更後的六條前提**（缺一不可）：初始化綁在免責聲明的主動同意之後（同意前 Firebase 一行程式碼都不執行）／
->   個資零外傳／HealthKit 資料與其推導結論零外傳／單一出口 + 封閉列舉／
+>   個資零外傳／不讀取任何健康資料（v1.1 起）／單一出口 + 封閉列舉／
 >   六道閘門（示範模式・截圖模式・使用者關閉・未初始化・敏感樣式・整數值域）／不引入廣告識別能力。
 > - **代價**：「零第三方相依」的說法作廢，隱私標籤四格從 Not Collected 改為 Collected，
 >   5.1.3(i) 從「不必解釋」變成「必須主動解釋」。
@@ -33,7 +33,7 @@
 >   示範模式是在 Onboarding 才進入的），詳見 `docs/release/review-notes.md` §2／§5b 與 `docs/PRD.md` §8.2 決策紀錄。
 > - 對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、`site/index.html`、`site/privacy.html` §5／§8、`site/support.html`、
 >   `docs/release/privacy-labels.md`、`docs/release/review-notes.md`、`docs/release/app-store-metadata.md`、`docs/app-review-risk.md`。
-> - **沒有改變的部分**：個資與健康資料仍然完全不外傳，隱私標籤的 Health / Fitness 兩格仍是 Not Collected。
+> - **沒有改變的部分**：個資仍然完全不外傳，隱私標籤的 Health / Fitness 兩格仍是 Not Collected（v1.1 起理由更單純——App 根本不讀健康資料）。
 > - 完整決策紀錄與代價清單見 `docs/PRD.md` §8.2；對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、
 >   `site/privacy.html` §5、`docs/release/privacy-labels.md`、`docs/release/review-notes.md` §5b。
 
@@ -73,6 +73,9 @@
 - [x] 2.4 看截圖：GET `/member/screenshot/{uuid}` → 顯示 S3 圖
 
 ## Phase 3 — HealthKit 讀步數 + 產生上傳圖卡（第三刀）
+
+> ⚠️ **這一整個 Phase 的產出已於 v1.1 全部刪除**（連 entitlement 一起）。
+> 保留勾選紀錄是為了說明這些檔案曾經存在、以及為什麼後來整批移除。
 - [x] 3.1 HealthKit 授權（唯讀 stepCount / distanceWalkingRunning / appleExerciseTime）
 - [x] 3.2 達標判定（對應任務辦法：單日 8000 步 或 健走 30 分 或 跑步 5km）
 - [x] 3.3 健康數據畫面（步數環、達標徽章、指標卡）

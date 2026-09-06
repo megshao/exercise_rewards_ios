@@ -44,7 +44,7 @@
 
 看到任何 Google 網域（`googleapis.com`、`crashlytics.com`、`app-analytics-services.com`、`google-analytics.com`……）就是我們違反承諾，請截圖回報。
 
-限制：只看得到「連去哪」、看不到「送了什麼」；只保留 7 天；不涵蓋 Apple 健康的存取（那要到「健康 › 分享 › App 與服務」看）。另外，剛關掉統計開關的那一次執行 Firebase 還在記憶體裡，驗「關著時零連線」前請先把 App 完全關閉再重開。
+限制：只看得到「連去哪」、看不到「送了什麼」；只保留 7 天。（v1.1 起 App 不再讀取 Apple 健康，因此也不需要去「健康 › 分享 › App 與服務」對照。）另外，剛關掉統計開關的那一次執行 Firebase 還在記憶體裡，驗「關著時零連線」前請先把 App 完全關閉再重開。
 
 ## 1. 準備 mitmproxy
 

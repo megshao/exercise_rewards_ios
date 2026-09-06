@@ -21,7 +21,7 @@
 
 > Apple：「Collect」指把資料**傳出裝置**，且你或你的第三方夥伴能存取的時間**超過即時處理該請求所需**。
 
-所以：**只存在裝置本機、從未離開裝置的資料，一律是 Not Collected。** 這一點仍然讓多數項目歸零——最重要的是健康資料（§2）。
+所以：**只存在裝置本機、從未離開裝置的資料，一律是 Not Collected。** 這一點仍然讓多數項目歸零。（健康資料則更單純——本版根本不讀取，見 §2。）
 （但它不再讓「絕大多數」項目歸零：2026-09-06 加入的遙測確實會把匿名資料傳出裝置，而且在使用者同意免責聲明之後**預設就是開的**，見前提 C。）
 
 ### 前提 B — 資料送到 `500.gov.tw` 算不算「與第三方分享」？
@@ -81,7 +81,7 @@ Apple 有一條「選擇性揭露（Optional Disclosure）」豁免，四個條�
 | | Phone Number 手機號碼 | **Yes** | **Yes** | No | App Functionality | 登入三碼之一，登入時由裝置直送 `500.gov.tw`（`AuthService.login`，`docs/PRD.md §6.2`） |
 | | Physical Address | No | — | — | — | 從不收集 |
 | | Other User Contact Info | No | — | — | — | 從不收集 |
-| **Health & Fitness** | Health 健康 | **No** | — | — | — | 見下方 §2，唯讀且**從不離開裝置**——包含**不進遙測**，連由步數推導的達標布林都不送 |
+| **Health & Fitness** | Health 健康 | **No** | — | — | — | 見下方 §2。本版**完全不讀取健康資料**，無 entitlement、無權限提示、無讀取路徑 |
 | | Fitness 健身 | **No** | — | — | — | 同 §2。步數／距離／運動時間只在 `HealthView`、`HomeView` 本機顯示，`Telemetry` 的封閉列舉裡沒有任何成員能帶這些值 |
 | **Financial Info** | 全部（付款、信用、其他） | No | — | — | — | 完全免費、無 IAP、不處理任何金流 |
 | **Location** | Precise 精確位置 | No | — | — | — | 不使用定位，Info.plist 無任何 `NSLocation*` 字串（`App/project.yml`） |
@@ -131,24 +131,24 @@ Google 官方的 App Store 資料揭露對照表對 Analytics／Crashlytics 的�
 
 ## 2. Health 為什麼是 Not Collected（重點題）
 
+**這一題在本版變簡單了：App 完全不讀取健康資料。**
+
 | 檢核 | 事實 | 依據 |
 |---|---|---|
-| 有沒有讀 HealthKit？ | 有，且**只讀** `stepCount`、`distanceWalkingRunning`、`appleExerciseTime` 三型 | `App/project.yml` entitlements、`docs/PRD.md §7.1`、`HealthKitReader.swift` |
-| 有沒有寫入 HealthKit？ | **沒有**，無任何寫入路徑 | `NSHealthUpdateUsageDescription` 字串本身即寫明「本 App 不會寫入任何健康資料」 |
-| 健康資料有沒有離開裝置？ | **沒有**。只在 `HomeView` 步數環與 `HealthView` 摘要卡上顯示 | `HealthView.swift`：「健康數據只在裝置本機顯示，不會被送出」 |
-| 上傳的圖片是不是用健康資料產生的？ | **不是**。v1.0.0 **已移除**「以 HealthKit 數據產生上傳圖卡」的設計，上傳一律由使用者從相簿自選截圖 | `UploadView.swift` 只有 `PhotosPicker`，無 `ImageRenderer` 圖卡產生路徑；對應 `docs/app-review-risk.md` 降險第 4 條 |
-| 網路層有沒有可能把它送出去？ | 沒有。App 自己的出口只有 `500.gov.tw`，且送出的是使用者自選的圖片檔，不含任何 HealthKit 欄位 | `URLSessionHTTPClient` 網域白名單 |
-| **加了 Firebase 之後，健康資料有沒有可能進遙測？** | **沒有。** `AnalyticsEvent` 是封閉列舉（26 個事件），逐一檢視過**沒有任何一個帶健康數值**；唯一沾到健康的是 `health_link_tap`，記錄的是「使用者按了前往連結的按鈕」這個 UI 動作，**連授權結果都不送**。`UserProperty` 是**不可建構的空列舉**（完全不設任何使用者屬性）。**連「今日是否達標」這種由步數推導的布林值都刻意不送**——理由是 Apple 禁止把 HealthKit 資料分享給第三方 | `App/Sources/App/Telemetry.swift`（封閉列舉 + 六道閘門 + DEBUG `assertionFailure`）|
-| 那「有沒有授權讀步數」這種狀態呢？ | **實作上根本不送。** 曾評估過送授權結果（`health_link_result`），最後刻意不做——授權結果仍是「從 HealthKit API 取得的資訊」，即使只是三選一的列舉。實際只送 `health_link_tap`（按鈕被按了），那是純 UI 動作。**若日後有人把授權結果或任何數值加回遙測，Health 就立刻變成 Collected，並直接踩 5.1.3(i)** | `Telemetry.swift` 的 `AnalyticsEvent`；`UserProperty` 為空列舉 |
+| 有沒有讀 HealthKit？ | **沒有。** 原始碼裡沒有任何一處 `import HealthKit`，也沒有 `HealthReading` 之類的抽象層 | `grep -r HealthKit Sources App/Sources` 無結果 |
+| 有沒有 HealthKit entitlement？ | **沒有。** `App/project.yml` 已不再宣告任何 entitlements 檔 | `App/project.yml`；產生出來的 `App/Generated/` 下沒有 `.entitlements` |
+| 有沒有健康權限用途字串？ | **沒有。** `NSHealthShareUsageDescription` 與 `NSHealthUpdateUsageDescription` 都已移除，使用者不會看到健康權限提示 | `App/Generated/Info.plist` |
+| 上傳的圖片是不是用健康資料產生的？ | **不是**，而且現在連來源都不存在。上傳一律由使用者從相簿自選截圖 | `UploadView.swift` 只有 `PhotosPicker`，無任何圖卡產生路徑 |
+| 遙測裡有沒有健康相關事件？ | **沒有。** `AnalyticsEvent` 是封閉列舉（26 個事件），沒有任何一個帶健康數值；原本唯一沾邊的 `health_link_tap` 已隨功能一併刪除。`UserProperty` 是**不可建構的空列舉** | `App/Sources/App/Telemetry.swift` |
 
-→ **依前提 A（未傳出裝置＝未蒐集），Health 與 Fitness 兩項都填 Not Collected。**
+→ **Health 與 Fitness 兩項都填 Not Collected**——不是靠「讀了但沒送出」的論證，而是**根本沒有讀**。
 
-**加入 Firebase 之後，這個答案為什麼還站得住**：`500.gov.tw` 收到的只有使用者自選的截圖檔，Google 收到的只有封閉列舉出來的匿名事件。
-兩條出口都沒有 HealthKit 欄位，所以健康資料**在任何情況下都沒有離開裝置**。
-這句話是本 App 對 5.1.3(i) 最有力的辯護，也是整份標籤裡最不能出錯的一格——**任何要在遙測裡加健康相關數值的提案，都應該直接否決。**
+**與舊版的差別（留著避免有人以為文件過期）**：v1.0.0 build 4 以前確實讀取步數／距離／運動時間（唯讀、不外傳），
+那時這一格要靠「未傳出裝置＝未蒐集」的前提 A 才成立，也是整份標籤最不能出錯的一格。
+功能移除後，`5.1.3(i)`（健康資料換取獎勵）與「HealthKit + Google SDK 的組合」這兩個風險一起消失。
 
-**注意**：這一格與「App 有沒有申請 HealthKit 權限」是兩回事。App 仍會出現 HealthKit 權限提示，這不影響隱私標籤的答案——Apple 問的是「是否傳出裝置」，不是「是否讀取」。
-**另外**：Apple 對 HealthKit 有獨立的硬性規定——健康資料不得用於廣告、行銷或資料探勘。本 App 完全不做這些，可在 Review Notes 一併說明（見 `review-notes.md` §4）。
+**要守住的線**：只要有人把讀取健康資料的功能加回來，這一格、`review-notes.md` §4 與 §7 的 5.1.3(i) 段、
+以及 `PrivacyInfo.xcprivacy` 都要同步重寫，**而且遙測裡不得出現任何健康數值或其推導結論**（包含「今日是否達標」這種布林）。
 
 ---
 
@@ -159,7 +159,7 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
 | 資料 | 建議歸類 | 理由 | 被否決的選項 |
 |---|---|---|---|
 | 身分證號 | **Identifiers → User ID** | Apple 對 User ID 的定義是「screen name、handle、account ID、assigned user ID、customer number 或其他使用者／帳號層級的識別碼」。身分證號在 `500.gov.tw` 上**就是帳號本身**（`POST /access` 以 `idNo` 分流、登入以三碼比對），完全符合「帳號層級識別碼」 | **Sensitive Info**：Apple 該類的定義是種族／性向／宗教／政治／工會／基因／生物辨識，身分證號不屬其中，硬勾反而讓標籤失準 |
-| 出生日期 | **Other Data** | Apple 明列「Other Data：未在上述類型中明確提到的任何其他資料」。出生日期不是聯絡資訊、不是識別碼、不是健康資料 | **Contact Info**：DOB 不是聯絡方式；**Health**：DOB 不是 HealthKit 資料 |
+| 出生日期 | **Other Data** | Apple 明列「Other Data：未在上述類型中明確提到的任何其他資料」。出生日期不是聯絡資訊、不是識別碼、不是健康資料 | **Contact Info**：DOB 不是聯絡方式；**Health**：DOB 與健康資料無關，本 App 也不讀取健康資料 |
 
 **在問卷的自由描述欄（Other Data 允許填說明）建議寫**：
 `出生日期，僅用於登入使用者本人在 500.gov.tw 的既有帳號。`
@@ -170,15 +170,15 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
 
 隱私權政策網頁（`app-store-metadata.md` §7 的 `TODO(待填)`）至少要涵蓋以下五點，句句對得上上表：
 
-1. **開發者不營運任何伺服器**，不接收、不儲存、也無法存取使用者的身分資料與健康資料；本 App 無自建後端。
+1. **開發者不營運任何伺服器**，不接收、不儲存、也無法存取使用者的身分資料；本 App 無自建後端。
 2. **本機儲存**：身分證號、出生日期、手機號碼加密保存在 iOS Keychain（`WhenUnlockedThisDeviceOnly`），不同步 iCloud、不隨備份轉移、不寫入紀錄檔。
 3. **與第三方分享**：上述三個欄位以及使用者自選的上傳截圖，會在使用者主動操作時，**由裝置直接傳送到 `500.gov.tw`**（活動主辦單位營運的網站，使用者帳號所在地）。該網站對這些資料的處理適用其自身的隱私政策，並附上連結：`TODO(待填：500.gov.tw 的隱私政策網址)`。
-4. **健康資料**：僅讀取步數、步行與跑步距離、運動時間；不寫入、不外傳、不用於產生上傳內容、不用於廣告或行銷。
+4. **健康資料**：本 App 不讀取任何健康資料，亦未申請 HealthKit 權限。
 5. **刪除方式**：App 內「我的資料 →『立即清除本機資料』」即永久刪除本機全部資料；刪除 App 亦同。官方網站上的帳號請至 `500.gov.tw` 自行管理。
 6. **匿名使用統計與當機回報（新增，必須寫）**：使用 Google Firebase Analytics 與 Crashlytics；
    **首次啟動的免責聲明會明白揭露這件事，使用者按下「同意並開始使用」時才初始化 Firebase；同意之後預設開啟**，
    可隨時於「我的資料 › 安全與隱私 › 傳送匿名使用統計」關閉；
-   送出的是匿名操作事件、當機報告與一組可重置的隨機安裝編號；**不含身分證號、出生日期、手機號碼、任何 HealthKit 數據或其推導結論、截圖與券碼**；
+   送出的是匿名操作事件、當機報告與一組可重置的隨機安裝編號；**不含身分證號、出生日期、手機號碼、截圖與券碼**；
    資料傳往 Google 位於美國的伺服器；如何關閉。→ 已寫入 `site/privacy.html` §5「使用統計與當機回報（同意後預設開啟）」。
    **文字上不得再出現「預設關閉」或「opt-in」**——那已經是不實陳述。
 7. **網域白名單的界線**：App 自己的 HTTP client 只連 `500.gov.tw`，但 Firebase SDK 走自己的連線、不受該白名單管轄；遙測運作時會連往
@@ -191,14 +191,14 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
 
 以下任何一項成立，這份標籤就過期了：
 
-- 重新加入「以 HealthKit 數據產生上傳圖卡」→ Health/Fitness 立刻變成 **Collected**，且會直接踩到 Guideline 5.1.3(i)。
+- 重新加入任何 HealthKit 讀取（尤其是「以 HealthKit 數據產生上傳圖卡」）→ §2 整段、`PrivacyInfo.xcprivacy` 與 Review Notes 都要重寫；產生上傳圖卡更會直接踩到 Guideline 5.1.3(i)。
 - 恢復收集姓名／Email／健保卡卡號 → Contact Info 需重填，健保卡號還會拉高 5.1.1(ix) 風險。
 - ~~加入任何 analytics、crash 回報或廣告 SDK~~ → **已於 2026-09-06 發生**（firebase-ios-sdk 12.18.0）。Usage Data / Diagnostics / Identifiers 已依此重填，「零第三方相依」的說法已全面作廢。
 - ~~**把 `defaultEnabled` 改成 `true`**~~ → **已於 2026-09-06 發生**。`defaultEnabled` 現在是 `true`，「預設關閉」「opt-in」的說法已在 Review Notes、隱私政策、官網、商店描述與 CHANGELOG 全面改寫為「先告知 → 主動同意 → 預設開啟 → 隨時可關」。**§1 的逐項答案未因此變動**（前提 C）。
 - **改動 Info.plist 那四個 `false` 旗標** → 它們現在的意義是「冷啟動預設值 / 還沒 `configure` 就絕不收集」，不是「預設關閉」。改成 `true` 會讓「同意前零收集」失去最後一層保險，Review Notes §5b 與隱私政策第 5 節都要重寫。
 - **把 `Telemetry.configure()` 的三道前置條件（未同意免責聲明／使用者關閉／示範模式）拿掉任何一道**，或**把 `DisclaimerConsent.record()` 裡的 `Telemetry.configure()` 移到別的時機** → 「同意前 Firebase 一行程式碼都不執行」這句話會失效，那是本次設計唯一真正的保障，官網、README 與 Review Notes 都要一起改。
 - **從 `DisclaimerView` 拿掉「匿名使用統計」那一條，或改動勾選文字** → 揭露點就消失了，變成「使用者沒讀到就開始送」。這是全案最不能動的一段文案。
-- **在 `AnalyticsEvent`／`UserProperty`／`CrashKey` 任一列舉裡加入含健康數值或達標結論的成員** → Health/Fitness 立刻變成 Collected，直接踩 5.1.3(i)。**這是全表最危險的改動。**
+- **在 `AnalyticsEvent`／`UserProperty`／`CrashKey` 任一列舉裡加入含健康數值或達標結論的成員** → Health/Fitness 立刻變成 Collected，直接踩 5.1.3(i)。**這是全表最危險的改動**（即使本版已無健康資料來源，這條規則仍然有效）。
 - **加入帶 `vendor`／`item` 等參數的兌換事件** → Usage Data › Other Usage Data 改成 Yes。
 - **加入 Firebase Performance、Remote Config、Messaging、In-App Messaging、App Check 或 Analytics（非 Core）版本** → Diagnostics › Performance Data、Identifiers 要重評；改用 `FirebaseAnalytics`（非 Core）會把 `AdSupport` 連進來，Tracking 與 ATT 的答案全部要重來。
 - **呼叫 `Analytics.setUserID(_:)`，或把 IDFV 收集打開** → 所有 Firebase 項目從 Not Linked 變成 Linked。

@@ -176,19 +176,21 @@ def compose(shot_path, eyebrow, verb, desc, out_path):
     assert im.size == (CANVAS_W, CANVAS_H)
 
 
-RAW = "/Users/jackcheng/Personal Projects/sports-rewards/design/screenshots/raw"
-OUT = "/Users/jackcheng/Personal Projects/sports-rewards/design/screenshots/store"
+# 相對於這支腳本自己的位置，不再寫死某台機器的家目錄。
+HERE = os.path.dirname(os.path.abspath(__file__))
+RAW = os.path.join(HERE, "..", "raw")
+OUT = HERE
 EYEBROW = "揮汗有禮非官方串接"
 
 SET = [
     ("01", "02-login.png", "填一次，免重打",
      "身分證號、生日、手機填一次\n之後登入不用再打一遍"),
-    ("02", "03-home.png", "打開就看到步數",
-     "今日進度、本週任務\n同一頁看完，不用到處找"),
+    ("02", "03-home.png", "打開就看到重點",
+     "本週任務與手上的加碼券\n同一頁看完，不用到處找"),
     ("03", "04-tasks.png", "看懂每一期進度",
      "該上傳、該兌換\n14 期狀態一次標清楚"),
-    ("04", "05-health.png", "步數自動讀進來",
-     "連 Apple 健康看步數與運動時間\n今天有沒有到門檻，馬上知道"),
+    ("04", "08b-vendor-intro.png", "先看能換什麼",
+     "每個通路的可兌換商品分類\n挑定了再送出，不怕換錯"),
     ("05", "06-upload.png", "挑一張截圖送出",
      "從相簿選運動紀錄截圖\n直接送到當期任務"),
     ("06", "09-wallet.png", "加碼券收進券夾",
