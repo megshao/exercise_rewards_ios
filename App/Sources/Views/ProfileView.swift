@@ -13,6 +13,7 @@ struct ProfileView: View {
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
     @StateObject private var viewModel = ProfileViewModel()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @State private var showClearConfirm = false
     @State private var showCleared = false
     /// 「傳送匿名使用統計」開關。直接綁 Telemetry 用的同一個 UserDefaults 鍵，
@@ -382,7 +383,10 @@ struct ProfileView: View {
         let environment = environment
         Task { await environment.resetSession() }
         showCleared = true
-        // 觸發回到 Onboarding（RootView 依 hasCompletedOnboarding 切換）。
+        // 觸發回到最初的狀態（RootView 依這兩個旗標與同意版本切換）：
+        // 歡迎頁 → 免責聲明 → 個資填寫。「清除本機所有資料」承諾的是回到初次設定，
+        // 只重設 onboarding 會讓使用者直接落在免責聲明頁，跟第一次安裝不一樣。
+        hasSeenWelcome = false
         hasCompletedOnboarding = false
     }
 

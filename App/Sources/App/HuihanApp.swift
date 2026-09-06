@@ -47,8 +47,19 @@ struct HuihanApp: App {
     }
 }
 
-/// App 根導覽：先跑一次 Onboarding（首次啟動），之後進到主要的 TabView。
+/// App 根導覽。首次啟動的順序：**歡迎 → 免責聲明 → 個資填寫 → 主畫面**。
+///
+/// **為什麼歡迎頁排在免責聲明之前**：免責聲明是一整頁條款，第一次開 App 就直接撞上它，
+/// 使用者連「這是什麼 App」都還不知道就要決定同不同意。先給一頁「這是什麼、誰做的」，
+/// 按下「開始使用」表示願意繼續，再請他讀條款——同意才是有前提的。
+///
+/// **這個順序對遙測的影響**：`Telemetry.configure()` 仍然只在同意的那一刻被呼叫，
+/// 所以歡迎頁完全在「Firebase 一行都還沒執行」的階段（那句話仍然為真）。
+/// 代價是歡迎頁不能埋任何事件——漏斗第一步 `tutorial_begin` 因此移到表單出現時才送。
 struct RootView: View {
+    /// 是否看過歡迎頁。與免責聲明的同意分開存：同意紀錄有版本號（改條款要重新同意），
+    /// 而歡迎頁看過就算看過，不該因為條款改版又跳一次。
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     /// 已同意的免責聲明版本；0 代表從未同意。用版本號而非布林，是為了日後修改
     /// 聲明內容時能讓舊使用者重新同意（把 `DisclaimerView.currentVersion` 加一即可）。
@@ -56,8 +67,10 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if agreedVersion < DisclaimerView.currentVersion {
-                // 擋在 Onboarding 之前：使用者填第一個欄位之前就該知道這是非官方工具、
+            if !hasSeenWelcome {
+                WelcomeView(onStart: { hasSeenWelcome = true })
+            } else if agreedVersion < DisclaimerView.currentVersion {
+                // 擋在個資填寫之前：使用者填第一個欄位之前就該知道這是非官方工具、
                 // 以及活動問題該找誰。
                 DisclaimerView(onAgree: { DisclaimerConsent.record() })
             } else if hasCompletedOnboarding {

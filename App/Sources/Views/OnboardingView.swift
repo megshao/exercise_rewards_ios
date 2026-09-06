@@ -1,11 +1,16 @@
 import SwiftUI
 import SportsRewardsKit
 
-/// 首次啟動導覽：
-/// 1. 簡短歡迎頁。
-/// 2. 強制填 3 欄位（身分證、生日、手機——個資最小化到登入必需，姓名/健保卡卡號/email
+/// 首次啟動導覽的**個資填寫**那一步。
+///
+/// 歡迎頁已經拆到 `WelcomeView`，而且排在免責聲明之前（順序見 `RootView`）：
+/// 歡迎 → 免責聲明 → 這一頁。所以走到這裡時，使用者一定已經同意過聲明，
+/// 遙測也已經初始化——`tutorial_begin` 因此改在這一頁出現時才送。
+///
+/// 這一頁做的事：
+/// 1. 強制填 3 欄位（身分證、生日、手機——個資最小化到登入必需，姓名/健保卡卡號/email
 ///    皆不在此收集）。
-/// 3. 「送出並驗證」呼叫既有 `AuthServicing.login`（內部就是 `/access` 分流 + login）：
+/// 2. 「送出並驗證」呼叫既有 `AuthServicing.login`（內部就是 `/access` 分流 + login）：
 ///    - `.success` → 存 Profile 到 Keychain → 直接完成，進主畫面。
 ///    - `.invalidCredentials` → 停在表單，提示「身分證/生日/手機有誤」。
 ///    - `.notRegistered` → **App 不做註冊**：顯示提示訊息＋「前往官網註冊」按鈕，
@@ -23,82 +28,18 @@ struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
 
     var body: some View {
-        Group {
-            switch viewModel.step {
-            case .welcome:
-                welcomeStep
-            case .form:
-                formStep
+        formStep
+            .background(Theme.Colors.background)
+            .task {
+                viewModel.configure(auth: environment.auth, profileStore: environment.profileStore,
+                                     envStore: envStore, onFinish: onFinish)
+                // E2：導覽漏斗的第一步。**刻意在這裡而不是「開始使用」那顆按鈕上**——
+                // 歡迎頁排在免責聲明之前，那時遙測還沒初始化，埋在那裡送不出去。
+                viewModel.formDidAppear()
             }
-        }
-        .background(Theme.Colors.background)
-        .task {
-            viewModel.configure(auth: environment.auth, profileStore: environment.profileStore,
-                                 envStore: envStore, onFinish: onFinish)
-        }
     }
 
-    // MARK: - Step 1：歡迎
-
-    private var welcomeStep: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            VStack(spacing: 14) {
-                Image(systemName: "figure.run.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(Theme.Colors.primary)
-
-                // 主標一律用上架名稱 Sports Rewards：刻意不拿活動名「揮汗有禮」自稱，
-                // 避免被誤認為官方 App；活動名只出現在說明用途的副標裡。
-                Text("Sports Rewards")
-                    .font(Theme.displayFont(28, weight: .heavy))
-
-                Text("協助你參加運動部「揮汗有禮」活動的非官方小工具\n每週達標，就能換一張超商加碼券")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.Colors.muted)
-                    .multilineTextAlignment(.center)
-            }
-            Spacer()
-
-            // 非官方聲明（App 內三處揭露之一：啟動頁／我的資料／App Store 商店描述）。
-            disclaimerCard
-
-            Text("首次使用需先完成身分驗證，資料只加密存在這支手機。")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.Colors.dim)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-
-            Button {
-                viewModel.startTapped()
-            } label: {
-                Text("開始使用")
-            }
-            .buttonStyle(.huihanPrimary)
-        }
-        .padding(24)
-        // E1：畫面瀏覽。歡迎頁與表單頁分開計，才看得出「開了 App 但沒進表單」的人數。
-        .onAppear { Telemetry.screenAppeared(.onboardingWelcome) }
-    }
-
-    /// 首次啟動就把話講清楚：這是個人做的非官方工具，跟主辦單位沒有任何關係。
-    private var disclaimerCard: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle.fill")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.Colors.muted)
-            Text("本 App 由個人開發，是非官方工具，與運動部沒有任何隸屬或授權關係。")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.Colors.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(13)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Colors.card2)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-    }
-
-    // MARK: - Step 2：個資填寫 + 送出驗證
+    // MARK: - 個資填寫 + 送出驗證
 
     private var formStep: some View {
         ScrollView {
@@ -188,12 +129,6 @@ struct OnboardingView: View {
 
 @MainActor
 final class OnboardingViewModel: ObservableObject {
-    enum Step: Equatable {
-        case welcome
-        case form
-    }
-
-    @Published var step: Step = .welcome
     /// 主表單只收 3 欄（身分證/生日/手機）——個資最小化到登入必需。`Profile` 其餘欄位
     /// （name/email/nhiCardNo）維持預設空字串，App 從不收集。
     @Published var draft = Profile()
@@ -217,8 +152,16 @@ final class OnboardingViewModel: ObservableObject {
         self.onFinish = onFinish
     }
 
-    func startTapped() {
-        step = .form
+    /// 表單畫面出現時呼叫（只送一次）。
+    ///
+    /// E2 `tutorial_begin` 原本綁在歡迎頁的「開始使用」上。歡迎頁移到免責聲明**之前**
+    /// 之後，那個時機還在同意前——`Telemetry` 的閘門會把事件丟掉，漏斗第一步就永遠是 0。
+    /// 因此改成「表單出現」＝使用者真的開始填資料，這也更貼近 `tutorial_begin` 的語意。
+    private var didReportBegin = false
+
+    func formDidAppear() {
+        guard !didReportBegin else { return }
+        didReportBegin = true
         Telemetry.setCrashKey(.onboardingStep(.form))
         // E2：無參數。
         Telemetry.logEvent(.tutorialBegin)
