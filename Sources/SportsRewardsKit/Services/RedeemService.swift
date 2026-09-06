@@ -56,6 +56,18 @@ public final class RedeemService: RedeemServicing {
         throw AppError.unexpectedResponse(result.statusCode)
     }
 
+    public func vendorIntro(path: String) async throws -> VendorIntro {
+        // 第二道白名單。第一道在 RedeemParser.introPath——那裡擋的是官網頁面上的 href，
+        // 這裡擋的是「呼叫端傳了別的東西進來」。兩道都便宜，而這支方法會真的發請求。
+        guard path.range(of: #"^/intro/[A-Za-z0-9._-]{1,64}\.html$"#, options: .regularExpression) != nil else {
+            throw AppError.parsing("vendor intro path not allowed")
+        }
+        let html = try await http.getHTML(path: path)
+        let intro = try VendorIntroParser.parse(html: html)
+        log.debug("parsed vendor intro with \(intro.categories.count) categories")
+        return intro
+    }
+
     private func redeemPath(_ taskID: String) -> String {
         "/member/redeem/" + taskID
     }

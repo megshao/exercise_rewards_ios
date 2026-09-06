@@ -33,6 +33,25 @@ public enum TaskState: String, Codable, Sendable {
     case redeemable      // 任務完成，可兌換
     case redeemed        // 已兌換
     case unknown
+
+    /// 這個狀態下，官網的 `period-remaining` 還有意義嗎？
+    ///
+    /// **官網那個欄位講的是「上傳窗」倒數**，文字是「本期任務可上傳時間 剩 N 小時 N 分」，
+    /// 而且**對已經走完審核的期別照樣回傳**——實測（2026-09-06）一張已兌換的券，
+    /// 卡片上仍寫著「本期任務可上傳時間 剩 3 小時 20 分」。官網頁面自己的註解也寫明
+    /// 「兌換窗是這一期自己的，與上傳窗無關」。
+    ///
+    /// 審核完成之後（可兌換／已兌換）上傳早就做完了，那個倒數指的是一個用不到的窗；
+    /// 照著顯示只會讓使用者以為還有東西要上傳。因此這兩個狀態一律不顯示。
+    ///
+    /// 待審核（`pendingReview`）刻意**保留**：上傳窗還開著時，剩餘時間對「審核沒過還能不能
+    /// 重新上傳」仍然是有用的資訊。
+    public var showsUploadCountdown: Bool {
+        switch self {
+        case .redeemable, .redeemed: return false
+        case .notStarted, .open, .pendingReview, .unknown: return true
+        }
+    }
 }
 
 /// 我的任務中的一期。
@@ -45,13 +64,21 @@ public struct TaskPeriod: Codable, Equatable, Identifiable, Sendable {
     public var remainingText: String?  // 剩 1 天 22 小時
     public var uploadedAt: String?
     public var reviewedAt: String?
+    /// 已兌換的期別，官網會在卡片上寫「兌換內容：萊爾富／指定雞胸果昔兌換券」。
+    /// 這裡存的是冒號後面那一段（通路／品項），只有 `state == .redeemed` 時才會有。
+    ///
+    /// **這是官網原文，屬不受信任輸入**：只能顯示在畫面上，
+    /// 絕不可進遙測（見 `Telemetry.swift` 檔頭的禁止項）。
+    public var voucherSummary: String?
 
     public init(id: String, index: Int, startDate: String, endDate: String,
                 state: TaskState, remainingText: String? = nil,
-                uploadedAt: String? = nil, reviewedAt: String? = nil) {
+                uploadedAt: String? = nil, reviewedAt: String? = nil,
+                voucherSummary: String? = nil) {
         self.id = id; self.index = index; self.startDate = startDate; self.endDate = endDate
         self.state = state; self.remainingText = remainingText
         self.uploadedAt = uploadedAt; self.reviewedAt = reviewedAt
+        self.voucherSummary = voucherSummary
     }
 }
 
@@ -82,14 +109,76 @@ public struct RedeemOption: Identifiable, Equatable, Sendable {
     public let vendorName: String
     public let itemName: String
     public let itemId: String
+    /// 該列「兌換品項」連結指向的廠商商品頁，已正規化成 base-relative path
+    /// （例如 `/intro/vendor-1.html`）。
+    ///
+    /// **nil 是正常狀況**：官網的規則是「靜態頁 `intro/vendor-{id}.html` 存在才長出這個
+    /// 連結」，沒有另一份設定可以跟它不同步。因此這裡不自己用 `vendorId` 拼網址——
+    /// 拼出來的網址在官網沒有那一頁時會是 404，而解析不到就代表官網也沒給。
+    public let introPath: String?
 
     public var id: String { "\(vendorId)-\(itemId)" }
 
-    public init(vendorId: String, vendorName: String, itemName: String, itemId: String) {
+    public init(vendorId: String, vendorName: String, itemName: String, itemId: String,
+                introPath: String? = nil) {
         self.vendorId = vendorId
         self.vendorName = vendorName
         self.itemName = itemName
         self.itemId = itemId
+        self.introPath = introPath
+    }
+}
+
+/// 廠商可兌換商品頁（`/intro/vendor-{id}.html`）解析出的內容。
+///
+/// 官網這幾頁有**兩種版型**，兩種都要吃：
+/// - 逐項列出（全家／7-11／萊爾富）：`<details data-category>` 分類卡，卡內 `<li data-name>`
+///   一項一列，`summary` 上有「N 項」。
+/// - 只給類別與舉例（全聯／萬家福／樂家康）：一張 `類別名稱 / 商品名稱（列舉）` 的表格。
+///
+/// 兩者共用 `VendorIntroCategory`：前者填 `items`，後者填 `examples`。
+/// **刻意不把 `examples` 拆成 `items`**——官網那欄本來就是「舉例」不是完整清單，
+/// 拆開會讓使用者以為那就是全部。
+public struct VendorIntro: Equatable, Sendable {
+    /// 頁面主標，例如「全家便利商店可兌換商品」。
+    public let title: String
+    /// 主標下方的說明，例如「點選商品分類，即可展開查看相關兌換品項。」。可能沒有。
+    public let subtitle: String?
+    public let categories: [VendorIntroCategory]
+    /// 頁尾「兌換注意事項」的每一段。
+    public let notices: [String]
+
+    public init(title: String, subtitle: String?, categories: [VendorIntroCategory], notices: [String]) {
+        self.title = title
+        self.subtitle = subtitle
+        self.categories = categories
+        self.notices = notices
+    }
+}
+
+/// 商品頁上的一個分類。
+public struct VendorIntroCategory: Identifiable, Equatable, Sendable {
+    /// 分類名稱，例如「Let's Café」「冷藏鮮乳」。
+    public let name: String
+    /// 逐項列出的品項（只有逐項版的頁面有）。
+    public let items: [String]
+    /// 官網原文的舉例字串（只有列舉版的頁面有），例如「光泉低脂鮮乳、林鳳營高品質鮮乳等」。
+    public let examples: String?
+    /// 官網自己標的品項數（「54 項」）。**以官網為準，不用 `items.count` 取代**——
+    /// 兩者不一致時代表解析漏了東西，是個看得見的訊號。
+    public let statedCount: Int?
+    /// 是不是「全部品項」那張彙總卡（官網用 `class="... all-items"` 標記）。
+    public let isAllItems: Bool
+
+    public var id: String { name }
+
+    public init(name: String, items: [String] = [], examples: String? = nil,
+                statedCount: Int? = nil, isAllItems: Bool = false) {
+        self.name = name
+        self.items = items
+        self.examples = examples
+        self.statedCount = statedCount
+        self.isAllItems = isAllItems
     }
 }
 

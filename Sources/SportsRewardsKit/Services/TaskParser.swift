@@ -8,7 +8,9 @@ import Foundation
 /// - `.period-state--XXX`：後端算好的互斥狀態（見 `TaskState`）
 /// - `.period-remaining`：剩餘時間文字（可能沒有）
 /// - `.period-detail` 內的上傳/審核時間（可能沒有）
-/// - 兌換 `/member/redeem/{uuid}` 或截圖 `/member/screenshot/{uuid}` 連結中的期別 UUID（可能沒有）
+/// - `.period-voucher` 內的「兌換內容：通路／品項」（只有已兌換的期別有）
+/// - 兌換 `/member/redeem/{uuid}`、截圖 `/member/screenshot/{uuid}` 或券碼
+///   `/member/voucher/{uuid}` 連結中的期別 UUID（可能沒有）
 public enum TaskParser {
     /// 解析整頁 HTML，回傳依卡片出現順序排列的任務清單。
     /// - Throws: `AppError.parsing` 當頁面內完全找不到任何 `period-card` 卡片時（代表頁面結構跟預期不符）。
@@ -65,7 +67,10 @@ public enum TaskParser {
     private static let remainingPattern = #"period-remaining">([^<]{0,2000})<"#
     private static let uploadedAtPattern = #"上傳時間：([^<]{0,2000})<"#
     private static let reviewedAtPattern = #"審核時間：([^<]{0,2000})<"#
-    private static let idPattern = #"/member/(?:redeem|screenshot)/([0-9a-fA-F-]{1,64})"#
+    private static let voucherSummaryPattern = #"兌換內容：([^<]{0,2000})<"#
+    // 已兌換的期別在官網卡片上只剩 voucher／screenshot 連結（沒有 redeem 連結了），
+    // 所以 UUID 必須也認 `voucher`，否則已兌換那期會抓不到 id。
+    private static let idPattern = #"/member/(?:redeem|screenshot|voucher)/([0-9a-fA-F-]{1,64})"#
 
     /// 解析單張卡片片段。所有欄位都容錯：抓不到就給合理預設值，不丟例外。
     private static func parseCard(_ card: String, fallbackIndex: Int) -> TaskPeriod {
@@ -86,6 +91,7 @@ public enum TaskParser {
         let remainingText = trimmedMatch(in: card, pattern: remainingPattern)
         let uploadedAt = trimmedMatch(in: card, pattern: uploadedAtPattern)
         let reviewedAt = trimmedMatch(in: card, pattern: reviewedAtPattern)
+        let voucherSummary = trimmedMatch(in: card, pattern: voucherSummaryPattern)
 
         let id = firstMatch(in: card, pattern: idPattern) ?? ""
 
@@ -97,7 +103,8 @@ public enum TaskParser {
             state: state,
             remainingText: remainingText,
             uploadedAt: uploadedAt,
-            reviewedAt: reviewedAt
+            reviewedAt: reviewedAt,
+            voucherSummary: voucherSummary.map(HTMLEntities.decode)
         )
     }
 

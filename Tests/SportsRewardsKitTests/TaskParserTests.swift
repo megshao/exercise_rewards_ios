@@ -114,4 +114,76 @@ final class TaskParserTests: XCTestCase {
         XCTAssertEqual(periods.first?.state, .pendingReview)
     }
 
+    // MARK: - 已兌換的期別（兌換內容 + voucher 連結的 UUID）
+
+    /// 已兌換的卡片在官網長這樣：狀態是 REDEEMED、動作區只剩 voucher／screenshot 兩個連結
+    /// （沒有 redeem 連結了），卡片最後有一行「兌換內容：通路／品項」。
+    private static let redeemedCardHTML = """
+    <ul class="period-list">
+      <li class="period-card period-card--current">
+        <div class="period-head">
+          <span class="period-no">第 1 期</span>
+          <span class="period-range">2026/09/01 ~ 2026/09/06</span>
+          <span class="period-remaining">本期任務可上傳時間 剩 3 小時 20 分</span>
+        </div>
+        <p class="period-state period-state--REDEEMED"><span>已兌換</span></p>
+        <p class="period-detail"><span>上傳時間：2026/09/03 21:42</span></p>
+        <div class="period-actions">
+          <a href="/registrant/member/voucher/00000000-0000-4000-8000-000000000009" class="btn btn--primary">檢視加碼券</a>
+          <a href="/registrant/member/screenshot/00000000-0000-4000-8000-000000000009" class="btn btn--secondary">檢視我的截圖</a>
+        </div>
+        <p class="period-voucher"><span>兌換內容：示範超商 C／測試品項 C2 超值券</span></p>
+      </li>
+    </ul>
+    """
+
+    func testParsesVoucherSummaryFromRedeemedCard() throws {
+        // Act
+        let periods = try TaskParser.parse(html: Self.redeemedCardHTML)
+        let first = try XCTUnwrap(periods.first)
+
+        // Assert
+        XCTAssertEqual(first.state, .redeemed)
+        XCTAssertEqual(first.voucherSummary, "示範超商 C／測試品項 C2 超值券")
+    }
+
+    /// 已兌換的卡片只剩 `/member/voucher/{uuid}` 連結。idPattern 若沒認這個路徑，
+    /// 已兌換那期的 id 會是空字串，券夾與首頁就點不進券碼頁。
+    func testParsesIDFromVoucherLinkOnRedeemedCard() throws {
+        // Act
+        let periods = try TaskParser.parse(html: Self.redeemedCardHTML)
+
+        // Assert
+        XCTAssertEqual(periods.first?.id, "00000000-0000-4000-8000-000000000009")
+    }
+
+    /// 沒有「兌換內容」那一行的期別（未兌換、尚未開始）一律是 nil，不可以拿別的欄位頂替。
+    func testVoucherSummaryIsNilWhenCardHasNoVoucherLine() throws {
+        // Arrange
+        let html = try loadFixture("member_tasks")
+
+        // Act
+        let periods = try TaskParser.parse(html: html)
+
+        // Assert
+        XCTAssertTrue(periods.allSatisfy { $0.voucherSummary == nil })
+    }
+
+    /// 官網文字會被 Thymeleaf 跳脫；沒還原的話畫面上會看到原始碼。
+    func testDecodesEntitiesInVoucherSummary() throws {
+        // Arrange
+        let html = """
+        <ul><li class="period-card">
+          <span class="period-no">第 1 期</span>
+          <p class="period-state period-state--REDEEMED"><span>已兌換</span></p>
+          <p class="period-voucher"><span>兌換內容：全家便利商店／50&#43;3元加碼券 &amp; 贈品</span></p>
+        </li></ul>
+        """
+
+        // Act
+        let periods = try TaskParser.parse(html: html)
+
+        // Assert
+        XCTAssertEqual(periods.first?.voucherSummary, "全家便利商店／50+3元加碼券 & 贈品")
+    }
 }

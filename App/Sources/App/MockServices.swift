@@ -85,12 +85,16 @@ public final class MockTasksService: TasksServicing, @unchecked Sendable {
                    state: .open, remainingText: "剩 2 天 7 小時可上傳"),
 
         // 已完成並兌換：券夾裡看得到 3 張加碼券。
+        // `voucherSummary` 比照官網任務卡上的「兌換內容：通路／品項」那一行。
         TaskPeriod(id: "demo-period-01", index: 1, startDate: "09/01", endDate: "09/07",
-                   state: .redeemed, uploadedAt: "09/03 21:42", reviewedAt: "09/05 10:18 通過"),
+                   state: .redeemed, uploadedAt: "09/03 21:42", reviewedAt: "09/05 10:18 通過",
+                   voucherSummary: "示範超商 A／50+3元加碼券"),
         TaskPeriod(id: "demo-period-02", index: 2, startDate: "09/08", endDate: "09/14",
-                   state: .redeemed, uploadedAt: "09/10 07:55", reviewedAt: "09/12 14:03 通過"),
+                   state: .redeemed, uploadedAt: "09/10 07:55", reviewedAt: "09/12 14:03 通過",
+                   voucherSummary: "示範超商 C／指定雞胸果昔兌換券"),
         TaskPeriod(id: "demo-period-03", index: 3, startDate: "09/15", endDate: "09/21",
-                   state: .redeemed, uploadedAt: "09/18 20:11", reviewedAt: "09/19 09:26 通過"),
+                   state: .redeemed, uploadedAt: "09/18 20:11", reviewedAt: "09/19 09:26 通過",
+                   voucherSummary: "示範超市 D／50元加碼券"),
 
         // 審核通過、尚未兌換：券夾「可兌換」區與任務頁的「立即兌換」按鈕都由這期驅動。
         TaskPeriod(id: "demo-period-04", index: 4, startDate: "09/22", endDate: "09/28",
@@ -135,12 +139,63 @@ public final class MockRedeemService: RedeemServicing, @unchecked Sendable {
         return RedeemResult(submitted: true, message: "已送出兌換，請完成簡訊驗證後檢視加碼券")
     }
 
+    /// 示範用的可兌換商品頁。逐項版與列舉版各給一個範例，讓審查員兩種畫面都看得到。
+    public func vendorIntro(path: String) async throws -> VendorIntro {
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+        return Self.intros[path] ?? Self.defaultIntro
+    }
+
     public static let defaultSample: [RedeemOption] = [
-        RedeemOption(vendorId: "1", vendorName: "全家便利商店", itemName: "50+3元加碼券", itemId: "item-demo-family"),
-        RedeemOption(vendorId: "2", vendorName: "7-11", itemName: "50+5元加碼券", itemId: "item-demo-711"),
-        RedeemOption(vendorId: "3", vendorName: "萊爾富", itemName: "50元加碼券", itemId: "item-demo-hilife"),
-        RedeemOption(vendorId: "5", vendorName: "全聯", itemName: "50元加碼券", itemId: "item-demo-pxmart"),
+        RedeemOption(vendorId: "1", vendorName: "全家便利商店", itemName: "50+3元加碼券",
+                     itemId: "item-demo-family", introPath: "/intro/vendor-1.html"),
+        RedeemOption(vendorId: "2", vendorName: "7-11", itemName: "50+5元加碼券",
+                     itemId: "item-demo-711", introPath: "/intro/vendor-2.html"),
+        RedeemOption(vendorId: "3", vendorName: "萊爾富", itemName: "50元加碼券",
+                     itemId: "item-demo-hilife", introPath: "/intro/vendor-3.html"),
+        RedeemOption(vendorId: "5", vendorName: "全聯", itemName: "50元加碼券",
+                     itemId: "item-demo-pxmart", introPath: "/intro/vendor-5.html"),
     ]
+
+    /// 逐項版（示範超商）：分類卡 + 品項清單。
+    private static let listStyleIntro = VendorIntro(
+        title: "示範超商可兌換商品",
+        subtitle: "點選商品分類，即可展開查看相關兌換品項。",
+        categories: [
+            VendorIntroCategory(name: "全部品項",
+                                items: ["示範無糖綠茶", "示範礦泉水", "示範大冰拿鐵",
+                                        "示範綜合堅果", "示範茶葉蛋", "示範鮮豆漿"],
+                                statedCount: 6, isAllItems: true),
+            VendorIntroCategory(name: "現煮咖啡", items: ["示範大冰拿鐵"], statedCount: 1),
+            VendorIntroCategory(name: "無糖茶", items: ["示範無糖綠茶"], statedCount: 1),
+            VendorIntroCategory(name: "瓶裝水類", items: ["示範礦泉水"], statedCount: 1),
+            VendorIntroCategory(name: "堅果、蛋類",
+                                items: ["示範綜合堅果", "示範茶葉蛋"], statedCount: 2),
+            VendorIntroCategory(name: "豆米漿／鮮乳", items: ["示範鮮豆漿"], statedCount: 1),
+        ],
+        notices: ["實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準。"]
+    )
+
+    /// 列舉版（示範超市）：只有類別與舉例，沒有完整品項清單。
+    private static let tableStyleIntro = VendorIntro(
+        title: "示範超市可兌換商品",
+        subtitle: "以下為運動幣加碼活動可兌換商品類別",
+        categories: [
+            VendorIntroCategory(name: "冷藏鮮乳", examples: "示範低脂鮮乳、示範高品質鮮乳等"),
+            VendorIntroCategory(name: "豆漿／米漿／燕麥", examples: "示範無加糖鮮豆漿、示範陽光糙米漿等"),
+            VendorIntroCategory(name: "常溫鮮蛋", examples: "示範洗選蛋（白）等"),
+            VendorIntroCategory(name: "堅果／核仁類", examples: "示範綜合堅果、示範無調味腰果罐等"),
+        ],
+        notices: ["實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準。"]
+    )
+
+    private static let intros: [String: VendorIntro] = [
+        "/intro/vendor-1.html": listStyleIntro,
+        "/intro/vendor-2.html": listStyleIntro,
+        "/intro/vendor-3.html": listStyleIntro,
+        "/intro/vendor-5.html": tableStyleIntro,
+    ]
+
+    private static let defaultIntro = listStyleIntro
 }
 
 /// 假的檢視加碼券服務，供 UI 開發與 Preview 使用。可設定 OTP 情境（一次驗證成功／錯誤幾次／

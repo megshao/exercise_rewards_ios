@@ -34,6 +34,12 @@ public protocol RedeemServicing: Sendable {
     func options(taskID: String) async throws -> [RedeemOption]
     /// 先 GET 兌換頁取得 `_csrf`，再 POST 送出兌換表單。
     func redeem(taskID: String, vendorId: String, item: String) async throws -> RedeemResult
+    /// GET 廠商可兌換商品頁並解析出分類與品項。
+    ///
+    /// `path` 只接受 `RedeemOption.introPath`——那是 `RedeemParser` 已經驗證過、
+    /// 限定在 `/intro/*.html` 的 base-relative path。**不要讓呼叫端自己拼網址**：
+    /// 官網的規則是「靜態頁存在才長出連結」，自己拼會拼出 404。
+    func vendorIntro(path: String) async throws -> VendorIntro
 }
 
 /// 檢視加碼券服務：兌換完成（state=REDEEMED）後，每次要看券碼都要重新走一次簡訊 OTP。
