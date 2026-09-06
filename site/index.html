@@ -42,10 +42,10 @@
 <h2>你的資料在哪裡</h2>
 <ul>
   <li><strong>沒有自建伺服器。</strong>開發者沒有後端，收不到也看不到你的身分證號、生日、手機號碼或任何健康數據。</li>
-  <li><strong>App 自己只連官方網站。</strong>App 發出的請求只會到 500.gov.tw，其他網域一律阻擋，且強制 HTTPS。（你若自行開啟下面說的使用統計，Google Firebase 會另外走它自己的連線。）</li>
+  <li><strong>App 自己只連官方網站。</strong>App 發出的請求只會到 500.gov.tw，其他網域一律阻擋，且強制 HTTPS。（下面說的使用統計運作時，Google Firebase 會另外走它自己的連線。）</li>
   <li><strong>個資只存本機。</strong>加密保存在 iOS Keychain，不同步 iCloud、不隨備份轉移，隨時可一鍵清除。</li>
   <li><strong>健康資料不外傳。</strong>只讀不寫，數字只顯示在畫面上，不會被上傳、也不會進入使用統計——連「今天有沒有達標」都不會送出去。</li>
-  <li><strong>使用統計預設是關的。</strong>App 內建 Google Firebase 的匿名使用統計與當機回報，<strong style="display:inline">出廠關閉</strong>，你自己去「我的資料 › 安全與隱私」打開才會開始送。沒有廣告、沒有廣告識別碼、不做跨 App 追蹤。</li>
+  <li><strong>使用統計：先告知，你同意之後預設是開的。</strong>App 內建 Google Firebase 的匿名使用統計與當機回報。第一次打開 App 會先擋一張免責聲明，上面就明寫這件事；你按下「同意並開始使用」它才啟動——<strong style="display:inline">在你按下同意之前，Firebase 一行程式碼都不會執行</strong>。同意之後預設是開的，不想送就到「我的資料 › 安全與隱私」關掉，隨時可以。沒有廣告、沒有廣告識別碼、不做跨 App 追蹤。</li>
 </ul>
 <p>詳細說明見 <a href="privacy.html">隱私權政策</a>。</p>
 
@@ -55,7 +55,7 @@
   <a href="https://github.com/megshao/sports-rewards-ios" target="_blank" rel="noopener">github.com/megshao/sports-rewards-ios</a>
 </p>
 <p>
-  但開源不等於「你手機上那個版本就是這份程式碼」——中間有一段我們也消除不了的落差。你不用懂程式也能驗證一部分：iOS 內建的「App 隱私權報告」會列出本 App 連過的網域，開關關著時只該有 <code>500.gov.tw</code>。
+  但開源不等於「你手機上那個版本就是這份程式碼」——中間有一段我們也消除不了的落差。你不用懂程式也能驗證一部分：iOS 內建的「App 隱私權報告」會列出本 App 連過的網域，在你按下免責聲明的同意之前只該有 <code>500.gov.tw</code>。
   能驗到哪一層、哪一段只能選擇信不信，都寫在<a href="privacy.html#verify">隱私權政策第 8 節</a>。
 </p>
 

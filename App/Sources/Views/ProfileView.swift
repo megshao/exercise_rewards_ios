@@ -72,8 +72,8 @@ struct ProfileView: View {
     ///
     /// **這段文字改過一次，原因要留著**：加了 Firebase（匿名使用統計）之後，原本第一點的
     /// 「也不會提供給任何第三方」就不再是一句無條件為真的話了。個資與健康資料的部分完全沒變
-    /// ——仍然一個位元都不外傳；變的是「使用者自己打開使用統計之後，會有不含個資的操作事件
-    /// 送給 Firebase」。所以這裡把界線拆成兩段講清楚，而不是把兩件事混在一句籠統的保證裡。
+    /// ——仍然一個位元都不外傳；變的是「會有不含個資的操作事件送給 Firebase」。
+    /// 所以這裡把界線拆成兩段講清楚，而不是把兩件事混在一句籠統的保證裡。
     private var privacyBanner: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 8) {
@@ -88,7 +88,7 @@ struct ProfileView: View {
                 privacyBullet("本 App 沒有伺服器也沒有後台。你的個資不會上傳雲端、不會同步 iCloud、不會寫進任何紀錄，也不會給第三方——這一點沒有例外。")
                 privacyBullet("以下三個欄位只在你登入時，由這支手機直接送到官方網站 500.gov.tw；平常以加密方式存在這支手機（Keychain），可隨時用下方「立即清除本機資料」永久刪除。")
                 privacyBullet("Apple 健康的步數、距離、運動時間只在這支手機上顯示，連「今天達標了沒」都不會被送出去。")
-                privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：預設關閉，你自己打開之後，才會把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase。裡面沒有個資、沒有健康數據、沒有你上傳的截圖與券碼。")
+                privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase，用來修 bug。裡面沒有個資、沒有健康數據、沒有你上傳的截圖與券碼，不想送可以在下面關掉。")
             }
         }
         .padding(14)
@@ -244,8 +244,13 @@ struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
-    /// 匿名使用統計開關。**預設關閉（opt-in）**：本 App 對外承諾「不蒐集、不外傳」，
-    /// 預設開啟會直接抵觸那句話，所以要由使用者自己打開。
+    /// 匿名使用統計開關。**同意免責聲明後預設開啟，使用者可隨時關掉（opt-out）**。
+    ///
+    /// 為什麼不是 opt-in：當機報告是最需要收到的東西，而藏在設定頁裡等人自己發現，
+    /// 實際開啟率低到樣本沒有意義。改成在**首次啟動的免責聲明**把這件事明講
+    /// （見 `DisclaimerView`），使用者讀過並主動勾選同意之後才初始化 Firebase——
+    /// 保障放在「送之前一定先告知」，而不是「預設不送」。
+    ///
     /// 這裡只切偏好；真正的「送不送得出去」由 `Telemetry` 的閘門決定（示範模式一律不送）。
     ///
     /// 副標依開關狀態換句話講：關著的時候使用者最想確認的是「現在真的沒在送吧」，
@@ -260,7 +265,7 @@ struct ProfileView: View {
                     .foregroundStyle(Theme.Colors.text)
                 Text(telemetryEnabled
                      ? "開啟中 · 送出操作事件與當機報告給 Google Firebase · 不含個資、健康數據、截圖、券碼 · 可隨時關掉"
-                     : "預設關閉 · 目前不會有任何資料送到 Google · 打開後也不含個資、健康數據、截圖、券碼")
+                     : "已關閉 · 目前不會有任何資料送到 Google · 重新打開也不含個資、健康數據、截圖、券碼")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.Colors.muted)
                     .fixedSize(horizontal: false, vertical: true)

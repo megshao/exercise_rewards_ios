@@ -14,10 +14,25 @@
 >
 > - **為什麼改**：本 App 靠刮官網 HTML 運作，官網一改版功能就整組失效；沒有遙測時，我們只能等使用者來信
 >   才知道解析器壞了。需要一條「官網改版時最早的警報」。量測設計見 `docs/analytics-plan.md`。
-> - **變更後的六條前提**（缺一不可）：預設關閉由使用者 opt-in／個資零外傳／HealthKit 資料與其推導結論零外傳／
->   單一出口 + 封閉列舉／六道閘門（示範模式・截圖模式・使用者關閉・未初始化・敏感樣式・整數值域）／不引入廣告識別能力。
+> - **變更後的六條前提**（缺一不可）：初始化綁在免責聲明的主動同意之後（同意前 Firebase 一行程式碼都不執行）／
+>   個資零外傳／HealthKit 資料與其推導結論零外傳／單一出口 + 封閉列舉／
+>   六道閘門（示範模式・截圖模式・使用者關閉・未初始化・敏感樣式・整數值域）／不引入廣告識別能力。
 > - **代價**：「零第三方相依」的說法作廢，隱私標籤四格從 Not Collected 改為 Collected，
 >   5.1.3(i) 從「不必解釋」變成「必須主動解釋」。
+>
+> **1.0 硬約束變更（三）：遙測預設值改為「同意後預設開啟」（2026-09-06 二次修訂）。**
+> 上面第一條原本寫的是「預設關閉由使用者 opt-in」。`Telemetry.defaultEnabled` 現在是 `true`。
+>
+> - **正確敘述**：首次啟動先擋一張必須主動勾選的免責聲明（`DisclaimerView`），畫面明寫會把匿名操作紀錄與當機報告送給
+>   Google Firebase；按下「同意並開始使用」時 `DisclaimerConsent.record()` 才呼叫 `Telemetry.configure()`——
+>   那是整支 App 第一次執行 Firebase 程式碼的時機。**同意之後預設開啟**，可隨時在「我的資料 › 安全與隱私」關掉。
+> - **不得使用的措辭**：「預設關閉」「出廠是關的」「opt-in」「使用者自己打開才會送」。這些現在都是不實陳述。
+> - **Info.plist 四個旗標仍為 `false`**，但意義變了：那是冷啟動預設值，由 `applyCollectionFlags` 在初始化後覆寫，
+>   用來守住「還沒 `configure()` 就絕不收集」——不是「預設關閉」的證據。
+> - **連帶失效的舊承諾**：「示範模式下對 Google 零連線」不再成立（免責聲明擋在 Onboarding 之前，
+>   示範模式是在 Onboarding 才進入的），詳見 `docs/release/review-notes.md` §2／§5b 與 `docs/PRD.md` §8.2 決策紀錄。
+> - 對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、`site/index.html`、`site/privacy.html` §5／§8、`site/support.html`、
+>   `docs/release/privacy-labels.md`、`docs/release/review-notes.md`、`docs/release/app-store-metadata.md`、`docs/app-review-risk.md`。
 > - **沒有改變的部分**：個資與健康資料仍然完全不外傳，隱私標籤的 Health / Fitness 兩格仍是 Not Collected。
 > - 完整決策紀錄與代價清單見 `docs/PRD.md` §8.2；對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、
 >   `site/privacy.html` §5、`docs/release/privacy-labels.md`、`docs/release/review-notes.md` §5b。

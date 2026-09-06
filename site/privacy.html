@@ -27,7 +27,7 @@
 <div class="notice">
   <strong>先講最重要的兩句</strong>
   開發者沒有任何自建伺服器。你的身分證號、出生日期、手機號碼只存在你自己的 iPhone 裡，或在你按下登入時由你的手機直接送到活動官方網站；你的健康數據完全不離開這支手機。<br>
-  另外要老實說：這個版本內建了 Google Firebase 的匿名使用統計與當機回報，<strong style="display:inline">出廠是關閉的</strong>，你自己打開它才會開始送，而且送出的東西裡沒有任何個資與健康數據。詳見第 5 節。
+  另外要老實說：這個版本內建了 Google Firebase 的匿名使用統計與當機回報，而且<strong style="display:inline">同意之後預設是開的</strong>。第一次打開 App 會先擋一張免責聲明，上面就寫著這件事；你按下「同意並開始使用」它才會啟動，之後隨時可以到「我的資料 › 安全與隱私」關掉。送出的東西裡沒有任何個資與健康數據。詳見第 5 節。
 </div>
 
 <h2>0. 這是什麼 App</h2>
@@ -40,7 +40,7 @@
 <ul>
   <li>本 App <strong>沒有自建後端服務</strong>。你的身分證號、出生日期、手機號碼與健康數據，開發者不接收、不儲存，也無法存取。</li>
   <li>本 App 使用<strong>一個</strong>第三方套件：Google 的 Firebase（Analytics 與 Crashlytics），用來收集匿名的使用統計與當機回報。
-      它<strong>預設是關閉的</strong>，要你自己在 App 裡打開才會運作；打開之後開發者能看到的也只有匿名的操作事件與當機報告，看不到你是誰。完整說明見<a href="#usage">第 5 節</a>。</li>
+      你在首次啟動的免責聲明上按下同意之後，它<strong>預設是開啟的</strong>（那張聲明會明白寫出這件事），你可以隨時在 App 裡關掉；運作時開發者能看到的也只有匿名的操作事件與當機報告，看不到你是誰。完整說明見<a href="#usage">第 5 節</a>。</li>
   <li>不投放廣告、不建立廣告識別碼（IDFA）、不做跨 App 或跨網站的追蹤、不與資料掮客往來。
       App 也不會跳出 iOS 的「要求追蹤」詢問——因為程式裡根本沒有連結做這件事的系統框架。</li>
 </ul>
@@ -65,7 +65,7 @@
   <a href="https://500.gov.tw/" target="_blank" rel="noopener">500.gov.tw</a>（活動主辦單位營運、也就是你帳號所在的網站）。中間不經過開發者或任何其他服務。
 </p>
 <p>
-  另外，若<strong>你自己打開</strong>了「傳送匿名使用統計」，會有一類不含個資的資料送到 Google Firebase。下表把兩者一起列出來，看得到全部的出口：
+  另外，在你同意免責聲明之後，只要沒有把「傳送匿名使用統計」關掉，就會有一類不含個資的資料送到 Google Firebase。下表把兩者一起列出來，看得到全部的出口：
 </p>
 <div class="scroll">
 <table>
@@ -76,7 +76,7 @@
     <tr><td>身分證號、出生日期、手機號碼</td><td>你按下登入時</td><td>500.gov.tw</td></tr>
     <tr><td>你自己從相簿挑選的運動紀錄截圖</td><td>你按下上傳時</td><td>500.gov.tw</td></tr>
     <tr><td>兌換選擇（商家、品項）與簡訊驗證碼</td><td>你操作兌換時</td><td>500.gov.tw</td></tr>
-    <tr><td>匿名使用事件與當機報告（<strong>不含個資、不含健康數據</strong>，詳見第 5 節）</td><td><strong>只有在你自己打開「傳送匿名使用統計」之後</strong></td><td>Google Firebase（Google LLC，伺服器在美國）</td></tr>
+    <tr><td>匿名使用事件與當機報告（<strong>不含個資、不含健康數據</strong>，詳見第 5 節）</td><td><strong>你同意免責聲明之後</strong>（除非你把「傳送匿名使用統計」關掉）</td><td>Google Firebase（Google LLC，伺服器在美國）</td></tr>
   </tbody>
 </table>
 </div>
@@ -89,9 +89,9 @@
 </p>
 <ul>
   <li>當你檢視自己先前上傳的截圖時，官方網站會回傳一個自帶簽章的圖片網址，App 會先檢查那個網址（必須是 <code>https</code>，而且網域必須是 <code>500.gov.tw</code> 或官方網站的圖片儲存網域），再用一條<strong>專用的連線</strong>把圖片抓下來顯示。那條連線不帶任何 cookie，抓下來的圖片也不會被寫進裝置的網頁快取。<br>（講精確一點：讓你的登入 cookie 不會流到別的網域的，是 cookie 本身的網域範圍 <code>500.gov.tw</code>；而上面那條專用連線是額外再加一層——它連 cookie 罐子都沒有，所以就算官方網站把你導回它自己的網域，也不會夾帶你的登入狀態。）</li>
-  <li><strong>Firebase 走的是它自己的連線，不受上面那個網域阻擋機制管轄</strong>（那個機制只管 App 自己寫的網路程式碼）。你打開使用統計後，它會連往 Google 的
+  <li><strong>Firebase 走的是它自己的連線，不受上面那個網域阻擋機制管轄</strong>（那個機制只管 App 自己寫的網路程式碼）。使用統計運作時，它會連往 Google 的
       <code>app-analytics-services.com</code>、<code>firebaseinstallations.googleapis.com</code>、<code>firebase-settings.crashlytics.com</code>、
-      <code>crashlyticsreports-pa.googleapis.com</code>、<code>firebaselogging.googleapis.com</code>。這些連線一樣強制 HTTPS。開關關著的時候不會發生。</li>
+      <code>crashlyticsreports-pa.googleapis.com</code>、<code>firebaselogging.googleapis.com</code>。這些連線一樣強制 HTTPS。你按下同意之前不會發生；把開關關掉並完全重開 App 之後也不會發生。</li>
 </ul>
 
 <h2>4. 健康資料</h2>
@@ -99,7 +99,7 @@
   <li>經你同意後，本 App 會從 Apple「健康」<strong>唯讀</strong>取得三項數據：步數、步行與跑步距離、運動時間。</li>
   <li>用途只有一個：在畫面上顯示今天的數字，並提示你是否達到活動門檻。</li>
   <li><strong>健康資料完全不離開你的裝置。</strong>不上傳、不外傳、不用於產生任何要上傳的內容、不用於廣告或行銷、不提供給任何第三方。</li>
-  <li><strong>健康資料也不會進入使用統計。</strong>就算你打開了第 5 節的開關也一樣：步數、距離、運動時間的數值不送，
+  <li><strong>健康資料也不會進入使用統計。</strong>就算第 5 節的開關開著也一樣：步數、距離、運動時間的數值不送，
       <strong>連「今天有沒有達標」這種從步數推算出來的是／否結論也不送</strong>。這不只是我們的偏好——Apple 明文禁止把 Apple 健康的資料分享給第三方，Google Firebase 就是第三方。
       使用統計裡唯一跟健康沾上邊的一筆，是「使用者按了『連結 Apple 健康』這顆按鈕」這個操作動作。按下的當下 Apple 健康還沒被呼叫，
       所以它不是授權結果、也不是任何數值——你有沒有允許、允許了什麼，我們一樣不知道。</li>
@@ -107,19 +107,25 @@
   <li>你可以隨時在「設定 › 隱私權與安全性 › 健康」中收回授權。</li>
 </ul>
 
-<h2 id="usage">5. 使用統計與當機回報（預設關閉）</h2>
+<h2 id="usage">5. 使用統計與當機回報（同意後預設開啟）</h2>
 <div class="notice">
-  <strong>出廠是關的</strong>
-  App 安裝好之後，這項功能是關閉的，一個位元組都不會送出去。你要自己到「我的資料 › 安全與隱私 › 傳送匿名使用統計」把它打開，它才會開始運作。<br>
-  這句話你可以自己驗證：iOS 內建的「App 隱私權報告」會列出本 App 連過的每一個網域，開關關著時不該出現任何 Google 網域。怎麼看，見<a href="#verify">第 8 節</a>。
+  <strong>先告知、你主動同意，然後預設是開的</strong>
+  第一次打開 App，你會先看到一張擋在最前面的免責聲明，上面明白寫著「App 會把匿名的操作紀錄與當機報告送給 Google Firebase」，勾選的那句話也涵蓋「同意傳送不含個資的匿名使用統計（可隨時關閉）」。你按下「同意並開始使用」，它才會啟動——<strong style="display:inline">在你按下同意之前，Firebase 的程式碼一行都不會執行</strong>。<br>
+  同意之後，這項功能<strong style="display:inline">預設是開的</strong>。講白一點：對你來說它就是「預設會送」，只是送之前一定先讓你看到說明、由你自己按下同意。不想送就到「我的資料 › 安全與隱私 › 傳送匿名使用統計」關掉，隨時都可以。<br>
+  「同意之前零連線」這句話你可以自己驗證：iOS 內建的「App 隱私權報告」會列出本 App 連過的每一個網域，在你按下同意之前不該出現任何 Google 網域。怎麼看，見<a href="#verify">第 8 節</a>。
 </div>
 <p>
-  <strong>為什麼預設關？</strong>因為 Firebase 只要一初始化，就會立刻向 Google 要一組安裝編號、送出一筆「首次開啟」——而且就算收集旗標是關的，要安裝編號那一步還是會連線。
-  如果預設是開的，你在還沒看到那個開關之前，資料就已經送出去了。我們不想那樣。
+  <strong>為什麼把啟動時機綁在免責聲明上？</strong>因為 Firebase 只要一初始化，就會立刻向 Google 要一組安裝編號、送出一筆「首次開啟」——而且就算收集旗標是關的，要安裝編號那一步還是會連線。
+  如果 App 一啟動就初始化，你在讀到任何說明之前，資料就已經送出去了。所以我們把初始化整個推到免責聲明後面：你先看到會送什麼、送給誰，按下同意，它才開始。
 </p>
 <p>
-  所以本 App 不是「有初始化 Firebase，但把收集關著」，而是<strong>在你打開開關之前，Firebase 的程式碼一行都不會執行</strong>。
+  所以本 App 不是「有初始化 Firebase，但把收集關著」，而是<strong>在你按下同意之前，Firebase 的程式碼一行都不會執行</strong>。
   「零連線」因此不是靠相信 Google 的 SDK 會尊重旗標，而是它根本沒被啟動。
+</p>
+<p>
+  <strong>那為什麼同意之後直接是開的，而不是還要你自己再去設定頁打開一次？</strong>誠實的答案：當機報告要有足夠的樣本才修得到 bug，而「預設關、藏在設定頁第三層」實際上等於沒有人會打開。
+  我們選擇把話講在最前面、講清楚，再由你決定要不要按下同意——而不是用一個沒人看得到的開關來換取「技術上是 opt-in」這個說法。
+  也不要誤會我們的用詞：這<strong>不是</strong> opt-in。它是<strong>先告知、你主動同意，之後預設開啟、隨時可關</strong>。
 </p>
 
 <h3>送出去的是什麼、送給誰</h3>
@@ -181,7 +187,7 @@
 <ul>
   <li>「我的資料 › 安全與隱私 › 傳送匿名使用統計」，把開關關掉即可：收集立刻停止、安裝編號重置、還沒送出的當機報告直接刪掉。</li>
   <li>老實說一件事：Firebase 沒有「反初始化」這種功能。關掉之後，這一次執行期間它的程式碼還留在記憶體裡（只是不再收集）；要回到「一行 Firebase 程式碼都不跑」的狀態，得等你下一次完全關閉再打開 App。所以如果你想用第 8 節的方法驗證「關著時零連線」，請先把 App 完全關掉重開。</li>
-  <li>按「立即清除本機資料」時，這個開關也會一併回到預設的關閉狀態。</li>
+  <li>按「立即清除本機資料」時，同意紀錄與這個開關都會回到剛裝好的狀態：下次啟動你會再看到一次免責聲明，在你重新按下同意之前，Firebase 一行程式碼都不會跑。</li>
   <li>進入示範模式時，不論開關是開是關，一律不送任何東西。</li>
   <li>沒有廣告用途、沒有跨 App 追蹤，所以 App 不會、也無法跳出 iOS 的「要求追蹤」詢問。</li>
 </ul>
@@ -208,15 +214,16 @@
   iOS 15.2 起內建「App 隱私權報告」：<strong>設定 › 隱私權與安全性 › App 隱私權報告</strong>。打開之後，iOS 會替你記下每個 App 連過哪些網域。
   用本 App 幾天，再回來看它底下列了什麼。
 </p>
-<p>在你<strong>沒有</strong>打開「傳送匿名使用統計」的狀態下，本 App 底下只應該出現兩類網域：</p>
+<p>在你<strong>還沒按下免責聲明的「同意並開始使用」</strong>之前——或是同意之後把「傳送匿名使用統計」關掉、再完全關閉 App 重開——本 App 底下只應該出現兩類網域：</p>
 <ul>
   <li><code>500.gov.tw</code>（含子網域）——登入、任務、上傳、兌換全部走這裡。</li>
   <li>官方網站存放你截圖的圖片網域——只在你點開「查看已上傳的截圖」時出現。那個網域是由<strong>官方網站</strong>決定的（目前實測是結尾為 <code>amazonaws.com</code> 的網址，官方網站若換供應商就會變成別的），App 只是把官方回傳的圖片網址顯示出來（見第 3 節）。</li>
 </ul>
 <div class="notice">
   <strong>這是一個可以被打臉的承諾</strong>
-  開關關著的時候，如果你在本 App 底下看到任何 Google 網域（<code>googleapis.com</code>、<code>crashlytics.com</code>、<code>app-analytics-services.com</code>、<code>google-analytics.com</code>……），
-  那就是我們違反了本頁的承諾。請截圖寄到第 10 節的信箱，或到 GitHub 開 issue。我們會把它當成最高優先的 bug 處理，而且會公開。
+  <strong style="display:inline">在你按下免責聲明的「同意並開始使用」之前</strong>，如果你在本 App 底下看到任何 Google 網域（<code>googleapis.com</code>、<code>crashlytics.com</code>、<code>app-analytics-services.com</code>、<code>google-analytics.com</code>……），
+  那就是我們違反了本頁的承諾。請截圖寄到第 10 節的信箱，或到 GitHub 開 issue。我們會把它當成最高優先的 bug 處理，而且會公開。<br>
+  反過來說：<strong style="display:inline">同意之後出現 Google 網域是預期中的</strong>，那就是第 5 節講的統計在運作，不是違約。把開關關掉、完全關閉 App 再重開，它們就該消失——如果沒有消失，一樣歡迎打臉。
 </div>
 <p>這一層的限制，先講清楚：</p>
 <ul>
@@ -264,12 +271,13 @@
   <strong>Google。</strong>Firebase Analytics 的核心元件 <code>GoogleAppMeasurement</code> 是<strong>閉源二進位</strong>，我們跟你一樣讀不到它內部在做什麼。我們能保證、也只能保證三件事：
 </p>
 <ul>
-  <li>(a) 你沒打開開關之前，它<strong>不會被啟動</strong>——不是「啟動了但關著」，是連初始化都沒執行（第 5 節）。</li>
+  <li>(a) 你按下免責聲明的同意之前，它<strong>不會被啟動</strong>——不是「啟動了但關著」，是連初始化都沒執行（第 5 節）。同意之後把開關關掉、完全重開 App，也回到同樣的狀態。</li>
   <li>(b) 連結進來的是不含廣告識別碼能力的版本（<code>FirebaseAnalyticsCore</code> 而非 <code>FirebaseAnalytics</code>），送審版本已確認沒有連結任何廣告相關的系統框架。</li>
   <li>(c) 它連去的網域你可以在第 1 層的隱私權報告裡看到，內容可以在第 2 層看到。</li>
 </ul>
 <p>
-  如果這兩件事你不願意信任：Apple 那一段沒有替代方案；Google 那一段有——<strong>不要打開「傳送匿名使用統計」</strong>，Firebase 的程式碼就一行都不會執行，第 1 層的隱私權報告可以替你確認這一點。
+  如果這兩件事你不願意信任：Apple 那一段沒有替代方案；Google 那一段有——同意之後<strong>第一件事就去把「傳送匿名使用統計」關掉，然後完全關閉 App 再重開</strong>，之後 Firebase 的程式碼一行都不會執行，第 1 層的隱私權報告可以替你確認這一點。
+  這裡也要誠實：你按下同意的那一刻它已經初始化過一次，那一次的安裝編號與「首次開啟」確實送出去了；關掉開關會把安裝編號重置掉。要連那一次都避開，唯一的辦法是不要按同意——但不按同意就進不了 App，這是我們把揭露擋在最前面的代價。
 </p>
 
 <h2>9. 政策變更</h2>

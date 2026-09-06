@@ -7,6 +7,10 @@ import SwiftUI
 /// 顯示的任務與券況也全部來自官方網站，使用者必須在填第一個欄位之前就知道
 /// 「出了事該找誰」——所以改成必須主動勾選才能繼續。
 ///
+/// **這個畫面同時是遙測的揭露點**：`DisclaimerConsent.record()` 會在使用者按下同意時
+/// 呼叫 `Telemetry.configure()`——那是整支 App 第一次執行 Firebase 程式碼的時機。
+/// 所以「匿名使用統計」那一條**不能從這裡拿掉**，拿掉就變成「使用者沒讀到就開始送」。
+///
 /// **文案用語的界線**（改文案前務必讀）：
 /// - 不可寫「不儲存個資」。三欄個資確實存在 iOS Keychain，寫「不儲存」與實作不符，
 ///   而且會和隱私權政策、App 內其他文案互相矛盾。準確的說法是
@@ -83,6 +87,7 @@ struct DisclaimerView: View {
             bullet("開發者**沒有任何伺服器**，收不到也看不到你的身分證號、生日、手機號碼與健康數據。")
             bullet("這三個欄位加密保存在**這支手機**（iOS Keychain），不同步 iCloud、不隨備份轉移，可隨時在「我的資料」一鍵永久刪除。")
             bullet("你按下登入時，資料由**這支手機直接送到官方網站**，中間不經過開發者或任何其他服務。")
+            bullet("為了修 bug，App 會把**匿名的操作紀錄與當機報告**送給 Google Firebase：看了哪個畫面、哪一步失敗、當機在哪。**裡面沒有你的個資，也沒有任何健康數據**——連「今天有沒有達標」都不會送。不想送可以到「我的資料 › 安全與隱私」關掉。")
         }
     }
 
@@ -113,7 +118,7 @@ struct DisclaimerView: View {
                     Image(systemName: hasAgreed ? "checkmark.square.fill" : "square")
                         .font(.system(size: 20))
                         .foregroundStyle(hasAgreed ? Theme.Colors.primary : Theme.Colors.dim)
-                    Text("我已閱讀並理解上述說明，了解這是非官方工具，活動權益以官方公告為準。")
+                    Text("我已閱讀並理解上述說明，了解這是非官方工具、活動權益以官方公告為準，並同意傳送不含個資的匿名使用統計（可隨時關閉）。")
                         .font(.system(size: 13))
                         .foregroundStyle(Theme.Colors.text)
                         .multilineTextAlignment(.leading)

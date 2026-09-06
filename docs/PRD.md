@@ -84,7 +84,7 @@
 ### 4.3 明確不做（Out of Scope）
 - 不繞過任何身分驗證（戶役政、健保卡、OTP）。
 - 不偽造、竄改或合成運動數據。
-- 不蒐集、不上傳任何**個資**到第三方或自建伺服器（本 App **無自建後端**）。健康資料同樣完全不外傳。**匿名、不含個資與健康資料的使用統計除外**，且預設關閉、由使用者自行開啟（見 §8.2）。
+- 不蒐集、不上傳任何**個資**到第三方或自建伺服器（本 App **無自建後端**）。健康資料同樣完全不外傳。**匿名、不含個資與健康資料的使用統計除外**——它綁在首次啟動免責聲明的同意之後才初始化，同意後預設開啟、可隨時關閉（見 §8.2）。
 
 ---
 
@@ -116,8 +116,12 @@
 - **輸出**：加密寫入 Keychain；欄位即時格式驗證。
 - **狀態**：空 / 編輯中 / 已儲存 / 驗證錯誤。
 - **頁首隱私聲明**：標題「本 App 不蒐集、不外傳你的個資」，並明列三點——(a) 開發者沒有任何自建伺服器與後台，個資不上傳雲端、不同步 iCloud、不寫入紀錄檔；(b) 填的資料只在登入當下由這支手機直送官方網站 500.gov.tw；(c) 為免重複輸入，資料僅以加密方式存在本機 Keychain，可隨時用「立即清除本機資料」永久刪除。
-  - **文案變更（1.0，2026-09-06）**：原文 (a) 的結尾為「不提供第三方」。加入預設關閉的匿名遙測後，這句話不再無條件成立，須改寫成
-    「除非你主動開啟下方的『傳送匿名使用統計』，否則不會有任何資料送到第三方；即使開啟，也絕不包含個資、健康數據、截圖與券碼」之類的版本。
+  - **文案變更（1.0，2026-09-06）**：原文 (a) 的結尾為「不提供第三方」。加入匿名遙測後，這句話不再無條件成立，須改寫。
+    **第二次修訂（遙測預設值改為「同意後預設開啟」）**：原先建議的寫法是「除非你主動開啟下方的『傳送匿名使用統計』，否則不會有任何資料送到第三方」——
+    那個版本已經不正確，因為開關現在同意後預設是開的。規格改為：
+    「你在首次啟動時同意的免責聲明裡，已經包含『傳送匿名使用統計』這一項，它目前是開著的；不想送隨時可以在下面關掉。
+    無論開或關，都絕不包含個資、健康數據、截圖與券碼。」
+    **不得使用「除非你主動開啟」「預設關閉」「opt-in」這類措辭。**
     **實際 App 內文案由 `App/Sources/Views/ProfileView.swift` 決定，本節只定義規格。**
   - 用語刻意不寫「不儲存」——本機 Keychain 確實有存，避免文件與實作不符。
 - **使用者故事**：作為使用者，我想只填一次資料，之後都不用再打。
@@ -324,9 +328,16 @@ flowchart TD
   **此硬約束已於 1.0 變更（2026-09-06）。** 保留原文以維持決策軌跡。
 
   **變更後的規則**：允許第三方 analytics / crash SDK，但必須同時滿足以下六條，缺一不可。
-  1. **預設關閉（opt-in）**。使用者在「我的資料 › 安全與隱私 › 傳送匿名使用統計」自行開啟前，一個位元組都不送。
+  1. **初始化必須綁在「使用者已讀到揭露並主動同意」之後**（2026-09-06 二次修訂；原文為「預設關閉（opt-in）」，見下方決策紀錄）。
+     具體實作：首次啟動先擋一張必須主動勾選的免責聲明（`App/Sources/Views/DisclaimerView.swift`），畫面上明寫會把匿名操作紀錄與當機報告送給
+     Google Firebase；使用者按下「同意並開始使用」時，`DisclaimerConsent.record()` 才呼叫 `Telemetry.configure()`。
+     **在那之前，Firebase 一行程式碼都不會執行，一個位元組都不送。**
+     `Telemetry.configure()` 有三道前置條件，缺一不初始化：尚未同意免責聲明／使用者關掉開關／示範模式。
+     `Telemetry.defaultEnabled` 為 `true`——**同意之後預設開啟**，使用者可隨時到「我的資料 › 安全與隱私 › 傳送匿名使用統計」關閉。
      Info.plist 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED`、`FirebaseCrashlyticsCollectionEnabled`、
-     `GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 全為 `false`。
+     `GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 仍全為 `false`：
+     那是**冷啟動的預設值**，由 `applyCollectionFlags` 在初始化後依使用者偏好覆寫，用來守住「還沒 `configure()` 就絕不收集」——
+     **它們不再代表「預設關閉」**。對外文案一律寫「先告知 → 主動同意 → 預設開啟 → 隨時可關」，**不得寫「opt-in」或「預設關閉」**。
   2. **個資零外傳**。身分證號、出生日期、手機號碼的任何形式（原文、雜湊、截斷、拼接）都不得進入遙測。
   3. **HealthKit 資料零外傳**，且**連由健康資料推導出來的結論也不得外傳**（例如「今日是否達標」這個布林）。
      理由不是偏好，是 Apple Guideline 5.1.3 明文禁止把 HealthKit 資料分享給第三方。
@@ -348,14 +359,24 @@ flowchart TD
     (b) 隱私標籤四格從 Not Collected 變成 Collected（Identifiers › Device ID、Usage Data › Product Interaction、
         Diagnostics › Crash Data／Other Diagnostic Data），從此必須與實作逐格一致，填錯就是 metadata 違規；
     (c) 帶 HealthKit entitlement 的 App 裡出現 Google SDK，5.1.3(i) 從「不必解釋」變成「必須主動解釋」；
-    (d) opt-in 表示樣本偏向願意分享的人，安裝數分母得從 App Store Connect 拿，審查期間的當機也收不到。
+    (d) 樣本偏向不去關掉開關的人，安裝數分母仍建議從 App Store Connect 拿，審查期間的當機也收不到（示範模式擋住了）。
+  - **二次修訂（2026-09-06，遙測預設值）**：`Telemetry.defaultEnabled` 由 `false` 改為 `true`，並把初始化時機綁到免責聲明的同意上。
+    - **為什麼改**：原本的「預設關 + 開關藏在設定頁第三層」在實務上等於沒有人會打開，當機報告拿不到有意義的樣本，
+      §8.2 加遙測的整個理由（官網改版的最早警報）也就落空。改成把揭露拉到 App 的必經入口、由使用者主動同意，
+      再預設開啟——實際知情程度比舊設計高，而收得到的資料也才有用。
+    - **誠實記錄**：對使用者而言這確實是「預設會送」。**不要用「仍然是 opt-in」這種說法**，它已經不是 opt-in，
+      而是「knowing consent + opt-out」。真正的保障是**同意之前 Firebase 一行程式碼都不執行**，不是預設值。
+    - **新增的代價**：(e) App Store 審查員實際體驗到的行為改變了——他會先同意免責聲明（Firebase 於此初始化、
+      送出 `first_open`、Installations 連線一次），**之後**才在 Onboarding 的登入表單進入示範模式。
+      所以舊文件寫的「示範模式下對 Google 零連線」已不成立，`docs/release/review-notes.md` 已改為主動向審查員說明這個時序。
+      進入示範模式之後仍然一個事件都不送（`Telemetry.gate` 第一道，唯一沒有 bypass 的閘門）。
   - **不變的部分**：個資與健康資料仍然完全不外傳。這一點沒有因為這次變更打任何折扣，
     隱私標籤的 Health / Fitness 兩格仍是 Not Collected。
 
 ### 8.3 網路安全
 - **網域白名單**：`URLSessionHTTPClient` 只允許連 `500.gov.tw`（含其 CDN/S3 presigned 圖片網域，需明列於允許清單）。
   - **界線（1.0 變更後必須寫清楚）**：這個白名單是 App 自己 HTTP client 裡的檢查，**只管 App 自己發出的請求**。
-    Firebase SDK 使用自己的 `URLSession`，**不受白名單管轄**。使用者開啟遙測後，SDK 會連往
+    Firebase SDK 使用自己的 `URLSession`，**不受白名單管轄**。遙測運作時，SDK 會連往
     `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、
     `crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com`（ATS 仍強制 HTTPS）。
     這不是白名單被放寬，而是白名單從來就不涵蓋 SDK 內部連線——這個區別必須在所有對外文件裡講明，不能靠沉默。
@@ -369,7 +390,7 @@ flowchart TD
 | **S**poofing 假冒 | 中間人假冒官網 | ATS + https、網域白名單；官網為政府憑證 |
 | **T**ampering 竄改 | 竄改運動數據上傳 | 數據唯讀取自 HealthKit，無竄改入口；忠實呈現 |
 | **R**epudiation 否認 | 使用者否認操作 | 本機無需審計；官網端自有紀錄 |
-| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏、**個資誤入遙測** | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無自建後端；遙測方面：單一出口 + 封閉列舉（型別限制優先於遮罩）+ 六道閘門 + DEBUG `assertionFailure`，且預設關閉（見 §8.2） |
+| **I**nfo Disclosure 資訊揭露 | 個資外洩、log 洩漏、**個資誤入遙測** | Keychain（`WhenUnlockedThisDeviceOnly`，裝置上鎖即不可讀）+ 裝置鎖屏、遮罩規則、無自建後端；遙測方面：單一出口 + 封閉列舉（型別限制優先於遮罩）+ 六道閘門 + DEBUG `assertionFailure`，且初始化綁在免責聲明同意之後（同意前一行不執行，見 §8.2） |
 | **D**oS 阻斷 | 過度打 OTP / 官網 | 尊重官網每日 OTP 上限與 resend 倒數，不自動重試轟炸 |
 | **E**levation 提權 | 越權存取他人資料 | 只操作本機使用者自己的帳號；不支援批量／代操 |
 
@@ -378,7 +399,8 @@ flowchart TD
 - `README.md`：含**威脅模型摘要**、資料流圖、「無自建後端、個資不上雲」聲明、第三方相依與遙測邊界的如實說明、建置與稽核指引。
 - `SECURITY.md`：漏洞回報流程。
 - CI 檢查：無硬編碼密鑰（secret scan）、log 遮罩 lint 規則、**遙測不變量檢查**——
-  `Telemetry.defaultEnabled == false`、Info.plist 四個 Firebase 旗標為 `false`、
+  `DisclaimerConsent.record()` 內含 `Telemetry.configure()`、`Telemetry.configure()` 的三道 guard（未同意／使用者關閉／示範模式）都在、
+  `DisclaimerView` 的揭露文案含「匿名使用統計」字樣、Info.plist 四個 Firebase 旗標為 `false`、
   `Telemetry.swift` 以外的檔案沒有 `import FirebaseAnalytics` / `import FirebaseCrashlytics`、
   二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`。`TODO(待確認：這條 CI 檢查尚未建立)`
 

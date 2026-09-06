@@ -36,16 +36,27 @@ enum DisclaimerConsent {
         agreedVersion >= DisclaimerView.currentVersion
     }
 
-    /// 記下同意。**刻意不送遙測**：這個畫面出現在使用者看到遙測開關之前，
-    /// 遙測此時必然是關的；而且用匿名、可關閉的統計來承載「同意紀錄」本來就不對。
+    /// 記下同意，並在此時才初始化遙測。
+    ///
+    /// **這是整支 App 第一次執行 Firebase 程式碼的時機。** 免責聲明畫面是使用統計被
+    /// 揭露的地方，所以初始化綁在這裡——在使用者讀到說明並按下同意之前，
+    /// `FirebaseApp.configure()` 不會被呼叫，也就不會向 Google 要安裝編號或送
+    /// `first_open`。
+    ///
+    /// 同意紀錄本身**刻意不送遙測**：用匿名、可關閉的統計來承載「同意紀錄」本來就不對。
     static func record() {
         let defaults = UserDefaults.standard
         defaults.set(DisclaimerView.currentVersion, forKey: versionKey)
         defaults.set(Date().timeIntervalSince1970, forKey: timestampKey)
+        Telemetry.configure()
     }
 
     /// 「立即清除本機資料」時呼叫：回到從未同意的狀態。
     /// 清除的語意是「回到初次設定」，同意紀錄也屬於那個狀態的一部分。
+    ///
+    /// 注意：Firebase 沒有「反初始化」，本次執行期間 SDK 仍在記憶體裡（收集旗標已被
+    /// `Telemetry.resetPreference()` 關掉）。要回到「一行都不跑」得等下次冷啟動——
+    /// 那時 `configure()` 會看到同意紀錄不存在而直接跳過。
     static func reset() {
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: versionKey)

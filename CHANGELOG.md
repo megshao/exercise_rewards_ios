@@ -19,10 +19,11 @@
 - **上傳運動紀錄**：從相簿挑選截圖，直接以 multipart 送到當期任務（file 欄位 `screenshot`），每期限一次。
 - **兌換加碼券**：選擇合作商家與品項送出兌換，後續以簡訊驗證取得券碼。
 - **券夾**：集中檢視已取得的加碼券，可再次出示 QR／一維條碼給店家掃描。
-- **「我的資料」頁**：檢視與編輯本機個資、遮罩顯示、頁首三點隱私聲明、「立即清除本機資料」（含二次確認，清除後回到初次設定）。
+- **「我的資料」頁**：檢視與編輯本機個資、遮罩顯示、頁首三點隱私聲明、「立即清除本機資料」（含二次確認，清除後回到初次設定——連免責聲明的同意紀錄與遙測偏好一起重置，下次啟動會重新看到免責聲明）。
 - **出生日期選擇器**：自製「年／月／日」三欄滾輪，可切換民國／西元（預設民國），底部同時顯示雙年份；換月自動夾住不存在的日期。
-- **示範模式（Demo Mode）**：在登入表單輸入指定的示範三碼即進入全 mock 環境，不發任何網路請求、不寫 Keychain，畫面常駐「示範模式」橫幅，並可在「我的資料」一鍵離開。此模式提供給 App Store 審查員實測完整流程，示範三碼與 App Store Connect 的示範帳號欄位同步。示範模式下遙測一律關閉（`Telemetry` 中唯一沒有 bypass 的閘門，SDK 層的收集開關也會一併關掉），即使使用者先前打開過統計開關也一樣。
-- **匿名使用統計與當機回報（Firebase Analytics + Crashlytics，預設關閉）**：新增「我的資料 › 安全與隱私 › 傳送匿名使用統計」開關。**出廠是關的**，使用者自己打開之前，一個位元組都不會送到 Google——`Info.plist` 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED`、`FirebaseCrashlyticsCollectionEnabled`、`GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 四個旗標全為 `false`。開啟後送出的是匿名操作事件（哪個畫面、哪一步失敗）與當機報告；**不含身分證號、出生日期、手機號碼，也不含任何 Apple 健康的數值或由步數推導出來的結論**。隨時可關，關掉即刻停止收集。
+- **示範模式（Demo Mode）**：在登入表單輸入指定的示範三碼即進入全 mock 環境，不發任何網路請求、不寫 Keychain，畫面常駐「示範模式」橫幅，並可在「我的資料」一鍵離開。此模式提供給 App Store 審查員實測完整流程，示範三碼與 App Store Connect 的示範帳號欄位同步。示範模式下遙測**一個事件都不送**（`Telemetry.gate` 的第一道，也是唯一沒有 bypass 的閘門，SDK 層的收集開關也會一併關掉），即使使用者先前打開過統計開關也一樣。**時序上要講清楚**：免責聲明擋在 Onboarding 之前、示範模式是在 Onboarding 的登入表單才進入的，所以審查員是「先同意（Firebase 於此初始化）→ 才進示範模式」；示範模式擋得住事件，擋不住同意當下那一次 SDK 初始化的連線。
+- **首次啟動的免責聲明同意畫面**：擋在 Onboarding 之前，必須主動勾選才能繼續。畫面上明寫這是非官方工具、活動權益以官方公告為準，以及「App 會把匿名的操作紀錄與當機報告送給 Google Firebase」；勾選文字涵蓋「並同意傳送不含個資的匿名使用統計（可隨時關閉）」。按下「同意並開始使用」時才呼叫 `Telemetry.configure()`——**那是整支 App 第一次執行 Firebase 程式碼的時機**。同意紀錄以版本號保存，日後修改聲明可讓既有使用者重新同意。
+- **匿名使用統計與當機回報（Firebase Analytics + Crashlytics，同意後預設開啟）**：新增「我的資料 › 安全與隱私 › 傳送匿名使用統計」開關。**在使用者按下免責聲明的同意之前，一個位元組都不會送到 Google**；同意之後這個開關**預設是開的**，隨時可關，關掉即刻停止收集。這不是 opt-in，而是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。`Info.plist` 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED`、`FirebaseCrashlyticsCollectionEnabled`、`GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 四個旗標仍全為 `false`——那是**冷啟動的預設值**，由 `applyCollectionFlags` 在初始化後依使用者偏好覆寫，留 `false` 是為了守住「還沒 `configure` 就絕不收集」。送出的是匿名操作事件（哪個畫面、哪一步失敗）與當機報告；**不含身分證號、出生日期、手機號碼，也不含任何 Apple 健康的數值或由步數推導出來的結論**。
 - **開源**：全部程式碼以 MIT 授權公開，核心邏輯抽成 `SportsRewardsKit` Swift Package，可 headless `swift build` / `swift test`。
 
 ### Changed
@@ -42,15 +43,15 @@
 
 ### Security
 
-- **無自建後端**：本 App 沒有任何自建伺服器，開發者不接收、不儲存個資，也看不到任何身分或健康資料。唯一例外是使用者主動開啟「傳送匿名使用統計」之後，開發者可在 Firebase 主控台看到匿名的操作事件與當機報告（見下一條）。
+- **無自建後端**：本 App 沒有任何自建伺服器，開發者不接收、不儲存個資，也看不到任何身分或健康資料。唯一例外是使用者同意免責聲明、且「傳送匿名使用統計」開著的時候，開發者可在 Firebase 主控台看到匿名的操作事件與當機報告（見下一條）。
 - **唯一的第三方相依：firebase-ios-sdk 12.18.0**（Analytics + Crashlytics）。SPM 會解析 **13 個套件**，但**實際連進 App 二進位的只有 6 個**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises`。其餘仍只用 Foundation / SwiftUI / HealthKit。
 - **選 `FirebaseAnalyticsCore` 而非 `FirebaseAnalytics`**：底層為 `GoogleAppMeasurementCore`，**結構上不含 IDFA 收集能力**。Release 二進位已驗證未連結 `AdSupport`、`AppTrackingTransparency`、`AdServices`，因此不會出現 ATT 追蹤提示，`PrivacyInfo.xcprivacy` 的 `NSPrivacyTracking` 為 `false`、追蹤網域清單為空。
-- **遙測預設關閉（opt-in）**：理由是 `FirebaseApp.configure()` 一執行就會產生 app instance ID 並送出 `first_open`——預設開的話，使用者在看到開關之前資料就已經送出去了。
+- **遙測的初始化綁在免責聲明同意之後**：`Telemetry.defaultEnabled` 是 `true`，但 `configure()` 有三道前置條件，缺一不初始化——尚未同意免責聲明、使用者關掉開關、示範模式。理由是 `FirebaseApp.configure()` 一執行就會產生 app instance ID 並送出 `first_open`，而且即使兩個收集旗標都是 `false`，Firebase Installations 仍會連 `firebaseinstallations.googleapis.com` 要一組安裝編號。所以界線放在「執行與否」而不是旗標開關：**在使用者讀到免責聲明並按下同意之前，Firebase 一行程式碼都不會跑**。代價是同意那一刻起就開始收集（`first_open` 與 Installations 連線確實發生），以及同意之前的當機永遠看不到。
 - **遙測只有一個出口 `Telemetry.swift`**：其他檔案禁止 `import FirebaseAnalytics` / `FirebaseCrashlytics`。事件名與參數值全來自封閉列舉：`AnalyticsValue` 的底層儲存是 `private`，唯一能產生字串參數的建構子只收封閉列舉的 rawValue，自由字串**值**在編譯期就構造不出來（參數的**鍵**與 Crashlytics breadcrumb 仍是字串，由送出前的樣式掃描把關），**完全不設任何使用者屬性**。送出前再過六道閘門——示範模式、截圖模式、使用者未同意、Firebase 未初始化、參數命中 `Redact` 敏感樣式、整數值域檢查（最後兩道在 DEBUG build 直接 `assertionFailure`）。非致命錯誤**不接受 `Error` 物件**，只收已經分類完成的 `TelemetryIssue` 列舉與狀態碼，所以伺服器原文與 `userInfo` 結構上就送不出去。
 - **個資與健康資料一律不進遙測**：身分證號、出生日期、手機號碼的任何形式（原文、雜湊、截斷、拼接）都不送；HealthKit 衍生值也全部不送，**連「今日是否達標」這種由步數推導的布林值都不送**（Apple 禁止把健康資料分享給第三方）。唯一沾到健康的是 `health_link_tap`——只記錄「使用者按了前往連結的按鈕」這個 UI 動作，連授權結果都不送。
 - **新增 `PrivacyInfo.xcprivacy`**：宣告 `NSPrivacyTracking = false`、無追蹤網域、UserDefaults 使用理由 `CA92.1`，以及 CrashData／OtherDiagnosticData／ProductInteraction 三類資料（皆 not linked、not tracking）。
 - **`GoogleService-Info.plist` 不進版控**：本 repo 公開，真檔一律排除，只附 `.template`。真檔不存在時 `Telemetry.configure()` 直接跳過初始化，遙測全程 no-op 且不 crash，clone 下來就能 build。
-- **網域白名單**：`URLSessionHTTPClient` 只允許連線 `500.gov.tw`（含子網域，並擋 suffix 偽冒），其餘一律拋出 `blockedEgress`。**界線**：這個白名單管的是 App 自己發出的 HTTP 請求；Firebase SDK 走它自己的 `URLSession`，不受白名單管轄——使用者開啟遙測後，SDK 會另外連往 `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、`crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com`。
+- **網域白名單**：`URLSessionHTTPClient` 只允許連線 `500.gov.tw`（含子網域，並擋 suffix 偽冒），其餘一律拋出 `blockedEgress`。**界線**：這個白名單管的是 App 自己發出的 HTTP 請求；Firebase SDK 走它自己的 `URLSession`，不受白名單管轄——遙測運作時，SDK 會另外連往 `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、`crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com`。
 - **ATS 強制 HTTPS**：`NSAllowsArbitraryLoads=false`，`500.gov.tw` 要求 TLS 1.2 以上與 forward secrecy，不開放任何明文例外。
 - **修正官網 http 降級 redirect**：官網 302 的 `Location` 為 `http://`，client 一律正規化回 `https://` 再送，避免 Secure cookie 遺失與明文傳輸。
 - **個資只存 iOS Keychain**：`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`，不同步 iCloud、不隨備份轉移；絕不寫入 `UserDefaults`、plist 或明文檔案。

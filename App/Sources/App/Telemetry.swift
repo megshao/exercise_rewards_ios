@@ -926,13 +926,21 @@ enum Telemetry {
     /// 使用者偏好的 `UserDefaults` 鍵。ProfileView 的 Toggle 直接綁這個鍵。
     static let preferenceKey = "telemetryEnabled"
 
-    /// **預設關閉（opt-in）**。
+    /// **預設開啟，但只在使用者同意免責聲明之後才生效**。
     ///
-    /// 這支 App 的承諾是「個資不蒐集、不外傳」，且統計要送出去之前使用者必須先看到並同意；
-    /// 預設開啟會讓「第一次啟動、還沒看到任何開關」的當下就已經送出 `first_open`。
+    /// 為什麼這樣安排：`FirebaseApp.configure()` 一執行就會向 Google 要一組安裝編號並
+    /// 送出 `first_open`——如果 App 一啟動就初始化，使用者在讀到任何說明之前資料就已經
+    /// 送出去了。所以初始化的時機綁在**首次啟動的免責聲明**上（見 `DisclaimerView`）：
+    /// 那個畫面把使用統計寫進去，使用者按「同意並開始使用」才初始化。
+    ///
+    /// 同意之後預設是開的（這樣當機報告才收得到有意義的樣本），使用者可以隨時到
+    /// 「我的資料 › 安全與隱私」關掉。
+    ///
     /// Info.plist 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED` /
-    /// `FirebaseCrashlyticsCollectionEnabled` 也是 false，兩邊要一起改才有意義。
-    static let defaultEnabled = false
+    /// `FirebaseCrashlyticsCollectionEnabled` 維持 `false`：那是**冷啟動的預設值**，
+    /// 由 `applyCollectionFlags` 依使用者當前偏好在初始化後覆寫。留成 false 是為了
+    /// 「還沒 configure 就絕不收集」這條線。
+    static let defaultEnabled = true
 
     /// **每一個整數參數的合法值域白名單。**
     ///
@@ -984,25 +992,39 @@ enum Telemetry {
     ///
     /// 為什麼是 lazy（這不是效能考量，是承諾的結構性基礎）：
     ///
-    /// 1. 隱私權政策第 5 節寫的是「App 安裝好之後，這項功能是關閉的，**一個位元組都
-    ///    不會送出去**」。要讓這句話為真，不能只靠「有 configure，但兩個 collection 旗標
+    /// 1. 隱私權政策與免責聲明畫面都寫著「**在你按下同意之前，Firebase 的程式碼一行都
+    ///    不會執行**」。要讓這句話為真，不能只靠「有 configure，但兩個 collection 旗標
     ///    都關著」——`FirebaseApp.configure()` 一旦執行，Firebase Installations 就會去要
     ///    一組 installation ID，**即使 Analytics 與 Crashlytics 的收集旗標都是 false**
     ///    （firebase-ios-sdk issue #15513，SDK 12.6.0 實測；我們用 12.18.0，
     ///    沒有理由假設它已經改掉）。那是一次往 `firebaseinstallations.googleapis.com`
     ///    的連線，也就是一個位元組以上。
     /// 2. **使用者驗得到。** iOS 內建「設定 › 隱私權與安全性 › App 隱私權報告」會列出這支
-    ///    App 連過的網域。只要有 Google 網域出現，上面那句承諾就當場被使用者本人推翻——
-    ///    而且是最糟的那種被推翻方式。
-    /// 3. 因此把界線放在**執行與否**，而不是**旗標開關**：開關關著的時候，Firebase 的程式碼
-    ///    一行都不會跑。這讓「零連線」從「我們相信 SDK 會尊重旗標」變成一件結構性的事實。
+    ///    App 連過的網域。同意之前只要有 Google 網域出現，上面那句承諾就當場被使用者本人
+    ///    推翻——而且是最糟的那種被推翻方式。
+    /// 3. 因此把界線放在**執行與否**，而不是**旗標開關**：同意之前（或使用者關掉開關後的
+    ///    下一次冷啟動），Firebase 的程式碼一行都不會跑。這讓「零連線」從「我們相信 SDK
+    ///    會尊重旗標」變成一件結構性的事實。
     ///
-    /// 要接受的代價：Crashlytics 只抓得到 opt-in 之後的當機，同意之前的當機永遠看不到。
-    /// 這本來就是 opt-in 的語意，不為了多幾筆當機報告去妥協。
+    /// **注意這裡的界線是「同意」而不是「預設關閉」**：`defaultEnabled` 是 `true`，
+    /// 使用者在免責聲明上按下同意之後遙測就是開的。保障來自「送任何東西之前一定先讓
+    /// 使用者讀到揭露並主動勾選」，不是「預設不送」。改文案時不要寫回「預設關閉／opt-in」。
+    ///
+    /// 要接受的代價：Crashlytics 抓不到同意之前的當機（免責聲明畫面本身若當掉就收不到）。
     static func configure() {
-        // 示範模式也一併擋掉：走示範模式的人從未對遙測表示同意。
+        // 三道條件，缺一不初始化——`FirebaseApp.configure()` 本身就會向 Google 要
+        // 安裝編號並送出 first_open，所以界線必須放在「執行與否」，不能只靠收集旗標。
+        //
+        // 1. 使用者尚未同意免責聲明：那個畫面才是使用統計被揭露的地方，
+        //    在它之前初始化等於「使用者還沒讀到說明，資料就送出去了」。
+        // 2. 使用者關掉了開關。
+        // 3. 示範模式：走這條路的人（含 App Store 審查員）從未對遙測表示同意。
+        guard DisclaimerConsent.hasAgreedToCurrentVersion else {
+            log.debug("尚未同意免責聲明，不初始化 Firebase（一行 SDK 程式碼都不執行）")
+            return
+        }
         guard isUserEnabled, !isDemoModeActive else {
-            log.debug("遙測未同意或處於示範模式，完全不初始化 Firebase（一行 SDK 程式碼都不執行）")
+            log.debug("遙測已關閉或處於示範模式，不初始化 Firebase（一行 SDK 程式碼都不執行）")
             return
         }
         startFirebase()
@@ -1107,10 +1129,15 @@ enum Telemetry {
         log.debug("遙測偏好改為 \(enabled)")
     }
 
-    /// 「立即清除本機資料」時呼叫：把偏好重設回預設值（opt-in ⇒ 關閉）並立刻停止收集。
+    /// 「立即清除本機資料」時呼叫：把偏好重設回預設值並立刻停止收集。
+    ///
+    /// **預設值現在是 `true`，所以這裡是把偏好清成「開啟」**，看起來反直覺。它之所以
+    /// 正確，是因為呼叫端（`ProfileView.clearLocalData`）同時會 `DisclaimerConsent.reset()`
+    /// ——同意紀錄一併清掉，於是 `configure()` 的第一道 guard 會在下次冷啟動擋住初始化，
+    /// 使用者會再看到一次免責聲明。整體結果是「回到剛裝好的狀態」，不是「清完就開始送」。
     ///
     /// 呼叫端必須**先送 E26 `local_data_clear`**（在偏好還開著的時候）再呼叫這裡。
-    /// 順序不能反：偏好一旦關掉，那筆事件就送不出去了。
+    /// 順序不能反：偏好一旦重置，那筆事件就送不出去了。
     static func resetPreference() {
         UserDefaults.standard.removeObject(forKey: preferenceKey)
         applyCollectionFlags(enabled: defaultEnabled)
