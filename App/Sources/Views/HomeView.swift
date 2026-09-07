@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 首頁：一鍵登入 CTA、本週任務摘要卡、加碼券清單（最多五列）。
 struct HomeView: View {
@@ -505,7 +505,7 @@ enum RemainingTime {
 // MARK: - TaskState UI helpers (shared with TasksView)
 
 extension TaskState {
-    // `showsUploadCountdown` 定義在 SportsRewardsKit 的 `TaskState` 上：
+    // `showsUploadCountdown` 定義在 ExerciseRewardsKit 的 `TaskState` 上：
     // 那是「官網這個欄位在這個狀態下還有沒有意義」的判斷，屬領域規則而非排版，
     // 放在 Kit 才有單元測試守得住（見 `TaskStateTests`）。
 

@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 TasksService.screenshotImageURL：用已登入的 client 打 /member/screenshot/{id}，
 /// 取 302 導向的絕對 Location（S3 presigned URL）。不打真實網路，全部透過 MockHTTPClient

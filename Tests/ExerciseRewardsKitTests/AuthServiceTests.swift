@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 可程式化每個 path 回應的假 HTTPClienting，供 AuthServiceTests 使用。不打真實網路。
 final class MockHTTPClient: HTTPClienting, @unchecked Sendable {

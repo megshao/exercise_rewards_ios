@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 首次啟動導覽的**個資填寫**那一步。
 ///

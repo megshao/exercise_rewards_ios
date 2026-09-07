@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 @main
 struct HuihanApp: App {

@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 我的券夾：列出已兌換（可使用）的加碼券與任務完成待兌換的期別。
 /// - 已兌換 → 點「檢視券碼」開 VoucherView（每次都要 OTP 驗證後才顯示條碼）。

@@ -1,12 +1,12 @@
 import SwiftUI
 import UIKit
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 看截圖：讀取 `TasksServicing.screenshotImageURL` 解析出的圖片網址，用**專用的
 /// `URLSession`** 下載後以 `Image(uiImage:)` 顯示。
 ///
 /// 刻意範圍例外：這裡顯示的圖片只會是「使用者本人上傳到官方站儲存」的簽章網址
-/// （網址自帶簽章、無需登入即可讀取），網域由官方站決定。SportsRewardsKit 的
+/// （網址自帶簽章、無需登入即可讀取），網域由官方站決定。ExerciseRewardsKit 的
 /// 500.gov.tw 白名單只擋「`URLSessionHTTPClient` 主動發出」的請求，所以這條路徑
 /// 另外有兩道自己的關卡：
 /// 1. `TasksService.isAllowedScreenshotImageURL`：302 `Location` 必須是 https，

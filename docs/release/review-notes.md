@@ -1,4 +1,4 @@
-# App Review Notes — Sports Rewards 1.0
+# App Review Notes — Exercise Rewards 1.0
 
 本檔案分三部分：
 
@@ -12,10 +12,10 @@
 
 ## 1. What this app is (and is not)
 
-Sports Rewards is an **unofficial, personal-use companion app** for a public exercise campaign run in Taiwan ("揮汗有禮・全民動起來", operated on the government website `500.gov.tw`).
+Exercise Rewards is an **unofficial, personal-use companion app** for a public exercise campaign run in Taiwan ("揮汗有禮・全民動起來", operated on the government website `500.gov.tw`).
 
 - The developer is an **independent individual** and is **not affiliated with, endorsed by, sponsored by, or authorized to represent** the Ministry of Sports or any government agency. 中文：**本 App 為非官方工具，與運動部及任何政府機關無隸屬、合作、贊助或授權關係。**
-- The app does **not** impersonate the campaign or any agency. The App Store name is the neutral English name **"Sports Rewards"**; the campaign name is never used as the app name, and the icon contains no government emblem, agency name, or the string "500".
+- The app does **not** impersonate the campaign or any agency. The App Store name is the neutral English name **"Exercise Rewards"**; the campaign name is never used as the app name, and the icon contains no government emblem, agency name, or the string "500".
 - The app has **no backend of its own**. It is a native HTTP client that acts on behalf of the user, using only credentials the user typed in themselves, against the user's own account.
 - The app does contain **one third-party SDK** — Firebase Analytics and Crashlytics — for anonymous usage statistics and crash reports. **Nothing about it runs until the user has read and accepted the mandatory first-run disclaimer, which states in plain language that the app sends anonymous usage records and crash reports to Google Firebase.** Once accepted, it is on by default and can be switched off at any time. It never receives identity data, and the app holds no health data at all. Full details in §5b.
 
@@ -37,7 +37,7 @@ Signing in normally requires a **real Taiwan national ID number, date of birth, 
 | 手機號碼 (Mobile number) | `0900000000` |
 
 **Step by step:**
-1. Launch the app. The first screen is a short welcome page (app icon, **Sports Rewards**, and a one-line note that this is an unofficial tool). Tap **「開始使用」** (Get started).
+1. Launch the app. The first screen is a short welcome page (app icon, **Exercise Rewards**, and a one-line note that this is an unofficial tool). Tap **「開始使用」** (Get started).
 2. **A mandatory disclaimer** (「使用前請先確認」) is shown next, before any data entry. Read it, tick the checkbox, and tap **「同意並開始使用」** (Agree and start). This screen is also where the app discloses that it sends anonymous usage statistics to Google Firebase — see §5b for why the timing matters. **Nothing Firebase-related has run up to this point**, the welcome page included.
 3. A 3-field form appears. In **身分證號**, type `A000000000` (case-insensitive, leading/trailing spaces are tolerated).
 4. Tap the **出生日期** field. A custom year/month/day wheel opens. It defaults to the **ROC calendar (民國)**; use the segmented control at the top to switch to **西元** (Gregorian) and select **1990 / 1 / 1**, then tap **「完成」** (Done). (`1990-01-01` is `民國 79 年 1 月 1 日`.)
@@ -62,11 +62,11 @@ Demo mode is **deliberately not a hidden gesture or secret build flag**. Its ent
 
 The complete source code is published under the **MIT license**. Every line that touches personal data or networking can be audited independently.
 
-- Repository: https://github.com/megshao/sports_rewards_ios
+- Repository: https://github.com/megshao/exercise_rewards_ios
 - Files a reviewer may find most relevant:
   - `App/Sources/App/DemoMode.swift` — the demo mode described above
-  - `Sources/SportsRewardsKit/Networking/` — the domain allowlist and HTTPS enforcement
-  - `Sources/SportsRewardsKit/Security/` — Keychain storage, log redaction
+  - `Sources/ExerciseRewardsKit/Networking/` — the domain allowlist and HTTPS enforcement
+  - `Sources/ExerciseRewardsKit/Security/` — Keychain storage, log redaction
   - `App/project.yml` — the exact Info.plist and entitlements shown below
 
 ## 4. HealthKit — not used at all
@@ -98,7 +98,7 @@ We are disclosing this in full because a third-party SDK in a privacy-forward ap
 
 **What is in the binary**
 - `firebase-ios-sdk` **12.18.0**, via Swift Package Manager. Products used: `FirebaseAnalyticsCore`, `FirebaseCrashlytics`, `FirebaseCore`.
-- SPM **resolves 13 packages**; only **6 are actually linked** into the app binary: `firebase-ios-sdk`, `GoogleAppMeasurement`, `GoogleDataTransport`, `GoogleUtilities`, `nanopb`, `promises`. (Both numbers are stated so they can be checked: the 13 are in `Package.resolved`, the 6 are in the release `SportsRewards.LinkFileList` and visible as resource bundles inside the `.app`.)
+- SPM **resolves 13 packages**; only **6 are actually linked** into the app binary: `firebase-ios-sdk`, `GoogleAppMeasurement`, `GoogleDataTransport`, `GoogleUtilities`, `nanopb`, `promises`. (Both numbers are stated so they can be checked: the 13 are in `Package.resolved`, the 6 are in the release `ExerciseRewards.LinkFileList` and visible as resource bundles inside the `.app`.)
 - We deliberately chose **`FirebaseAnalyticsCore`, not `FirebaseAnalytics`**. Its underlying measurement library is `GoogleAppMeasurementCore`, which **structurally has no IDFA collection capability**. The release binary links **neither `AdSupport` nor `AppTrackingTransparency` nor `AdServices`** — verifiable with `otool -l`. The app therefore cannot, and does not, present an App Tracking Transparency prompt. `PrivacyInfo.xcprivacy` declares `NSPrivacyTracking = false` with an empty tracking-domain list.
 
 **Disclosure first, then explicit consent, then on by default**
@@ -159,9 +159,9 @@ Two things are worth stating explicitly rather than leaving to inference:
 - **We do not operate any remote configuration or feature-flag service** — there is no developer server to host one. The Firebase Crashlytics SDK does fetch its own operational settings from `firebase-settings.crashlytics.com` once telemetry is running; that is Google's SDK configuring itself, and it cannot change any behaviour or feature of this app.
 
 ### 4.1 — Copycats / Impersonation
-The app is named **"Sports Rewards"** — a neutral English name that is not the campaign's name. The icon carries no agency mark, national emblem, or campaign branding. The first paragraph of the App Store description, the first-run screen, and the in-app My Data screen all state plainly that this is an unofficial tool with no affiliation.
+The app is named **"Exercise Rewards"** — a neutral English name that is not the campaign's name. The icon carries no agency mark, national emblem, or campaign branding. The first paragraph of the App Store description, the first-run screen, and the in-app My Data screen all state plainly that this is an unofficial tool with no affiliation.
 
-**Disclosed proactively:** the Home tab displays the campaign's Chinese name (揮汗有禮) as a section heading, so that users who came for that campaign recognise they are in the right place. We want to be explicit that this is a **descriptive reference to the campaign the app helps with, not a claim of identity or endorsement**. The app's own identity — on the App Store, on the Home screen icon, in the About footer (`Sports Rewards v1.0.0 · 非官方工具`), and on the first-run screen — is consistently **Sports Rewards**, and the App Store subtitle reads 「揮汗有禮非官方串接」, which places the word **非官方 ("unofficial")** directly against the campaign name. If the review team would prefer the campaign name removed from that heading as well, we will change it immediately on request.
+**Disclosed proactively:** the Home tab displays the campaign's Chinese name (揮汗有禮) as a section heading, so that users who came for that campaign recognise they are in the right place. We want to be explicit that this is a **descriptive reference to the campaign the app helps with, not a claim of identity or endorsement**. The app's own identity — on the App Store, on the Home screen icon, in the About footer (`Exercise Rewards v1.0.0 · 非官方工具`), and on the first-run screen — is consistently **Exercise Rewards**, and the App Store subtitle reads 「揮汗有禮非官方串接」, which places the word **非官方 ("unofficial")** directly against the campaign name. If the review team would prefer the campaign name removed from that heading as well, we will change it immediately on request.
 
 ### 5.1.1(ix) — Data collection for sensitive services
 The app **does not operate a service that collects identity data**. There is no developer backend, and the developer receives none of the user's identity data. The three identity fields the user types are stored only in that user's own device Keychain and are transmitted only to `500.gov.tw`, the site where the user already holds an account, to sign that user in.
@@ -220,7 +220,7 @@ The app does not create accounts, so there is no app account to delete. Users ca
 
 ```
 1) WHAT THIS IS — AN UNOFFICIAL APP
-Sports Rewards is an unofficial, personal-use companion app for a public exercise campaign in Taiwan ("揮汗有禮", run on 500.gov.tw). The developer is an independent individual, NOT affiliated with, endorsed by, sponsored by or authorized to represent the Ministry of Sports or any government agency. The App Store name is neutral: "Sports Rewards"; the campaign name appears only in the subtitle, immediately followed by "非官方" (unofficial). The icon carries no government emblem, agency name or "500", and the description's first paragraph says the app is unofficial. The app has no backend of its own: it is a native HTTPS client acting on the user's behalf, with credentials the user typed in, against their own account. Requests reach only 500.gov.tw; every other domain is blocked by an allowlist.
+Exercise Rewards is an unofficial, personal-use companion app for a public exercise campaign in Taiwan ("揮汗有禮", run on 500.gov.tw). The developer is an independent individual, NOT affiliated with, endorsed by, sponsored by or authorized to represent the Ministry of Sports or any government agency. The App Store name is neutral: "Exercise Rewards"; the campaign name appears only in the subtitle, immediately followed by "非官方" (unofficial). The icon carries no government emblem, agency name or "500", and the description's first paragraph says the app is unofficial. The app has no backend of its own: it is a native HTTPS client acting on the user's behalf, with credentials the user typed in, against their own account. Requests reach only 500.gov.tw; every other domain is blocked by an allowlist.
 
 2) DEMO ACCOUNT — REQUIRED TO REVIEW
 Real sign-in needs a valid Taiwan ID, date of birth and mobile number already on the government site, which a reviewer cannot obtain, so we ship a fully disclosed demo mode. Enter these in the app's sign-in form:
@@ -246,7 +246,7 @@ One third-party SDK, for anonymous usage stats and crash reports. None of it run
 Those three fields are stored encrypted in the iOS Keychain on device, not synced to iCloud, not written to log files. "我的資料 → 立即清除本機資料" deletes them permanently and resets the consent record. The campaign account itself is managed by the user at 500.gov.tw.
 
 6) OPEN SOURCE (MIT)
-https://github.com/megshao/sports_rewards_ios — see DemoMode.swift, Telemetry.swift, SportsRewardsKit/Networking and /Security.
+https://github.com/megshao/exercise_rewards_ios — see DemoMode.swift, Telemetry.swift, ExerciseRewardsKit/Networking and /Security.
 ```
 
 # Part B — 內部備註（**不要貼給 Apple**）
@@ -255,18 +255,18 @@ https://github.com/megshao/sports_rewards_ios — see DemoMode.swift, Telemetry.
 
 | # | 問題 | 位置 | 狀態 |
 |---|---|---|---|
-| 1 | 頁尾寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift` | ✅ **已修**：改為 `Sports Rewards v{CFBundleShortVersionString} · 非官方工具`，版本號改讀 Bundle，不再硬編碼。 |
-| 2 | 首次啟動頁沒有非官方聲明 | `App/Sources/Views/WelcomeView.swift` | ✅ **已修**：歡迎頁主標為 `Sports Rewards`、圖示用 App icon、副標說明用途，並有非官方聲明卡。Part A §1 的「三處揭露」現已成立。（歡迎頁已於 v1.1 從 `OnboardingView` 拆出，並改排在免責聲明之前。） |
-| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ✅ **已修**：新增「原始碼」一列，以外部 Safari 開啟 https://github.com/megshao/sports_rewards_ios（不用 WebView）。 |
+| 1 | 頁尾寫 `揮汗有禮 v0.1 · 非官方工具` | `App/Sources/Views/ProfileView.swift` | ✅ **已修**：改為 `Exercise Rewards v{CFBundleShortVersionString} · 非官方工具`，版本號改讀 Bundle，不再硬編碼。 |
+| 2 | 首次啟動頁沒有非官方聲明 | `App/Sources/Views/WelcomeView.swift` | ✅ **已修**：歡迎頁主標為 `Exercise Rewards`、圖示用 App icon、副標說明用途，並有非官方聲明卡。Part A §1 的「三處揭露」現已成立。（歡迎頁已於 v1.1 從 `OnboardingView` 拆出，並改排在免責聲明之前。） |
+| 3 | App 內沒有開源 repo 連結 | 「我的資料 › 安全與隱私」 | ✅ **已修**：新增「原始碼」一列，以外部 Safari 開啟 https://github.com/megshao/exercise_rewards_ios（不用 WebView）。 |
 
 ## B1b. 已知並接受的曝險：首頁標頭保留活動名
 
 `App/Sources/Views/HomeView.swift` 的首頁標頭仍以大字顯示「揮汗有禮」。
 
 - **這是使用者在知悉風險後的明確決定**（2026-09-05），理由是活動參加者的辨識度。
-- **代價**：這是全 App 對 guideline 4.1／5.2.1 曝險最大的一處——審查員打開 App，最顯眼的自稱是官方活動名，而商店名稱卻是 Sports Rewards。若官方日後推出自己的 App，此處會是最先被指為 impersonation 的地方。
+- **代價**：這是全 App 對 guideline 4.1／5.2.1 曝險最大的一處——審查員打開 App，最顯眼的自稱是官方活動名，而商店名稱卻是 Exercise Rewards。若官方日後推出自己的 App，此處會是最先被指為 impersonation 的地方。
 - **緩解**：已在 Part A §4.1 **主動向審查員揭露**這件事並說明它是描述性引用，同時表明「若審查團隊希望移除，我們立即照辦」。主動講比被抓到好。
-- **若被以 4.1／5.2.1 退件**：第一個該改的就是這裡（改成 `Sports Rewards` 或 `揮汗有禮·非官方`），成本只有一行文字。
+- **若被以 4.1／5.2.1 退件**：第一個該改的就是這裡（改成 `Exercise Rewards` 或 `揮汗有禮·非官方`），成本只有一行文字。
 
 ## B1c. 2026-09-06 加入 Firebase 之後的新增殘餘風險
 

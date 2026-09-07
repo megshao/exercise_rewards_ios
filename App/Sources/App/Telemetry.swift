@@ -1,5 +1,5 @@
 import Foundation
-import SportsRewardsKit
+import ExerciseRewardsKit
 import FirebaseCore
 import FirebaseAnalytics
 import FirebaseCrashlytics

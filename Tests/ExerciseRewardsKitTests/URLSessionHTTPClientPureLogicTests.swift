@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 只測 `URLSessionHTTPClient` 抽出來的純函式（不發網路請求）：
 /// 網域白名單判斷、redirect Location 正規化。

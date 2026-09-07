@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// **效能回歸測試。**
 ///

@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 上傳運動紀錄。
 ///

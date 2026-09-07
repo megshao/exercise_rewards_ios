@@ -1,4 +1,4 @@
-# App 隱私問卷（App Privacy）逐項建議答案 — Sports Rewards 1.0
+# App 隱私問卷（App Privacy）逐項建議答案 — Exercise Rewards 1.0
 
 適用於 App Store Connect →「App 隱私」→ 資料類型問卷。
 每一項都附「依據」，指向實際的檔案或行為，方便你自己覆核，也方便日後程式碼改動時回頭比對。
@@ -101,7 +101,7 @@ Apple 有一條「選擇性揭露（Optional Disclosure）」豁免，四個條�
 | | Other Usage Data | No | — | — | — | 目前實作的事件沒有「商家偏好」這類額外互動資料。**若日後加入帶 `vendor`／`item` 參數的兌換事件，這一格要改成 Yes**（見 §5 觸發點） |
 | **Diagnostics** | Crash Data | **Yes** | **No（Not Linked）** | No | App Functionality | Crashlytics 當機報告：堆疊、執行緒、裝置型號、OS 版本、App 版本、記憶體／空間餘量、當機時間 |
 | | Other Diagnostic Data | **Yes** | **No（Not Linked）** | No | App Functionality | 非致命錯誤（只取 `domain`／`code`，訊息先過 `Redact.scrub`）、custom keys（`is_demo_mode`、`last_screen`）、breadcrumbs |
-| | Performance Data | **No** | — | — | — | **未加入 Firebase Performance SDK**——`SportsRewards.LinkFileList` 內沒有 `FirebasePerformance`，`PrivacyInfo.xcprivacy` 也沒有宣告這一類。Apple 對此類的定義是啟動時間／當掉率／耗電，Crashlytics 不提供這些。**要與 privacy manifest 一致，這格填 No**；若你想保守起見勾 Yes，就必須同步在 `App/Resources/PrivacyInfo.xcprivacy` 補上 `NSPrivacyCollectedDataTypePerformanceData`，兩邊不可以不一致 |
+| | Performance Data | **No** | — | — | — | **未加入 Firebase Performance SDK**——`ExerciseRewards.LinkFileList` 內沒有 `FirebasePerformance`，`PrivacyInfo.xcprivacy` 也沒有宣告這一類。Apple 對此類的定義是啟動時間／當掉率／耗電，Crashlytics 不提供這些。**要與 privacy manifest 一致，這格填 No**；若你想保守起見勾 Yes，就必須同步在 `App/Resources/PrivacyInfo.xcprivacy` 補上 `NSPrivacyCollectedDataTypePerformanceData`，兩邊不可以不一致 |
 | **Other Data** | Other Data | **Yes** | **Yes** | No | App Functionality | **出生日期**放這裡（見 §3）。登入三碼之一。<br>備註：本機 `SecureLog` 的輸出**不算**任何一類——它從不離開裝置，`debug` 層級在 Release build 直接編譯掉，且從不橋接到 Crashlytics |
 
 **跨全表結論**：
@@ -214,15 +214,15 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
 | 事實 | 值 | 怎麼驗 |
 |---|---|---|
 | SDK 與版本 | firebase-ios-sdk **12.18.0** | `App/project.yml` → `packages.Firebase.from: "12.18.0"` |
-| 使用的 product | `FirebaseAnalyticsCore`、`FirebaseCrashlytics`、`FirebaseCore` | `App/project.yml` → `targets.SportsRewards.dependencies` |
-| SPM **解析**的套件數 | **13** | `App/SportsRewards.xcodeproj/.../Package.resolved` 的 `pins` |
-| **實際連進二進位**的套件數 | **6**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises` | Release build 的 `SportsRewards.LinkFileList`；另可看 `.app` 內的 resource bundle 清單 |
+| 使用的 product | `FirebaseAnalyticsCore`、`FirebaseCrashlytics`、`FirebaseCore` | `App/project.yml` → `targets.ExerciseRewards.dependencies` |
+| SPM **解析**的套件數 | **13** | `App/ExerciseRewards.xcodeproj/.../Package.resolved` 的 `pins` |
+| **實際連進二進位**的套件數 | **6**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises` | Release build 的 `ExerciseRewards.LinkFileList`；另可看 `.app` 內的 resource bundle 清單 |
 | 沒被連結的 7 個 | `abseil-cpp-binary`、`app-check`、`google-ads-on-device-conversion-ios-sdk`、`grpc-binary`、`gtm-session-fetcher`、`interop-ios-for-google-sdks`、`leveldb` | 同上（只被解析、不在 LinkFileList 內） |
 | IDFA 能力 | **沒有**。`FirebaseAnalyticsCore` 底層是 `GoogleAppMeasurementCore`，結構上不含 IDFA 收集 | `otool -l` Release 二進位：無 `AdSupport`、`AppTrackingTransparency`、`AdServices` 的 load command |
 | `Telemetry.defaultEnabled` | **`true`**——同意免責聲明之後預設開啟 | `App/Sources/App/Telemetry.swift` |
 | Firebase 初始化時機 | 使用者在首次啟動的免責聲明按下「同意並開始使用」時，由 `DisclaimerConsent.record()` 呼叫 `Telemetry.configure()`。**那是整支 App 第一次執行 Firebase 程式碼的時機** | `App/Sources/App/DisclaimerConsent.swift`、`App/Sources/Views/DisclaimerView.swift` |
 | `configure()` 的前置條件 | 三道，缺一不初始化：尚未同意免責聲明 → 使用者關掉開關 → 示範模式 | `Telemetry.configure()` |
-| Info.plist 四個旗標 | 仍全為 `false`。意義是**冷啟動預設值**（守住「還沒 `configure` 就絕不收集」），由 `applyCollectionFlags` 在初始化後依使用者偏好覆寫——**不再代表「預設關閉」** | 建置後的 `SportsRewards.app/Info.plist`、`Telemetry.applyCollectionFlags` |
+| Info.plist 四個旗標 | 仍全為 `false`。意義是**冷啟動預設值**（守住「還沒 `configure` 就絕不收集」），由 `applyCollectionFlags` 在初始化後依使用者偏好覆寫——**不再代表「預設關閉」** | 建置後的 `ExerciseRewards.app/Info.plist`、`Telemetry.applyCollectionFlags` |
 | 使用者開關位置 | 「我的資料 › 安全與隱私 › 傳送匿名使用統計」 | `App/Sources/Views/ProfileView.swift` |
 | 遙測出口 | 只有 `App/Sources/App/Telemetry.swift`；其他檔案禁止 `import FirebaseAnalytics` / `FirebaseCrashlytics` | 全專案 grep |
 | 送得出去的事件 | 封閉列舉 `AnalyticsEvent` 的 26 個 case（`screen_view`、`login`／`login_failed`、`tasks_fetch`、上傳／兌換／券碼漏斗、`site_error`、`consent_granted` 等）。畫面名亦為封閉列舉；每個參數值都是列舉 rawValue 或小範圍整數 | `Telemetry.swift` |

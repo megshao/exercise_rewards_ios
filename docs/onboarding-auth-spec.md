@@ -61,5 +61,5 @@
 - POST /register (name,idNo,birthDate,phone,email,agree=true) → 觀察導向 /register/nhi-verify
 - /register/nhi-verify：抓健保卡欄位名、戶役政生日驗證、送出後回應/導向
 - /register/otp：抓 OTP 發送/驗證/resend 欄位與錯誤格式
-- 完成後補進 SportsRewardsKit 的註冊 service 與 Onboarding 註冊分支。
+- 完成後補進 ExerciseRewardsKit 的註冊 service 與 Onboarding 註冊分支。
 注意：會實際綁定該身分證＋門號（1門號1身分證），須本人同意；記錄勿寫入真實個資明碼。

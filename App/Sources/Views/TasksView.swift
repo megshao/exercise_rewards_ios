@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 我的任務儀表板：垂直卡片列出 [TaskPeriod]，本週置頂高亮，下拉刷新。
 /// 對齊設計稿。

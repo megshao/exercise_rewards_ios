@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 `TaskPeriod.current(in:now:)`——首頁「本週任務」與任務頁置頂高亮的唯一依據。
 ///

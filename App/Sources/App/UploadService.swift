@@ -1,5 +1,5 @@
 import Foundation
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 上傳沒成功的原因分類。
 ///

@@ -72,7 +72,7 @@
 
 - 所有 View／ViewModel 只呼叫一個 `Telemetry` facade，**禁止**直接 `import FirebaseAnalytics` / `FirebaseCrashlytics`（未來可用 CI grep 強制）。
 - `Telemetry` 的參數型別只接受三種：`Int`、`Bool`、以及由 **`CaseIterable` enum 的 `rawValue`** 產生的字串。**沒有接受 `String` 的 overload。** 這是硬規則 1／3／4 的編譯期保證——不是靠開發者記得要遮罩。
-- 既有 `Redact`（`Sources/SportsRewardsKit/Security/Redaction.swift`）保留頭尾字元（`A12●●●●●89`），那是 os_log 在裝置上可以接受的粒度；對第三方輸出來說**違反硬規則 1「遮罩片段也不行」**。因此 `Redact` 在遙測路徑上**完全不使用**——不是「用 `Redact.fully`」，而是根本沒有字串可以進來。
+- 既有 `Redact`（`Sources/ExerciseRewardsKit/Security/Redaction.swift`）保留頭尾字元（`A12●●●●●89`），那是 os_log 在裝置上可以接受的粒度；對第三方輸出來說**違反硬規則 1「遮罩片段也不行」**。因此 `Redact` 在遙測路徑上**完全不使用**——不是「用 `Redact.fully`」，而是根本沒有字串可以進來。
 
 ### 2.2 四道抑制條件（任一成立即 no-op，且每次呼叫時動態檢查）
 

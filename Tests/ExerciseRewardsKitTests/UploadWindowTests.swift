@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 `TaskPeriod.canUpload(now:)`——「要不要畫『上傳運動紀錄』按鈕」的唯一依據。
 ///

@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 RedeemParser 對 `/member/redeem/{uuid}` 頁面的解析：
 /// Fixtures/redeem.html 為合成測試資料：5 家示範商家、其中示範超商 C 有兩個品項，共 6 支 item-row__form。

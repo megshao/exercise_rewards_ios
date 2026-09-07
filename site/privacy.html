@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>隱私權政策 — Sports Rewards</title>
+<title>隱私權政策 — Exercise Rewards</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header class="site">
   <div class="wrap">
-    <div class="brand"><strong>Sports Rewards</strong> <span>非官方輔助工具</span></div>
+    <div class="brand"><strong>Exercise Rewards</strong> <span>非官方輔助工具</span></div>
     <nav class="site">
       <a href="index.html">首頁</a>
       <a href="privacy.html">隱私權政策</a>
@@ -22,7 +22,7 @@
 <main class="wrap">
 
 <h1>隱私權政策</h1>
-<p class="updated">最後更新：2026 年 9 月 6 日｜適用版本：Sports Rewards 1.0.0（iOS）</p>
+<p class="updated">最後更新：2026 年 9 月 7 日｜適用版本：Exercise Rewards 1.0.0（iOS）</p>
 
 <div class="notice">
   <strong>先講最重要的兩句</strong>
@@ -32,7 +32,7 @@
 
 <h2>0. 這是什麼 App</h2>
 <p>
-  Sports Rewards 是由獨立開發者製作的<strong>非官方</strong>個人輔助工具，用來更省事地參加「揮汗有禮・全民動起來」運動幣加碼活動。
+  Exercise Rewards 是由獨立開發者製作的<strong>非官方</strong>個人輔助工具，用來更省事地參加「揮汗有禮・全民動起來」運動幣加碼活動。
   本 App 與運動部及任何政府機關<strong>沒有隸屬、合作、贊助或授權關係</strong>，也不代表活動主辦單位。活動規則與最終權益一律以官方公告為準。
 </p>
 
@@ -241,14 +241,14 @@
 </p>
 <p>
   步驟、每個操作預期會看到的請求、以及怎麼判斷有沒有異常，寫在
-  <a href="https://github.com/megshao/sports_rewards_ios/blob/main/docs/verify-network.md" target="_blank" rel="noopener">docs/verify-network.md</a>。
+  <a href="https://github.com/megshao/exercise_rewards_ios/blob/main/docs/verify-network.md" target="_blank" rel="noopener">docs/verify-network.md</a>。
   門檻：要在手機上安裝並信任一張憑證，全程約 15 分鐘；驗完記得把憑證移除。
 </p>
 
 <h3>第 3 層：工程師——讀程式碼、重現建置</h3>
 <ul>
-  <li>原始碼全部公開（MIT 授權）：<a href="https://github.com/megshao/sports_rewards_ios" target="_blank" rel="noopener">github.com/megshao/sports_rewards_ios</a>。</li>
-  <li>唯一會碰 Firebase 的檔案是 <code>App/Sources/App/Telemetry.swift</code>；網域白名單在 <code>Sources/SportsRewardsKit/Networking/URLSessionHTTPClient.swift</code>。從這兩個檔案開始讀，就能掌握全部的對外出口。</li>
+  <li>原始碼全部公開（MIT 授權）：<a href="https://github.com/megshao/exercise_rewards_ios" target="_blank" rel="noopener">github.com/megshao/exercise_rewards_ios</a>。</li>
+  <li>唯一會碰 Firebase 的檔案是 <code>App/Sources/App/Telemetry.swift</code>；網域白名單在 <code>Sources/ExerciseRewardsKit/Networking/URLSessionHTTPClient.swift</code>。從這兩個檔案開始讀，就能掌握全部的對外出口。</li>
   <li>相依套件鎖在 <code>App/Package.resolved</code>：13 個套件全部鎖到 git commit。跑 <code>./Scripts/bootstrap.sh</code> 會產生 Xcode 專案並套用同一份鎖定，建置時加 <code>-disableAutomaticPackageResolution</code>，拿到的就是跟我們一模一樣的相依組合。</li>
 </ul>
 <p>
@@ -286,7 +286,7 @@
 
 <footer class="site">
   <div class="wrap">
-    Sports Rewards 為非官方個人工具，與運動部及任何政府機關無隸屬或授權關係。<br>
+    Exercise Rewards 為非官方個人工具，與運動部及任何政府機關無隸屬或授權關係。<br>
     © 2026 megshao・以 MIT 授權開源
   </div>
 </footer>

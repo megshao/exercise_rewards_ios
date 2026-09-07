@@ -1,5 +1,5 @@
 import Foundation
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 假的登入服務，供 UI 開發與 Preview 使用。
 /// 正式環境由 `AppEnvironment` 換成真實的 `AuthService(http:)`。

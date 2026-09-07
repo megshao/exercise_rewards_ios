@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 final class CsrfParserTests: XCTestCase {
     private func loadFixture(_ name: String) throws -> String {

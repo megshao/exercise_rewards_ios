@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 我的資料：3 欄位表單（身分證、生日、手機），存/讀透過 ProfileStoring（KeychainStore）。
 /// 個資最小化到登入必需：姓名/email/健保卡卡號皆不在此收集，保留在 `Profile` model 中
@@ -222,7 +222,7 @@ struct ProfileView: View {
     /// 原始碼連結：隱私宣稱要能被查證才有意義，所以把 repo 直接放進 App，
     /// 而不是只寫在商店描述裡。以外部 Safari 開啟（不用 WebView，維持零 WebKit 依賴）。
     private var sourceCodeRow: some View {
-        Link(destination: URL(string: "https://github.com/megshao/sports_rewards_ios")!) {
+        Link(destination: URL(string: "https://github.com/megshao/exercise_rewards_ios")!) {
             HStack(spacing: 13) {
                 iconBox("chevron.left.forwardslash.chevron.right",
                         tint: Theme.Colors.text, bg: Color(hex: 0xEEF0F3))
@@ -309,13 +309,13 @@ struct ProfileView: View {
     }
 
     /// 版本號讀 Info.plist 的 `CFBundleShortVersionString`，不硬編碼——避免哪天送審版本
-    /// 改了卻忘了同步這行。名稱一律用上架名 Sports Rewards（活動名不拿來自稱）。
+    /// 改了卻忘了同步這行。名稱一律用上架名 Exercise Rewards（活動名不拿來自稱）。
     private var appVersion: String {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
     }
 
     private var footer: some View {
-        Text("Sports Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 使用統計開著時會連 Firebase")
+        Text("Exercise Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 使用統計開著時會連 Firebase")
             .font(.system(size: 11.5))
             .foregroundStyle(Theme.Colors.dim)
             .multilineTextAlignment(.center)
@@ -377,7 +377,7 @@ struct ProfileView: View {
         DisclaimerConsent.reset()
         // 舊版（1.0.0 build 4 以前）曾寫入的 HealthKit 授權旗標。功能已移除，
         // 但既有裝置上這把 key 還在，一併清掉才符合「清除本機所有資料」的承諾。
-        UserDefaults.standard.removeObject(forKey: "com.megshao.sportsrewards.health.didRequestAuthorization")
+        UserDefaults.standard.removeObject(forKey: "com.megshao.exerciserewards.health.didRequestAuthorization")
         // 官方站的登入 cookie 是持久化在 App 沙盒容器、跨啟動續用的；只清 Keychain 個資
         // 並不會登出。不一併清掉就與這顆按鈕（與隱私說明）承諾的「清除本機所有資料」不符。
         let environment = environment

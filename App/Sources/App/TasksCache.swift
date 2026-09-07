@@ -1,5 +1,5 @@
 import Foundation
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 任務清單的本地快取 + 節流。
 /// - 本地優先：畫面先顯示上次抓到的任務，避免每次都等網路。

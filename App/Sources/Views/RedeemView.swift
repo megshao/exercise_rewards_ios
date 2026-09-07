@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 兌換好禮：列出可兌換的商家品項，點「兌換」需先二次確認
 /// 警語（兌換後不可更換、需簡訊驗證出示券碼）才會真的送出表單。

@@ -24,9 +24,9 @@ struct WelcomeView: View {
             VStack(spacing: 14) {
                 appIcon
 
-                // 主標一律用上架名稱 Sports Rewards：刻意不拿活動名「揮汗有禮」自稱，
+                // 主標一律用上架名稱 Exercise Rewards：刻意不拿活動名「揮汗有禮」自稱，
                 // 避免被誤認為官方 App；活動名只出現在說明用途的副標裡。
-                Text("Sports Rewards")
+                Text("Exercise Rewards")
                     .font(Theme.displayFont(28, weight: .heavy))
 
                 Text("協助你參加運動部「揮汗有禮」活動的非官方小工具\n每週達標，就能換一張超商加碼券")

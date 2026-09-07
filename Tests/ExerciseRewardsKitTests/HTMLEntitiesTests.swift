@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 `HTMLEntities.decode`。這支的用途是把官網屬性值（Thymeleaf 跳脫過）還原成
 /// 給人看的文字，因此重點在「認得的要還原」與「不認得的原樣保留、不亂猜」兩件事。

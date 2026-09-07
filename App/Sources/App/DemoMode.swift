@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 送審用「示範模式」（Demo Mode）。
 ///

@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 「這張加碼券我已經用掉了」的本機標記。
 ///

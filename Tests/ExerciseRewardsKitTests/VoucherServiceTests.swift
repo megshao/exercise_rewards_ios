@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 VoucherService：不打真實網路，全部透過 MockHTTPClient（見 AuthServiceTests.swift）。
 final class VoucherServiceTests: XCTestCase {

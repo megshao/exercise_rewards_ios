@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 `Redact.sensitiveKinds(in:)` / `containsSensitive` / `scrub`：
 /// 這是遙測出口的最後一道防線，漏判 = 個資外流，誤判 = 合法事件被靜靜丟掉。
@@ -39,7 +39,7 @@ final class SensitivePatternTests: XCTestCase {
         // 數字型參數的字串化
         "8000", "14", "121", "0", "-1", "100", "999999999",
         // 識別字串
-        "com.megshao.sportsrewards", "app_launched", "screen_view", "non_fatal_error",
+        "com.megshao.exerciserewards", "app_launched", "screen_view", "non_fatal_error",
         "health_auth_granted", "onboarding_completed", "telemetry_preference_changed",
         "true", "false", "iOS 18.0.1", "iPhone15,2",
     ]
@@ -266,7 +266,7 @@ final class SensitivePatternTests: XCTestCase {
     }
 
     func testBundleIdAndEventNamesAreNotFlagged() {
-        assertClean("com.megshao.sportsrewards")
+        assertClean("com.megshao.exerciserewards")
         assertClean("app_launched")
         assertClean("screen_view")
     }

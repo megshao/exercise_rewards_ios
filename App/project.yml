@@ -1,4 +1,4 @@
-name: SportsRewards
+name: ExerciseRewards
 options:
   bundleIdPrefix: com.megshao
   # 全 App 以繁體中文為開發語言：系統元件（日期滾輪、警示按鈕等）不會退回英文。
@@ -8,7 +8,7 @@ options:
   createIntermediateGroups: true
 
 packages:
-  SportsRewardsKit:
+  ExerciseRewardsKit:
     path: ".."
   # Firebase Analytics + Crashlytics。這是本專案唯一的第三方相依（連同它自己拉進來的
   # Google 傳輸/工具函式庫）。版本區間鎖在 12.x，避免下一個 major 悄悄換掉隱私行為。
@@ -17,7 +17,7 @@ packages:
     from: "12.18.0"
 
 targets:
-  SportsRewards:
+  ExerciseRewards:
     type: application
     platform: iOS
     deploymentTarget: "16.0"
@@ -31,7 +31,7 @@ targets:
           # 範本只是給人看的，不要進 bundle。
           - "GoogleService-Info.plist.template"
     dependencies:
-      - package: SportsRewardsKit
+      - package: ExerciseRewardsKit
       # 刻意選 FirebaseAnalyticsCore 而不是 FirebaseAnalytics：
       # 前者底層是 GoogleAppMeasurementCore，**完全不含 IDFA（廣告識別碼）收集能力**，
       # 是結構上的保證，而不是靠 Info.plist 旗標。模組名仍是 FirebaseAnalytics。
@@ -44,8 +44,8 @@ targets:
     info:
       path: Generated/Info.plist
       properties:
-        # 上架名稱為 Sports Rewards：刻意不使用活動名「揮汗有禮」，避免與官方活動混淆。
-        CFBundleDisplayName: Sports Rewards
+        # 上架名稱為 Exercise Rewards：刻意不使用活動名「揮汗有禮」，避免與官方活動混淆。
+        CFBundleDisplayName: Exercise Rewards
         # 只使用系統 TLS（HTTPS），屬出口管制豁免；宣告後上傳 build 不必在 App Store Connect 手動回答加密問卷。
         ITSAppUsesNonExemptEncryption: false
         CFBundleDevelopmentRegion: zh-Hant
@@ -82,7 +82,7 @@ targets:
               NSExceptionMinimumTLSVersion: TLSv1.2
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.sportsrewards
+        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.exerciserewards
         DEVELOPMENT_TEAM: 8DVXA389TX
         CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -127,33 +127,33 @@ targets:
           "${RUN_SCRIPT}"
 
   # 截圖用 UI 測試 target。獨立於主 target，不會被 Release archive 打包
-  # （archive 只 build SportsRewards scheme 的 application target）。
+  # （archive 只 build ExerciseRewards scheme 的 application target）。
   # 重跑方式見 UITests/ScreenshotTests.swift 檔頭。
-  SportsRewardsUITests:
+  ExerciseRewardsUITests:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "16.0"
     sources:
       - path: UITests
     dependencies:
-      - target: SportsRewards
+      - target: ExerciseRewards
     info:
-      path: Generated/SportsRewardsUITests-Info.plist
+      path: Generated/ExerciseRewardsUITests-Info.plist
       properties: {}
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.sportsrewards.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.exerciserewards.uitests
         DEVELOPMENT_TEAM: 8DVXA389TX
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1"
-        TEST_TARGET_NAME: SportsRewards
+        TEST_TARGET_NAME: ExerciseRewards
 
 schemes:
-  SportsRewards:
+  ExerciseRewards:
     build:
       targets:
-        SportsRewards: all
+        ExerciseRewards: all
     run:
       config: Debug
     test:
@@ -165,16 +165,16 @@ schemes:
     archive:
       config: Release
 
-  # 上架素材截圖專用 scheme：只跑 SportsRewardsUITests，主 scheme 保持原樣。
-  SportsRewardsScreenshots:
+  # 上架素材截圖專用 scheme：只跑 ExerciseRewardsUITests，主 scheme 保持原樣。
+  ExerciseRewardsScreenshots:
     build:
       targets:
-        SportsRewards: [run, test]
-        SportsRewardsUITests: [test]
+        ExerciseRewards: [run, test]
+        ExerciseRewardsUITests: [test]
     test:
       config: Debug
       targets:
-        - SportsRewardsUITests
+        - ExerciseRewardsUITests
       environmentVariables:
         # 測試會把 PNG 直接寫到這個 host 目錄；$(SRCROOT) 是 App/。
         SCREENSHOT_OUTPUT_DIR: $(SRCROOT)/../docs/screenshots/raw

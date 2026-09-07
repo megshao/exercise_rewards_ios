@@ -1,7 +1,7 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
-/// 驗證 VoucherParser 對合成最小 fixture 的解析（見 Tests/SportsRewardsKitTests/Fixtures/
+/// 驗證 VoucherParser 對合成最小 fixture 的解析（見 Tests/ExerciseRewardsKitTests/Fixtures/
 /// voucher_view.html／voucher_verify_error.html）。純函式測試，不打網路。
 final class VoucherParserTests: XCTestCase {
     private func loadFixture(_ name: String) throws -> String {

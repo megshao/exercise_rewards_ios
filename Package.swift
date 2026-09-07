@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "SportsRewardsKit",
+    name: "ExerciseRewardsKit",
     platforms: [.iOS(.v16), .macOS(.v13)],
     products: [
-        .library(name: "SportsRewardsKit", targets: ["SportsRewardsKit"])
+        .library(name: "ExerciseRewardsKit", targets: ["ExerciseRewardsKit"])
     ],
     targets: [
-        .target(name: "SportsRewardsKit"),
-        .testTarget(name: "SportsRewardsKitTests", dependencies: ["SportsRewardsKit"], resources: [.copy("Fixtures")])
+        .target(name: "ExerciseRewardsKit"),
+        .testTarget(name: "ExerciseRewardsKitTests", dependencies: ["ExerciseRewardsKit"], resources: [.copy("Fixtures")])
     ]
 )

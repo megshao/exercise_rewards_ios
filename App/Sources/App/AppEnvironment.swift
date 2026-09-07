@@ -1,7 +1,7 @@
 import Foundation
-import SportsRewardsKit
+import ExerciseRewardsKit
 
-/// App 端依賴注入容器。ViewModel 只依賴 SportsRewardsKit 的 protocol（AuthServicing / TasksServicing /
+/// App 端依賴注入容器。ViewModel 只依賴 ExerciseRewardsKit 的 protocol（AuthServicing / TasksServicing /
 /// ProfileStoring），不依賴具體實作，方便平行開發真正的網路層時互不阻塞。
 public protocol AppEnvironment: Sendable {
     var auth: AuthServicing { get }
@@ -16,7 +16,7 @@ public protocol AppEnvironment: Sendable {
     func resetSession() async
 }
 
-/// 預設環境：接真實的 SportsRewardsKit 實作。單一 `URLSessionHTTPClient`（cookie 持久化於 App 沙盒容器，
+/// 預設環境：接真實的 ExerciseRewardsKit 實作。單一 `URLSessionHTTPClient`（cookie 持久化於 App 沙盒容器，
 /// 白名單只認 500.gov.tw）同時供 Auth 與 Tasks 共用，確保登入後的 session cookie 一路帶著。
 /// profileStore 為真實 KeychainStore（WhenUnlockedThisDeviceOnly、不同步 iCloud）。
 /// Preview／測試可透過帶參數的 init 傳入 Mock*Service。

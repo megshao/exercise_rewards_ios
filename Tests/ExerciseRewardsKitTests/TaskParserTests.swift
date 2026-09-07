@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 TaskParser 對 `/member/tasks` 頁面的解析：14 期、第 1 期 redeemable 且有 uuid，其餘 notStarted。
 final class TaskParserTests: XCTestCase {

@@ -1,5 +1,5 @@
 import SwiftUI
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 廠商可兌換商品：從兌換頁每一列的「兌換品項」進來，列出該通路的商品分類與品項。
 ///

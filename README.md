@@ -1,4 +1,4 @@
-# Sports Rewards
+# Exercise Rewards
 
 協助參加台灣運動部「揮汗有禮・全民動起來」運動幣加碼活動的 iOS App：
 一鍵登入官方「我的任務」、免重複輸入個資、在同一頁看完本週任務與手上的加碼券。
@@ -6,7 +6,7 @@
 > **這是非官方工具，與運動部及任何政府機關沒有隸屬、合作、贊助或授權關係。**
 > 活動規則與最終權益一律以官方公告為準。
 
-App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作為說明文字出現，
+App Store 上架名稱為 **Exercise Rewards**。活動名「揮汗有禮」只作為說明文字出現，
 不作為 App 名稱——刻意如此，避免被誤認為官方 App。
 
 | | |
@@ -14,8 +14,8 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 | 平台 | iOS 16.0+，僅 iPhone、僅直向、介面固定繁體中文 |
 | 第三方相依 | 只有 firebase-ios-sdk（Analytics + Crashlytics），**初始化綁在免責聲明同意之後；同意後預設開啟、隨時可關** |
 | 授權 | MIT（[`LICENSE`](LICENSE)） |
-| 隱私權政策 | <https://megshao.github.io/sports_rewards_ios/privacy.html> |
-| 支援與 FAQ | <https://megshao.github.io/sports_rewards_ios/support.html> |
+| 隱私權政策 | <https://megshao.github.io/exercise_rewards_ios/privacy.html> |
+| 支援與 FAQ | <https://megshao.github.io/exercise_rewards_ios/support.html> |
 
 ---
 
@@ -28,11 +28,11 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 - **上傳的圖一律重新編碼**，把 EXIF（含 GPS）整段丟掉；編碼失敗時報錯而不是退回原檔。
 - **遙測綁在免責聲明的同意之後**：首次啟動先擋一張免責聲明，上面明寫「會把匿名操作紀錄與當機報告送給 Google Firebase」，按下同意才初始化 Firebase。同意之後**預設是開的**，可隨時到「我的資料 › 安全與隱私」關掉。這不是 opt-in，是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。個資在任何情況下都不進遙測。
 
-細節見下方[安全設計](#安全設計)，或直接讀[隱私權政策](https://megshao.github.io/sports_rewards_ios/privacy.html)。
+細節見下方[安全設計](#安全設計)，或直接讀[隱私權政策](https://megshao.github.io/exercise_rewards_ios/privacy.html)。
 
 ## 開源到什麼程度可以被驗證
 
-開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/sports_rewards_ios/privacy.html#verify)：
+開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/exercise_rewards_ios/privacy.html#verify)：
 
 1. **不用懂程式**：iOS 內建「App 隱私權報告」列出本 App 連過的網域。**在你按下免責聲明的「同意並開始使用」之前**，只該出現 `500.gov.tw`，以及看截圖時官方網站回傳的圖片儲存網域——那個時間點出現任何 Google 網域就是我們違約，歡迎打臉。同意之後出現 Google 網域是**預期中的**（統計在運作）；把開關關掉並完全重開 App，它們就該再次消失。
 2. **懂一點技術**：用 mitmproxy 看每一筆請求的內容——本 App 與 Firebase 都刻意不做 certificate pinning，就是為了讓你看得到。操作步驟與異常判準在 [`docs/verify-network.md`](docs/verify-network.md)。
@@ -44,7 +44,7 @@ App Store 上架名稱為 **Sports Rewards**。活動名「揮汗有禮」只作
 ## 架構
 
 ```
-Sources/SportsRewardsKit/   核心邏輯，可 headless swift build / swift test
+Sources/ExerciseRewardsKit/ 核心邏輯，可 headless swift build / swift test
   Networking/               URLSessionHTTPClient（網域白名單、http→https 修正、2 MB body 上限）、CsrfParser
   Services/                 AuthService、TasksService、RedeemService、VoucherService 與各自的 parser
   Security/                 KeychainStore、SecureLog、Redact
@@ -63,7 +63,7 @@ App/                        SwiftUI，XcodeGen 產生 .xcodeproj
 ```sh
 swift test                       # 核心單元測試，不需 Xcode 專案
 ./Scripts/bootstrap.sh           # 產生 Xcode 專案並套用相依鎖定
-xcodebuild -project App/SportsRewards.xcodeproj -scheme SportsRewards \
+xcodebuild -project App/ExerciseRewards.xcodeproj -scheme ExerciseRewards \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' \
   -disableAutomaticPackageResolution build
 ```
@@ -75,8 +75,8 @@ Firebase 需要 `App/Resources/GoogleService-Info.plist`（不進版控，範本
 產生上架截圖（輸出到 `docs/screenshots/raw/`）：
 
 ```sh
-cd App && xcodebuild test -project SportsRewards.xcodeproj \
-  -scheme SportsRewardsScreenshots \
+cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
+  -scheme ExerciseRewardsScreenshots \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'
 ```
 
@@ -139,13 +139,13 @@ Cookie 存在 App 沙盒容器（受 iOS 檔案保護、不進 iCloud），**重
 2. **每個量詞都有長度上限** `{0,N}`。
 3. **標籤屬性用 `[^<>]` 而非 `[^>]`**——屬性內不可能有裸 `<`，排除它讓「大量未閉合標籤」在下一個 `<` 就停住。這比單純加上限有效得多。
 
-共用的止血點是 `URLSessionHTTPClient.send` 的 2 MB body 上限：超過就丟 `AppError.responseTooLarge`，body 不解碼、不交給任何 parser。回歸測試在 [`Tests/SportsRewardsKitTests/HTMLParserReDoSTests.swift`](Tests/SportsRewardsKitTests/HTMLParserReDoSTests.swift)——每個樣式餵 4 KB 對抗輸入，斷言 100 ms 內完成。
+共用的止血點是 `URLSessionHTTPClient.send` 的 2 MB body 上限：超過就丟 `AppError.responseTooLarge`，body 不解碼、不交給任何 parser。回歸測試在 [`Tests/ExerciseRewardsKitTests/HTMLParserReDoSTests.swift`](Tests/ExerciseRewardsKitTests/HTMLParserReDoSTests.swift)——每個樣式餵 4 KB 對抗輸入，斷言 100 ms 內完成。
 
 ### 相依關係
 
 唯一的第三方相依是 **firebase-ios-sdk 12.18.0**（Analytics + Crashlytics）。
 
-SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 App 二進位的只有 6 個**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises`。其餘 7 個（`abseil-cpp-binary`、`app-check`、`google-ads-on-device-conversion-ios-sdk`、`grpc-binary`、`gtm-session-fetcher`、`interop-ios-for-google-sdks`、`leveldb`）只被解析、沒有被連結，可用 `SportsRewards.LinkFileList` 覆核。
+SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 App 二進位的只有 6 個**：`firebase-ios-sdk`、`GoogleAppMeasurement`、`GoogleDataTransport`、`GoogleUtilities`、`nanopb`、`promises`。其餘 7 個（`abseil-cpp-binary`、`app-check`、`google-ads-on-device-conversion-ios-sdk`、`grpc-binary`、`gtm-session-fetcher`、`interop-ios-for-google-sdks`、`leveldb`）只被解析、沒有被連結，可用 `ExerciseRewards.LinkFileList` 覆核。
 
 選的是 **`FirebaseAnalyticsCore`** 而不是 `FirebaseAnalytics`：底層是 `GoogleAppMeasurementCore`，**結構上不含 IDFA 收集能力**——這是連結期的保證，不是 Info.plist 旗標的保證。Release 二進位已用 `otool -l` 驗證沒有連結 `AdSupport`、`AppTrackingTransparency`、`AdServices`，因此不會、也無法出現 ATT 提示。
 
@@ -177,4 +177,4 @@ SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 Ap
 
 MIT，見 [`LICENSE`](LICENSE)。變更紀錄見 [`CHANGELOG.md`](CHANGELOG.md)。
 
-問題回報：<https://github.com/megshao/sports_rewards_ios/issues>
+問題回報：<https://github.com/megshao/exercise_rewards_ios/issues>

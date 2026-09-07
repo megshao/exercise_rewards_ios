@@ -11,10 +11,10 @@ import XCTest
 /// ## 重跑指令
 /// ```sh
 /// cd App && xcodegen generate && \
-///   xcodebuild test -project SportsRewards.xcodeproj -scheme SportsRewardsScreenshots \
+///   xcodebuild test -project ExerciseRewards.xcodeproj -scheme ExerciseRewardsScreenshots \
 ///     -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'
 /// ```
-/// 輸出目錄由 scheme（`project.yml` 的 `SportsRewardsScreenshots` test action）帶的環境變數
+/// 輸出目錄由 scheme（`project.yml` 的 `ExerciseRewardsScreenshots` test action）帶的環境變數
 /// `SCREENSHOT_OUTPUT_DIR` 決定，預設是 `docs/screenshots/raw`；要換路徑就在指令尾端加
 /// `TEST_RUNNER_SCREENSHOT_OUTPUT_DIR=<絕對路徑>` 覆蓋。無論寫檔成不成功，每張截圖都會
 /// 以 `XCTAttachment`（`.keepAlways`）附進 `.xcresult`，可用
@@ -88,7 +88,7 @@ final class ScreenshotTests: XCTestCase {
 
         XCTAssertTrue(welcome.buttons["welcome.start"].waitForExistence(timeout: timeout),
                       "第一個畫面不是歡迎頁")
-        XCTAssertTrue(welcome.staticTexts["Sports Rewards"].exists, "歡迎頁沒有大標題")
+        XCTAssertTrue(welcome.staticTexts["Exercise Rewards"].exists, "歡迎頁沒有大標題")
         XCTAssertFalse(welcome.buttons["disclaimer.agreeCheckbox"].exists,
                        "免責聲明不該在歡迎頁之前出現")
         settle()

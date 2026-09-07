@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證 `VendorIntroParser` 對廠商可兌換商品頁的解析。
 ///

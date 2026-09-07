@@ -1,10 +1,10 @@
-# App Store Connect 送審欄位（Sports Rewards v1.0.0）
+# App Store Connect 送審欄位（Exercise Rewards v1.0.0）
 
 - **對應版本**：`CFBundleShortVersionString` = 1.0.0、`CFBundleVersion` = **6**（送審版）
   - build 4 於 2026-09-06 上傳並掛上版本記錄，但**移除 HealthKit 等變更都在那之後**，因此 1.0.0 不使用 build 4。
   - build 5 曾在本機封存過，未上傳；隨後又修掉「本週任務不會換期」與「過期期別仍可點上傳」兩個 bug，因此送審用 build 6。build 1–5 皆作廢。
   - build 6 對應 git tag `v1.0.0`。
-- **Bundle ID**：`com.megshao.sportsrewards`
+- **Bundle ID**：`com.megshao.exerciserewards`
 - **語系**：只提供「繁體中文（台灣）」一種 App Store 語系（App 本身鎖 zh-Hant，不提供英文介面）
 - **平台**：iOS 16.0 以上、僅 iPhone、僅直向
 - **字數計算方式**：以字元數計（中文一字算一字元，標點、換行也各算一字元）。下列「實際」為本文件所附文案的實測值。
@@ -16,13 +16,21 @@
 
 ## 1. App 名稱 / App Name
 
-- **上限**：30 字元　**實際**：14 字元
+- **上限**：30 字元　**實際**：16 字元
 
 ```
-Sports Rewards
+Exercise Rewards
 ```
 
-**說明**：對應 `App/project.yml` 的 `CFBundleDisplayName: Sports Rewards`，兩者必須一致。
+**說明**：對應 `App/project.yml` 的 `CFBundleDisplayName: Exercise Rewards`，兩者必須一致。
+
+**為什麼是 `Exercise Rewards`，不是 `Sports Rewards`（2026-09-07 改名）**：運動部的英文名是
+**Ministry of Sports**（本專案文件自己的譯法，見 `docs/release/review-notes.md`）。一個非官方 App
+用 **Sports** Rewards 去做 Ministry of **Sports** 的獎勵活動，等於在英文名上與主辦機關共用關鍵字，
+這是 Guideline 4.1（Copycats／Impersonation）與 5.2.1 的**裁量面**——審查員會不會往那個方向讀，
+不在我們手上。`Exercise Rewards` 把那個字拿掉，語意（運動／獎勵）一點沒少，可裁量的空間卻小了一塊。
+中文曝光不受影響：搜尋命中靠副標「揮汗有禮非官方串接」與 §5 的關鍵字，兩者都不含 Sports 或 Exercise。
+
 **不可以用**「揮汗有禮」當 App 名稱——那是官方活動名稱，會踩 Guideline 4.1（Copycats／Impersonation）與 5.2.1；官方已在做「運動幣 App 需求調查」，官方 App 一出現風險會再升高（見 `docs/app-review-risk.md` 風險 #5）。名稱與圖示也不得含「運動部／政府／官方／500／國徽」等元素。
 
 ---
@@ -36,7 +44,7 @@ Sports Rewards
 ```
 
 **說明**：定案文案（使用者指定）。這正是 `docs/app-review-risk.md` 降險清單第 1 條的做法——
-**App 名稱用中性工具名（Sports Rewards）、活動名只出現在副標並緊接「非官方」**，讓商店頁面
+**App 名稱用中性工具名（Exercise Rewards）、活動名只出現在副標並緊接「非官方」**，讓商店頁面
 第一屏就同時交代「這是什麼活動的工具」與「它不是官方的」。
 
 注意事項：
@@ -66,10 +74,10 @@ Sports Rewards
 
 ## 4. 描述 / Description
 
-- **上限**：4000 字元　**實際**：1201 字元（2026-09-06 二次重算：947 → 1133（新增「使用統計」「不看廣告、不被追蹤」兩條並改寫既有三條）→ **1201**（遙測預設值改為「同意後預設開啟」，把免責聲明的告知時機寫進描述，+68 字元）。仍遠低於上限）
+- **上限**：4000 字元　**實際**：1165 字元（沿革：947 → 1133 → 1201（遙測改為同意後預設開啟）→ 1163（移除健康功能、新增「先看能換什麼」）→ **1165**（改名 Exercise Rewards，+2 字元）。仍遠低於上限）
 
 ```
-Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地參加「揮汗有禮・全民動起來」運動幣加碼活動。本 App 由獨立開發者製作，與運動部及任何政府機關沒有隸屬、合作、贊助或授權關係，也不代表活動主辦單位。活動規則與最終權益一律以官方公告為準。
+Exercise Rewards 是一款非官方的個人輔助工具，協助你更省事地參加「揮汗有禮・全民動起來」運動幣加碼活動。本 App 由獨立開發者製作，與運動部及任何政府機關沒有隸屬、合作、贊助或授權關係，也不代表活動主辦單位。活動規則與最終權益一律以官方公告為準。
 
 【它幫你做什麼】
 ・免重複打字：身分證號、出生日期、手機號碼填一次，之後一鍵登入官方「我的任務」。
@@ -104,28 +112,30 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 歡迎來信或到開源專案回報：megshao0918@gmail.com
 ```
 
-**已填**：支援信箱 `megshao0918@gmail.com`（與 App Store Connect 開發者帳號一致）；另有 GitHub Issues：https://github.com/megshao/sports_rewards_ios/issues
+**已填**：支援信箱 `megshao0918@gmail.com`（與 App Store Connect 開發者帳號一致）；另有 GitHub Issues：https://github.com/megshao/exercise_rewards_ios/issues
 
 ---
 
 ## 5. 關鍵字 / Keywords
 
-- **上限**：100 字元（逗號分隔、**不含空白**）　**實際**：71 字元
+- **上限**：100 字元（逗號分隔、**不含空白**）　**實際**：69 字元
 
 ```
-運動幣,加碼券,超商券,兌換,券夾,達標,運動獎勵,運動紀錄,運動打卡,健走,走路,健身,任務,非官方,揮汗有禮,全民運動,兌換品項,超商,便利商店
+運動幣,加碼券,超商券,兌換,券夾,達標,運動獎勵,運動紀錄,運動打卡,健走,走路,健身,任務,非官方,全民運動,兌換品項,超商,便利商店
 ```
 
 **說明**：
-- App 名稱裡的字（Sports、Rewards）不必再寫進 keywords，Apple 已一併索引。
+- App 名稱裡的字（Exercise、Rewards）不必再寫進 keywords，Apple 已一併索引。
 - 關鍵字已隨功能調整：移除「步數／計步／每日步數」等與步數讀取有關的字（App 不再顯示步數，留著會造成期待落差），改補活動與兌換相關字。送審前請重新確認總長度未超過 100 字元。
-- **刻意沒放的字**：`揮汗有禮`、`運動部`、`500`。這些是主辦單位的活動名／機關名，放進關鍵字等於用他人名義導流，會加大 4.1／5.2.1 的裁量風險。若你評估後仍要放，建議只放 `揮汗有禮`（活動名，非機關名），並在 Review Notes 說明「僅為說明相容活動，非宣稱官方身分」。
+- **刻意沒放的字**：`揮汗有禮`、`運動部`、`500`。這些是主辦單位的活動名／機關名，放進關鍵字等於用他人名義導流，會加大 4.1／5.2.1 的裁量風險。
+
+> 2026-09-07 定案：曾一度把 `揮汗有禮` 放進關鍵字，已移除。理由是**副標「揮汗有禮非官方串接」已經含這個詞，而 Apple 的搜尋同時索引名稱、副標與關鍵字**——在這個幾乎沒有競品的冷門活動詞上，靠副標本來就會排在前面，關鍵字再放一次的邊際收益接近零，卻多擔一份裁量風險。ASC 上的實際值與本節區塊一致，都不含活動名。
 
 ---
 
 ## 6. 更新說明 / What's New in This Version
 
-- **上限**：4000 字元　**實際**：308 字元（2026-09-06 二次重算：239 → 284（新增匿名統計一行）→ **308**（改寫成「同意後預設開啟」，+24 字元））
+- **上限**：4000 字元　**實際**：258 字元（沿革：239 → 284 → 308 → **258**（移除健康功能相關條目後重寫））
 
 ```
 1.0 首次上架。
@@ -147,14 +157,14 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
 
 | 欄位 | 必填？ | 內容 | 狀態 |
 |---|---|---|---|
-| 支援 URL（Support URL） | **必填** | 需要一個能公開開啟、且有聯絡方式的網頁 | `https://megshao.github.io/sports_rewards_ios/support.html` |
-| 行銷 URL（Marketing URL） | 選填 | 產品介紹頁；沒有可留空 | `https://megshao.github.io/sports_rewards_ios/`（首頁，可填可不填） |
-| 隱私權政策 URL（Privacy Policy URL） | **必填** | 需要一個公開網址，內容須與 App 隱私標籤一致 | `https://megshao.github.io/sports_rewards_ios/privacy.html` |
+| 支援 URL（Support URL） | **必填** | 需要一個能公開開啟、且有聯絡方式的網頁 | `https://megshao.github.io/exercise_rewards_ios/support.html` |
+| 行銷 URL（Marketing URL） | 選填 | 產品介紹頁；沒有可留空 | `https://megshao.github.io/exercise_rewards_ios/`（首頁，可填可不填） |
+| 隱私權政策 URL（Privacy Policy URL） | **必填** | 需要一個公開網址，內容須與 App 隱私標籤一致 | `https://megshao.github.io/exercise_rewards_ios/privacy.html` |
 
 ### 需要你補的內容
 
 1. **支援 URL**：最省事的做法是用開源 repo 的 README 或 GitHub Pages。需要包含：App 名稱、聯絡信箱、「這是非官方工具」聲明、常見問題（登入失敗怎麼辦、官網改版怎麼辦）。
-   - https://github.com/megshao/sports_rewards_ios　/　https://megshao.github.io/sports_rewards_ios/
+   - https://github.com/megshao/exercise_rewards_ios　/　https://megshao.github.io/exercise_rewards_ios/
    - megshao0918@gmail.com
 2. **隱私權政策 URL**：必須是**獨立可直接開啟**的網址（不能只是 App 內頁面）。內容至少要寫清楚：
    - 開發者不營運任何伺服器，不接收、不儲存使用者的身分資料。
@@ -165,7 +175,7 @@ Sports Rewards 是一款非官方的個人輔助工具，協助你更省事地�
    - **網域白名單的界線**：App 自己只連 `500.gov.tw`，但 Firebase SDK 走自己的連線、不受該白名單管轄。
    - 使用者可隨時以「立即清除本機資料」永久刪除；刪除 App 亦同。
    - 聯絡方式與更新日期。
-   - https://megshao.github.io/sports_rewards_ios/privacy.html　（責任主體：megshao，個人開發者）
+   - https://megshao.github.io/exercise_rewards_ios/privacy.html　（責任主體：megshao，個人開發者）
 3. **行銷 URL**：可留空。若填，指向同一個 repo 頁面即可。
 
 ---

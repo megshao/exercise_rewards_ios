@@ -1,6 +1,6 @@
 # Changelog
 
-本檔案記錄 Sports Rewards（bundle id `com.megshao.sportsrewards`）的所有重要變更。
+本檔案記錄 Exercise Rewards（bundle id `com.megshao.exerciserewards`）的所有重要變更。
 格式依循 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號依循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
 ---
@@ -27,7 +27,17 @@
 
 ### Changed
 
-- 判斷當期的規則從 App 的 View 層搬進 `SportsRewardsKit`（`TaskPeriod.current(in:now:)`），
+- **App 名稱改為 `Exercise Rewards`**。運動部的英文名是 Ministry of Sports；非官方 App 用舊名
+  去做該機關的獎勵活動，在英文名上與主辦機關共用 Sports 這個關鍵字，是 Guideline 4.1／5.2.1 的裁量面。
+  改為 Exercise Rewards 拿掉那個字。中文曝光不受影響——搜尋命中靠副標與關鍵字，
+  兩者都不含 Sports 或 Exercise。
+  - 同時 bundle id 改為 `com.megshao.exerciserewards`、GitHub repo 改為 `exercise_rewards_ios`
+    （皆因尚未發布任何版本而可以重建）。GitHub Pages 的隱私權政策與支援網址跟著移到新的 repo 名下，
+    App Store Connect 兩個網址欄位與 App 內的連結一併更新。
+  - Swift Package、Xcode target 與 scheme 同步改名為 `ExerciseRewardsKit`／`ExerciseRewards`。
+  - 本檔案 1.0.0 及之前的歷史條目一併改名：從未有以舊名發布出去的版本，
+    不存在需要保留原名的已發布事實。
+- 判斷當期的規則從 App 的 View 層搬進 `ExerciseRewardsKit`（`TaskPeriod.current(in:now:)`），
   並補上單元測試——它是領域規則而非排版，先前在 App module 內完全無法被測試覆蓋。
 - 示範模式的 14 期資料改為**依當下日期動態產生**（第 6 期永遠是本週），順序也改回 1→14。
   舊版寫死日期、又刻意把當期排到陣列第 0 位好讓「取第一個非尚未開始」剛好選中它，
@@ -108,7 +118,7 @@
 
 - **首次啟動改成「歡迎 → 免責聲明 → 個資填寫」**。原本第一個畫面就是一整頁免責聲明，
   使用者連「這是什麼 App」都還不知道就得決定同不同意。現在先給一頁簡介
-  （**App icon**、`Sports Rewards` 大標、一句用途說明與非官方聲明），
+  （**App icon**、`Exercise Rewards` 大標、一句用途說明與非官方聲明），
   按「開始使用」才進聲明頁 —— 同意變成有前提的。
   - 免責聲明仍然是**阻斷式**的，仍然擋在任何資料輸入之前，
     `Telemetry.configure()` 仍然只在按下同意的那一刻執行。
@@ -160,11 +170,11 @@
 - **示範模式（Demo Mode）**：在登入表單輸入指定的示範三碼即進入全 mock 環境，不發任何網路請求、不寫 Keychain，畫面常駐「示範模式」橫幅，並可在「我的資料」一鍵離開。此模式提供給 App Store 審查員實測完整流程，示範三碼與 App Store Connect 的示範帳號欄位同步。示範模式下遙測**一個事件都不送**（`Telemetry.gate` 的第一道，也是唯一沒有 bypass 的閘門，SDK 層的收集開關也會一併關掉），即使使用者先前打開過統計開關也一樣。**時序上要講清楚**：免責聲明擋在 Onboarding 之前、示範模式是在 Onboarding 的登入表單才進入的，所以審查員是「先同意（Firebase 於此初始化）→ 才進示範模式」；示範模式擋得住事件，擋不住同意當下那一次 SDK 初始化的連線。
 - **首次啟動的免責聲明同意畫面**：擋在 Onboarding 之前，必須主動勾選才能繼續。畫面上明寫這是非官方工具、活動權益以官方公告為準，以及「App 會把匿名的操作紀錄與當機報告送給 Google Firebase」；勾選文字涵蓋「並同意傳送不含個資的匿名使用統計（可隨時關閉）」。按下「同意並開始使用」時才呼叫 `Telemetry.configure()`——**那是整支 App 第一次執行 Firebase 程式碼的時機**。同意紀錄以版本號保存，日後修改聲明可讓既有使用者重新同意。
 - **匿名使用統計與當機回報（Firebase Analytics + Crashlytics，同意後預設開啟）**：新增「我的資料 › 安全與隱私 › 傳送匿名使用統計」開關。**在使用者按下免責聲明的同意之前，一個位元組都不會送到 Google**；同意之後這個開關**預設是開的**，隨時可關，關掉即刻停止收集。這不是 opt-in，而是「先告知 → 主動同意 → 預設開啟 → 隨時可關」。`Info.plist` 的 `FIREBASE_ANALYTICS_COLLECTION_ENABLED`、`FirebaseCrashlyticsCollectionEnabled`、`GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`、`GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` 四個旗標仍全為 `false`——那是**冷啟動的預設值**，由 `applyCollectionFlags` 在初始化後依使用者偏好覆寫，留 `false` 是為了守住「還沒 `configure` 就絕不收集」。送出的是匿名操作事件（哪個畫面、哪一步失敗）與當機報告；**不含身分證號、出生日期、手機號碼，也不含任何 Apple 健康的數值或由步數推導出來的結論**。
-- **開源**：全部程式碼以 MIT 授權公開，核心邏輯抽成 `SportsRewardsKit` Swift Package，可 headless `swift build` / `swift test`。
+- **開源**：全部程式碼以 MIT 授權公開，核心邏輯抽成 `ExerciseRewardsKit` Swift Package，可 headless `swift build` / `swift test`。
 
 ### Changed
 
-- **App Store 顯示名定為 `Sports Rewards`**：活動名「揮汗有禮」不作為 App 名稱，避免被誤認為官方 App。
+- **App Store 顯示名定為 `Exercise Rewards`**：活動名「揮汗有禮」不作為 App 名稱，避免被誤認為官方 App。
 - **個資最小化為三個欄位**：只收登入必要的身分證號、出生日期、手機號碼；姓名、Email、健保卡卡號一律不再收集（資料模型欄位保留但永遠為空）。
 - **安全與隱私設定併入「我的資料」頁**：移除獨立的「資安中心」子頁，本機資料說明與清除功能少一層導覽即可操作。
 - **首頁步數環改為三態**（確認中／已連結／未連結）：未連結時顯示淺灰虛線占位環與「尚未連結 Apple 健康」，不再出現任何示意用的假步數，冷啟動也不會閃現「未連結」結論。
@@ -197,4 +207,4 @@
 - **不繞過任何身分驗證**：戶役政、健保卡、簡訊 OTP 皆為真實驗證，App 設計上不提供繞過路徑，也不提供任何可竄改運動數據的入口。
 - **`ITSAppUsesNonExemptEncryption=false`**：只使用系統 TLS，屬出口管制豁免。
 
-[1.0.0]: https://github.com/megshao/sports_rewards_ios/releases/tag/v1.0.0
+[1.0.0]: https://github.com/megshao/exercise_rewards_ios/releases/tag/v1.0.0

@@ -7,10 +7,10 @@ import XCTest
 ///
 /// ## 重跑指令
 /// ```sh
-/// cd App && xcodebuild test -project SportsRewards.xcodeproj \
-///   -scheme SportsRewardsScreenshots \
+/// cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
+///   -scheme ExerciseRewardsScreenshots \
 ///   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-///   -only-testing:SportsRewardsUITests/CurrentPeriodTests
+///   -only-testing:ExerciseRewardsUITests/CurrentPeriodTests
 /// ```
 ///
 /// **能驗到什麼、驗不到什麼**：示範資料的第 6 期永遠等於「本週」，所以這裡驗得到

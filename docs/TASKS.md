@@ -1,6 +1,6 @@
-# Sports Rewards App — 實作 Task 拆解
+# Exercise Rewards App — 實作 Task 拆解
 
-命名：上架名 **Sports Rewards**；「揮汗有禮」只作為活動說明用語，不作為 App 名稱（見 `docs/app-review-risk.md`）。
+命名：上架名 **Exercise Rewards**；「揮汗有禮」只作為活動說明用語，不作為 App 名稱（見 `docs/app-review-risk.md`）。
 技術：iOS 原生 SwiftUI + URLSession。
 硬約束：個資只存 Keychain（`WhenUnlockedThisDeviceOnly`）、不上雲、不寫 log、**App 自己只連 500.gov.tw**、將開源。
 

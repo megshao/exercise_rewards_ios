@@ -15,7 +15,7 @@ public struct SecureLog: Sendable {
 
     public init(_ category: LogCategory) {
         self.category = category
-        self.logger = Logger(subsystem: "com.megshao.sportsrewards", category: category.rawValue)
+        self.logger = Logger(subsystem: "com.megshao.exerciserewards", category: category.rawValue)
     }
 
     /// 開發用細節。release 不輸出。

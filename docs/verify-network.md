@@ -33,7 +33,7 @@
 
 1. 設定 › 隱私權與安全性 › App 隱私權報告 › 開啟。
 2. 正常使用 App 幾天。
-3. 回到同一頁，找到 Sports Rewards，看「網路活動」底下列了哪些網域。
+3. 回到同一頁，找到 Exercise Rewards，看「網路活動」底下列了哪些網域。
 
 在**尚未同意免責聲明**、或關掉「傳送匿名使用統計」並完全重開之後，只應該看到：
 
@@ -68,7 +68,7 @@ mitmweb                       # 啟動，預設監聽 8080，瀏覽器介面在 
 
 ### 1.3 確認能看到流量
 
-在 iPhone 用 Safari 隨便開一個網站，mitmweb 的清單裡應該出現那筆請求。可以了就把 Safari 收掉，接下來只操作 Sports Rewards。
+在 iPhone 用 Safari 隨便開一個網站，mitmweb 的清單裡應該出現那筆請求。可以了就把 Safari 收掉，接下來只操作 Exercise Rewards。
 
 建議在 mitmweb 的過濾框輸入：
 
@@ -222,7 +222,7 @@ App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logou
 ## 7. 發現異常怎麼回報
 
 - 信箱：megshao0918@gmail.com
-- GitHub issue：<https://github.com/megshao/sports_rewards_ios/issues>
+- GitHub issue：<https://github.com/megshao/exercise_rewards_ios/issues>
 
 請附：App 版本（「我的資料」頁最底下）、iOS 版本、你看到的網域或欄位名、當時在做什麼操作。**請把身分證號、生日、手機、cookie、`_csrf`、驗證碼、券碼先塗掉**——我們不需要那些就能查。
 
@@ -230,11 +230,11 @@ App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logou
 
 想對照原始碼確認上面寫的東西：
 
-- 網域白名單、https 強制、不跟隨 redirect：`Sources/SportsRewardsKit/Networking/URLSessionHTTPClient.swift`
-- 登入序列與欄位：`Sources/SportsRewardsKit/Services/AuthService.swift`
+- 網域白名單、https 強制、不跟隨 redirect：`Sources/ExerciseRewardsKit/Networking/URLSessionHTTPClient.swift`
+- 登入序列與欄位：`Sources/ExerciseRewardsKit/Services/AuthService.swift`
 - 上傳欄位：`App/Sources/App/UploadService.swift`
-- 兌換與券碼：`Sources/SportsRewardsKit/Services/RedeemService.swift`、`VoucherService.swift`
-- 截圖 302 → S3：`Sources/SportsRewardsKit/Services/TasksService.swift`、`App/Sources/Views/ScreenshotView.swift`
+- 兌換與券碼：`Sources/ExerciseRewardsKit/Services/RedeemService.swift`、`VoucherService.swift`
+- 截圖 302 → S3：`Sources/ExerciseRewardsKit/Services/TasksService.swift`、`App/Sources/Views/ScreenshotView.swift`
 - Firebase 什麼時候才初始化、送出去的事件清單：`App/Sources/App/Telemetry.swift`
 - ATS（強制 TLS 1.2+、forward secrecy）與 Firebase 四個收集旗標：`App/project.yml`
 

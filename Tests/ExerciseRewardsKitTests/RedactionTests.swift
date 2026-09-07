@@ -1,5 +1,5 @@
 import XCTest
-@testable import SportsRewardsKit
+@testable import ExerciseRewardsKit
 
 /// 驗證個資遮罩：確保任何進入 log/錯誤訊息前的敏感值都被遮蔽。
 final class RedactionTests: XCTestCase {

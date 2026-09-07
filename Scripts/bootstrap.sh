@@ -19,7 +19,7 @@
 #   1. 改 `App/project.yml` 的版本區間
 #   2. 跑 `./Scripts/bootstrap.sh --resolve`（允許重新解析）
 #   3. 把更新後的鎖定檔複製回真本：
-#      cp App/SportsRewards.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved App/Package.resolved
+#      cp App/ExerciseRewards.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved App/Package.resolved
 #   4. commit `App/Package.resolved`，變更才會傳給其他人
 #
 set -euo pipefail
@@ -27,7 +27,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 LOCKFILE="App/Package.resolved"
-DEST_DIR="App/SportsRewards.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
+DEST_DIR="App/ExerciseRewards.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
 
 echo "==> 產生 Xcode 專案"
 (cd App && xcodegen generate)
@@ -62,6 +62,6 @@ PY
 
 echo
 echo "完成。建置時請加 -disableAutomaticPackageResolution，Xcode 才不會偷偷改寫鎖定檔："
-echo "  xcodebuild -project App/SportsRewards.xcodeproj -scheme SportsRewards \\"
+echo "  xcodebuild -project App/ExerciseRewards.xcodeproj -scheme ExerciseRewards \\"
 echo "    -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' \\"
 echo "    -disableAutomaticPackageResolution build"

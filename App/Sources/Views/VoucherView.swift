@@ -1,6 +1,6 @@
 import SwiftUI
 import UIKit
-import SportsRewardsKit
+import ExerciseRewardsKit
 
 /// 檢視加碼券（券夾的券卡樣式 + 兌換頁的 OTP 輸入）：
 /// 每次進入畫面都要重新走一次簡訊 OTP 驗證才會顯示券碼——依合規要求「須本人帳號即時畫面
