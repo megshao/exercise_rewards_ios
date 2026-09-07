@@ -16,42 +16,19 @@ struct TasksView: View {
     @State private var uploadPeriod: TaskPeriod?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
-
-                if viewModel.isLoading && viewModel.periods.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 60)
-                } else if let errorMessage = viewModel.errorMessage, viewModel.periods.isEmpty {
-                    errorState(errorMessage)
-                } else {
-                    ForEach(viewModel.periods, id: \.index) { period in
-                        TaskPeriodCard(
-                            period: period,
-                            isHighlighted: period.index == viewModel.highlightedPeriodIndex,
-                            // 標記過已使用的券不再提供「檢視加碼券」（見 VoucherUsage）。
-                            isVoucherUsed: voucherUsage.isUsed(period),
-                            // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
-                            onRedeemTap: { redeemPeriod = period },
-                            onScreenshotTap: { screenshotPeriod = period },
-                            onVoucherTap: { voucherPeriod = period },
-                            onUploadTap: { uploadPeriod = period }
-                        )
-                    }
+        VStack(spacing: 0) {
+            // 5b：有快取可顯示時不蓋掉資料，只在頂端掛一條 banner 說「這是先前抓到的」。
+            // 放在 ScrollView 外面才能滿版、不跟著內容捲走，位置比照 `DemoModeBanner`。
+            if viewModel.showsSiteHandoffBanner {
+                SiteHandoffBanner(destination: .tasks) {
+                    viewModel.isSiteHandoffBannerDismissed = true
                 }
             }
-            .padding(20)
+            scrollContent
         }
         .background(Theme.Colors.background)
         .navigationTitle("我的任務")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
-            // 下拉是使用者的明確意圖，一律真的打網路。節流只該擋自動觸發的抓取——
-            // 否則轉圈動畫照跑、正常結束，看起來像刷新過了，實際什麼都沒做。
-            await viewModel.refresh(force: true)
-        }
         .onAppear { Telemetry.screenAppeared(.tasks) }
         .task {
             viewModel.configure(tasks: environment.tasks)
@@ -95,6 +72,47 @@ struct TasksView: View {
                 UploadView(taskID: period.id, periodIndex: period.index)
             }
             .environment(\.appEnvironment, environment)
+        }
+    }
+
+    private var scrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+
+                if viewModel.isLoading && viewModel.periods.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                } else if viewModel.isSiteHandoff, viewModel.periods.isEmpty {
+                    // 5a：官網結構對不上、又沒有快取——說實話並交接，而不是叫人去檢查網路。
+                    SiteHandoffState(destination: .tasks) {
+                        await viewModel.refresh(force: true)
+                    }
+                } else if let errorMessage = viewModel.errorMessage, viewModel.periods.isEmpty {
+                    errorState(errorMessage)
+                } else {
+                    ForEach(viewModel.periods, id: \.index) { period in
+                        TaskPeriodCard(
+                            period: period,
+                            isHighlighted: period.index == viewModel.highlightedPeriodIndex,
+                            // 標記過已使用的券不再提供「檢視加碼券」（見 VoucherUsage）。
+                            isVoucherUsed: voucherUsage.isUsed(period),
+                            // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
+                            onRedeemTap: { redeemPeriod = period },
+                            onScreenshotTap: { screenshotPeriod = period },
+                            onVoucherTap: { voucherPeriod = period },
+                            onUploadTap: { uploadPeriod = period }
+                        )
+                    }
+                }
+            }
+            .padding(20)
+        }
+        .refreshable {
+            // 下拉是使用者的明確意圖，一律真的打網路。節流只該擋自動觸發的抓取——
+            // 否則轉圈動畫照跑、正常結束，看起來像刷新過了，實際什麼都沒做。
+            await viewModel.refresh(force: true)
         }
     }
 
@@ -342,6 +360,16 @@ final class TasksViewModel: ObservableObject {
     @Published var periods: [TaskPeriod] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// 這一次抓取是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    /// 與 `errorMessage` 互斥：走接手畫面的錯誤不再套「請確認網路連線」那句。
+    @Published private(set) var isSiteHandoff = false
+    /// 使用者關掉了頂端 banner。**下一次抓取再失敗時要重新出現**，所以每次 `refresh` 開頭歸零。
+    @Published var isSiteHandoffBannerDismissed = false
+
+    /// 有快取可顯示、又撞上改版、而且使用者還沒關掉——三個條件都成立才掛 banner。
+    var showsSiteHandoffBanner: Bool {
+        isSiteHandoff && !periods.isEmpty && !isSiteHandoffBannerDismissed
+    }
 
     private var tasks: TasksServicing?
 
@@ -375,6 +403,10 @@ final class TasksViewModel: ObservableObject {
         let hadCache = !periods.isEmpty
         isLoading = periods.isEmpty
         errorMessage = nil
+        // 每次抓取都是一次新的判斷：上次的接手狀態與「使用者關掉了 banner」一起歸零，
+        // 這次再失敗 banner 才會重新出現。
+        isSiteHandoff = false
+        isSiteHandoffBannerDismissed = false
         defer { isLoading = false }
         let startedAt = DispatchTime.now()
         do {
@@ -389,8 +421,12 @@ final class TasksViewModel: ObservableObject {
             // 因此這裡也走 sessionProbable，不把它當成官網改版警報。
             TasksTelemetry.reportFailure(error, source: .tasksTab, hadCache: hadCache,
                                          startedAt: startedAt, sessionProbable: true)
-            // 有快取就靜默沿用；完全沒資料才顯示錯誤。
-            if periods.isEmpty {
+            // 官網結構對不上：有快取就照舊顯示、掛 banner；沒快取就走接手畫面。
+            // 兩種情況都不套「請確認網路連線」——那句在這個情境下是錯誤歸因。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else if periods.isEmpty {
+                // 其他錯誤：有快取就靜默沿用；完全沒資料才顯示錯誤。
                 errorMessage = "無法載入任務資料，請確認網路連線後重新整理"
             }
         }

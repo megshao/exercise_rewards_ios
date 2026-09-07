@@ -59,13 +59,26 @@ struct VoucherView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch viewModel.stage {
-        case .needsOtp:
-            needsOtpView
-        case .enterCode:
-            enterCodeView
-        case .showing(let voucher):
-            voucherContentView(voucher)
+        if viewModel.isSiteHandoff {
+            // 5a：發送／驗證／券碼頁任一步讀不到官網結構。使用者可能正站在櫃檯前，
+            // 文案要直接講清楚：到官網之後還得再驗一次簡訊才看得到券碼。
+            // 「返回重試」只是回到原本那一步的畫面（沒有東西可以自動重抓）。
+            SiteHandoffState(
+                destination: .voucher(taskID: taskID),
+                message: "這支 App 讀不到官網的券碼頁面，可能是官網改版了。請到官網檢視加碼券——券碼要在官網重新驗證一次簡訊才會顯示。",
+                refreshTitle: "返回重試"
+            ) {
+                viewModel.clearSiteHandoff()
+            }
+        } else {
+            switch viewModel.stage {
+            case .needsOtp:
+                needsOtpView
+            case .enterCode:
+                enterCodeView
+            case .showing(let voucher):
+                voucherContentView(voucher)
+            }
         }
     }
 
@@ -335,6 +348,9 @@ final class VoucherViewModel: ObservableObject {
     @Published var needsOtpErrorMessage: String?
     @Published var enterCodeErrorMessage: String?
     @Published private(set) var resendCountdown = 0
+    /// 最近一步（發送／驗證／載入券碼）是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    /// 為真時整頁改走接手畫面，`stage` 保持原位，`clearSiteHandoff()` 之後回到同一步。
+    @Published private(set) var isSiteHandoff = false
 
     private var voucher: VoucherServicing?
     private var taskID = ""
@@ -354,6 +370,7 @@ final class VoucherViewModel: ObservableObject {
         guard let voucher, !isSendingOtp else { return }
         isSendingOtp = true
         needsOtpErrorMessage = nil
+        isSiteHandoff = false
         defer { isSendingOtp = false }
         do {
             try await voucher.sendOtp(taskID: taskID)
@@ -364,7 +381,13 @@ final class VoucherViewModel: ObservableObject {
             Telemetry.logEvent(.voucherOtpSend(outcome: .ok, reason: nil, isResend: isResend))
             startCountdown()
         } catch {
-            needsOtpErrorMessage = "驗證碼發送失敗，請確認網路連線後重試"
+            // 發送前要先 GET 券碼頁抓 `_csrf`；頁面改版時這一步丟 `csrfNotFound`，
+            // 不是網路問題，走接手畫面。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                needsOtpErrorMessage = "驗證碼發送失敗，請確認網路連線後重試"
+            }
             let reason = Telemetry.reportFailure(error, endpoint: .voucherResend)
             Telemetry.logEvent(.voucherOtpSend(outcome: .error, reason: reason, isResend: isResend))
         }
@@ -379,6 +402,7 @@ final class VoucherViewModel: ObservableObject {
         guard let voucher, otp.count == 6, !isVerifying else { return }
         isVerifying = true
         enterCodeErrorMessage = nil
+        isSiteHandoff = false
         defer { isVerifying = false }
         do {
             let result = try await voucher.verifyOtp(taskID: taskID, otp: otp)
@@ -407,10 +431,19 @@ final class VoucherViewModel: ObservableObject {
                 Telemetry.logEvent(.voucherOtpVerify(outcome: .failed, remaining: nil))
             }
         } catch {
-            enterCodeErrorMessage = "驗證失敗，請確認網路連線後重試"
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                enterCodeErrorMessage = "驗證失敗，請確認網路連線後重試"
+            }
             Telemetry.reportFailure(error, endpoint: .voucher)
             Telemetry.logEvent(.voucherOtpVerify(outcome: .error, remaining: nil))
         }
+    }
+
+    /// 使用者在接手畫面按了「返回重試」：回到原本那一步的畫面，由他自己再按一次。
+    func clearSiteHandoff() {
+        isSiteHandoff = false
     }
 
     private func loadVoucher() async {
@@ -429,7 +462,13 @@ final class VoucherViewModel: ObservableObject {
                                               figureCount: fetched.figures.count,
                                               format: BarcodeFormat(figures: fetched.figures)))
         } catch {
-            enterCodeErrorMessage = "驗證成功，但券碼載入失敗，請重新整理"
+            // `/view` 頁解析不到 `.voucher-figure`：官網換了券碼頁的結構。使用者剛驗完簡訊、
+            // 正站在櫃檯前——「請重新整理」救不了他，直接交接到官網。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                enterCodeErrorMessage = "驗證成功，但券碼載入失敗，請重新整理"
+            }
             // 使用者正站在櫃檯前，這一段壞掉最該立刻知道。
             let reason = Telemetry.reportFailure(error, endpoint: .voucherView)
             Telemetry.logEvent(.voucherReveal(outcome: reason == .siteParse ? .parseError : .error,

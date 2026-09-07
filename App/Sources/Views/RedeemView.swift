@@ -94,7 +94,13 @@ struct RedeemView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let result = viewModel.result {
+        if viewModel.isSiteHandoff {
+            // 5a：兌換頁解析不到品項、或送出兌換時頁面連 `_csrf` 都沒有——都是官網結構對不上。
+            // 排在 `result` 前面：送出失敗那條路不產生 `result`，直接交接到官網那一期的兌換頁。
+            SiteHandoffState(destination: .redeem(taskID: taskID)) {
+                await viewModel.load()
+            }
+        } else if let result = viewModel.result {
             resultView(result)
         } else if viewModel.isLoading && viewModel.options.isEmpty {
             ProgressView()
@@ -288,6 +294,9 @@ final class RedeemViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var result: RedeemResult?
     @Published var pendingOption: RedeemOption?
+    /// 最近一次載入或送出是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    /// 為真時整頁改走接手畫面（見 `RedeemView.content`）；`load()` 開頭歸零。
+    @Published private(set) var isSiteHandoff = false
 
     private var redeem: RedeemServicing?
     private var taskID = ""
@@ -320,6 +329,7 @@ final class RedeemViewModel: ObservableObject {
         guard let redeem else { return }
         isLoading = true
         errorMessage = nil
+        isSiteHandoff = false
         defer { isLoading = false }
         do {
             let loaded = try await redeem.options(taskID: taskID)
@@ -329,7 +339,12 @@ final class RedeemViewModel: ObservableObject {
                                               reason: nil, optionCount: loaded.count))
             reportIntroLinkDrift(loaded)
         } catch {
-            errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
+            // 官網結構對不上走接手畫面；其他錯誤（網路、狀態碼）才是「請確認網路連線」。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
+            }
             let reason = Telemetry.reportFailure(error, endpoint: .redeem)
             Telemetry.logEvent(.redeemOptions(outcome: .error, reason: reason, optionCount: 0))
         }
@@ -370,7 +385,13 @@ final class RedeemViewModel: ObservableObject {
                                              vendor: vendor,
                                              durationMs: Telemetry.elapsedMs(since: startedAt)))
         } catch {
-            result = RedeemResult(submitted: false, message: "兌換失敗，請稍後再試，或改用官網確認任務狀態")
+            // 送出前要先 GET 兌換頁抓 `_csrf`；頁面改版時這一步會丟 `csrfNotFound`。
+            // 那不是「稍後再試」能解決的，直接交接到官網這一期的兌換頁（不產生 `result`）。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                result = RedeemResult(submitted: false, message: "兌換失敗，請稍後再試，或改用官網確認任務狀態")
+            }
             let reason = Telemetry.reportFailure(error, endpoint: .redeem)
             let outcome: RedeemOutcome
             switch reason {

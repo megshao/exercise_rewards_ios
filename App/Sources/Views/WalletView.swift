@@ -15,6 +15,41 @@ struct WalletView: View {
     @State private var redeemPeriod: TaskPeriod?
 
     var body: some View {
+        VStack(spacing: 0) {
+            // 5b：券夾沒有自己的快取，但重新整理失敗時上一輪的清單還在畫面上——
+            // 同樣不能靜默沿用，掛 banner 說這是先前抓到的（位置比照 `TasksView`）。
+            if viewModel.showsSiteHandoffBanner {
+                SiteHandoffBanner(destination: .tasks) {
+                    viewModel.isSiteHandoffBannerDismissed = true
+                }
+            }
+            scrollContent
+        }
+        .background(Theme.Colors.background)
+        .navigationTitle("我的券夾")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { Telemetry.screenAppeared(.wallet) }
+        .task {
+            viewModel.configure(tasks: environment.tasks)
+            if viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
+                await viewModel.refresh()
+            }
+        }
+        // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`。
+        .sheet(item: $voucherPeriod) { period in
+            NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
+                .environment(\.appEnvironment, environment)
+                .environmentObject(voucherUsage)
+        }
+        .sheet(item: $redeemPeriod) { period in
+            NavigationStack { RedeemView(taskID: period.id, periodIndex: period.index) }
+                .environment(\.appEnvironment, environment)
+                // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
+                .environmentObject(voucherUsage)
+        }
+    }
+
+    private var scrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("已取得的加碼券，最多可獲得 14 張")
@@ -23,6 +58,12 @@ struct WalletView: View {
 
                 if viewModel.isLoading && viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                } else if viewModel.isSiteHandoff, viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
+                    // 5a：官網結構對不上——「請先回首頁登入」是錯誤歸因。券夾沒有單一 taskID，
+                    // 交接到任務清單頁，官網那裡每一期的券都點得到。
+                    SiteHandoffState(destination: .tasks) {
+                        await viewModel.refresh()
+                    }
                 } else if let error = viewModel.errorMessage,
                           viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
                     emptyOrError(icon: "exclamationmark.triangle.fill", text: error, showRetry: true)
@@ -55,29 +96,7 @@ struct WalletView: View {
             }
             .padding(20)
         }
-        .background(Theme.Colors.background)
-        .navigationTitle("我的券夾")
-        .navigationBarTitleDisplayMode(.inline)
         .refreshable { await viewModel.refresh() }
-        .onAppear { Telemetry.screenAppeared(.wallet) }
-        .task {
-            viewModel.configure(tasks: environment.tasks)
-            if viewModel.redeemed.isEmpty && viewModel.redeemable.isEmpty {
-                await viewModel.refresh()
-            }
-        }
-        // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`。
-        .sheet(item: $voucherPeriod) { period in
-            NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
-                .environment(\.appEnvironment, environment)
-                .environmentObject(voucherUsage)
-        }
-        .sheet(item: $redeemPeriod) { period in
-            NavigationStack { RedeemView(taskID: period.id, periodIndex: period.index) }
-                .environment(\.appEnvironment, environment)
-                // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
-                .environmentObject(voucherUsage)
-        }
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -239,6 +258,16 @@ final class WalletViewModel: ObservableObject {
     @Published var redeemable: [TaskPeriod] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// 這一次抓取是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    /// 與 `errorMessage` 互斥：走接手畫面的錯誤不再套「請先回首頁登入」那句。
+    @Published private(set) var isSiteHandoff = false
+    /// 使用者關掉了頂端 banner。下一次抓取再失敗時要重新出現，所以每次 `refresh` 開頭歸零。
+    @Published var isSiteHandoffBannerDismissed = false
+
+    /// 畫面上還有上一輪的清單、又撞上改版、而且使用者還沒關掉——三個條件都成立才掛 banner。
+    var showsSiteHandoffBanner: Bool {
+        isSiteHandoff && !(redeemed.isEmpty && redeemable.isEmpty) && !isSiteHandoffBannerDismissed
+    }
 
     private var tasks: TasksServicing?
 
@@ -252,6 +281,9 @@ final class WalletViewModel: ObservableObject {
         let hadCache = !redeemed.isEmpty || !redeemable.isEmpty
         isLoading = true
         errorMessage = nil
+        // 每次抓取都是一次新的判斷；banner 的 dismissed 一起歸零，這次再失敗才會重新出現。
+        isSiteHandoff = false
+        isSiteHandoffBannerDismissed = false
         defer { isLoading = false }
         let startedAt = DispatchTime.now()
         do {
@@ -264,7 +296,12 @@ final class WalletViewModel: ObservableObject {
         } catch {
             TasksTelemetry.reportFailure(error, source: .wallet, hadCache: hadCache,
                                          startedAt: startedAt, sessionProbable: true)
-            errorMessage = "無法載入券夾，請先回首頁登入，或稍後重試。"
+            // 官網結構對不上走接手畫面（有清單就掛 banner）；其他錯誤才是原本那句。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                errorMessage = "無法載入券夾，請先回首頁登入，或稍後重試。"
+            }
         }
     }
 }
