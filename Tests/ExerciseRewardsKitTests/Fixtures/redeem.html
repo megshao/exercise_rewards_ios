@@ -1,0 +1,119 @@
+<title>Synthetic minimal test fixture. Not a copy of any official page; only the DOM contract RedeemParser depends on.</title>
+<main>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 A</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 A1</span>
+        </div>
+        <div class="item-row__actions">
+          <a href="/registrant/intro/vendor-1.html"
+             target="_blank" rel="noopener"
+             class="btn btn--primary btn--small item-row__intro">兌換品項<span
+               class="sr-only">（示範超商 A，另開新視窗）</span></a>
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 A" data-item-name="測試品項 A1">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="1">
+            <input type="hidden" name="item" value="test-item-0001">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 B</span></h2>
+    <ul class="item-list">
+      <!-- 沒有介紹頁的商家：官網不會長出 item-row__intro，introPath 應為 nil。 -->
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 B1</span>
+        </div>
+        <div class="item-row__actions">
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 B" data-item-name="測試品項 B1">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="2">
+            <input type="hidden" name="item" value="test-item-0002">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超商 C</span></h2>
+    <ul class="item-list">
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 C1</span>
+        </div>
+        <div class="item-row__actions">
+          <a href="/registrant/intro/vendor-3.html" target="_blank" rel="noopener"
+             class="btn btn--primary btn--small item-row__intro">兌換品項</a>
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 C" data-item-name="測試品項 C1">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="3">
+            <input type="hidden" name="item" value="test-item-0003">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 C2 超值券</span>
+        </div>
+        <div class="item-row__actions">
+          <a href="/registrant/intro/vendor-3.html" target="_blank" rel="noopener"
+             class="btn btn--primary btn--small item-row__intro">兌換品項</a>
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超商 C" data-item-name="測試品項 C2 超值券">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="3">
+            <input type="hidden" name="item" value="test-item-0004">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範超市 D</span></h2>
+    <ul class="item-list">
+      <!-- 介紹頁連結不帶 context path（相對站根）：剝除規則要能吃這一種。 -->
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 D1</span>
+        </div>
+        <div class="item-row__actions">
+          <a href="/intro/vendor-5.html" class="btn item-row__intro">兌換品項</a>
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範超市 D" data-item-name="測試品項 D1">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="5">
+            <input type="hidden" name="item" value="test-item-0005">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="vendor-group">
+    <h2 class="vendor-group__name"><span>示範量販 E</span></h2>
+    <ul class="item-list">
+      <!-- 惡意／非預期的 href：白名單之外一律不採用，introPath 應為 nil。 -->
+      <li class="item-row">
+        <div class="item-row__details">
+          <span class="item-row__name">測試品項 E1</span>
+        </div>
+        <div class="item-row__actions">
+          <a href="https://evil.example.com/intro/vendor-7.html" class="btn item-row__intro">兌換品項</a>
+          <form action="/registrant/member/redeem/00000000-0000-4000-8000-000000000001" method="post" class="item-row__form" data-vendor-name="示範量販 E" data-item-name="測試品項 E1">
+            <input type="hidden" name="_csrf" value="test-csrf-token-member"/>
+            <input type="hidden" name="vendorId" value="7">
+            <input type="hidden" name="item" value="test-item-0006">
+            <button type="submit">兌換</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+  </section>
+</main>

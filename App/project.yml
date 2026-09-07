@@ -1,0 +1,180 @@
+name: ExerciseRewards
+options:
+  bundleIdPrefix: com.megshao
+  # 全 App 以繁體中文為開發語言：系統元件（日期滾輪、警示按鈕等）不會退回英文。
+  developmentLanguage: zh-Hant
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  ExerciseRewardsKit:
+    path: ".."
+  # Firebase Analytics + Crashlytics。這是本專案唯一的第三方相依（連同它自己拉進來的
+  # Google 傳輸/工具函式庫）。版本區間鎖在 12.x，避免下一個 major 悄悄換掉隱私行為。
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "12.18.0"
+
+targets:
+  ExerciseRewards:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Sources
+      # Resources 整個目錄都會進 bundle。真實的 GoogleService-Info.plist 不進版控
+      # （見 .gitignore），但只要把它放進 App/Resources/ 再跑一次 xcodegen generate，
+      # 這裡就會自動把它掃進來並打包進 .app。
+      - path: Resources
+        excludes:
+          # 範本只是給人看的，不要進 bundle。
+          - "GoogleService-Info.plist.template"
+    dependencies:
+      - package: ExerciseRewardsKit
+      # 刻意選 FirebaseAnalyticsCore 而不是 FirebaseAnalytics：
+      # 前者底層是 GoogleAppMeasurementCore，**完全不含 IDFA（廣告識別碼）收集能力**，
+      # 是結構上的保證，而不是靠 Info.plist 旗標。模組名仍是 FirebaseAnalytics。
+      - package: Firebase
+        product: FirebaseAnalyticsCore
+      - package: Firebase
+        product: FirebaseCrashlytics
+      - package: Firebase
+        product: FirebaseCore
+    info:
+      path: Generated/Info.plist
+      properties:
+        # 上架名稱為 Exercise Rewards：刻意不使用活動名「揮汗有禮」，避免與官方活動混淆。
+        CFBundleDisplayName: Exercise Rewards
+        # 只使用系統 TLS（HTTPS），屬出口管制豁免；宣告後上傳 build 不必在 App Store Connect 手動回答加密問卷。
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleLocalizations:
+          - zh-Hant
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "6"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # --- Firebase 隱私設定（鍵名與語意見 Firebase「Configure Analytics data collection」文件）---
+        # 預設不收集：App 啟動時 Telemetry.configure() 會依使用者偏好再開啟。
+        # 使用者沒有主動打開「傳送匿名使用統計」之前，SDK 一個位元組都不會送。
+        FIREBASE_ANALYTICS_COLLECTION_ENABLED: false
+        FirebaseCrashlyticsCollectionEnabled: false
+        # 不做個人化廣告訊號（不影響測量本身）。
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS: false
+        # 不收集 IDFV（vendor 識別碼）。IDFA 則是連收集能力都沒有連進來
+        # （用 FirebaseAnalyticsCore，不連 AdSupport.framework）。
+        GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED: false
+        # App Transport Security：只允許連線到官方網站 500.gov.tw（https），其餘一律禁止任意 http。
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSExceptionDomains:
+            500.gov.tw:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: false
+              NSExceptionRequiresForwardSecrecy: true
+              NSExceptionMinimumTLSVersion: TLSv1.2
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.exerciserewards
+        DEVELOPMENT_TEAM: 8DVXA389TX
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "6"
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEVELOPMENT_ASSET_PATHS: ""
+    postCompileScripts: []
+    postBuildScripts:
+      # Crashlytics dSYM 上傳：沒有它，當機堆疊只會是一堆記憶體位址。
+      # 三道保險確保「沒有 GoogleService-Info.plist 也能 build」：
+      #   1. 沒有真實設定檔 → 直接 exit 0
+      #   2. 找不到 SPM checkout 裡的 run script → 直接 exit 0
+      #   3. 這次 build 沒產出 dSYM（Debug 預設就沒有）→ 直接 exit 0
+      - name: Upload Crashlytics dSYMs
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}
+          - $(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)
+        script: |
+          set -euo pipefail
+
+          if [ ! -f "${SRCROOT}/Resources/GoogleService-Info.plist" ]; then
+            echo "note: 找不到 GoogleService-Info.plist，略過 Crashlytics dSYM 上傳。"
+            exit 0
+          fi
+
+          RUN_SCRIPT="${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+          if [ ! -f "${RUN_SCRIPT}" ]; then
+            echo "note: 找不到 Crashlytics run script（${RUN_SCRIPT}），略過 dSYM 上傳。"
+            exit 0
+          fi
+
+          DSYM_PATH="${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+          if [ ! -d "${DSYM_PATH}" ]; then
+            echo "note: 這次 build 沒有產出 dSYM（${DSYM_PATH}），略過上傳。"
+            exit 0
+          fi
+
+          "${RUN_SCRIPT}"
+
+  # 截圖用 UI 測試 target。獨立於主 target，不會被 Release archive 打包
+  # （archive 只 build ExerciseRewards scheme 的 application target）。
+  # 重跑方式見 UITests/ScreenshotTests.swift 檔頭。
+  ExerciseRewardsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: ExerciseRewards
+    info:
+      path: Generated/ExerciseRewardsUITests-Info.plist
+      properties: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.megshao.exerciserewards.uitests
+        DEVELOPMENT_TEAM: 8DVXA389TX
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_TARGET_NAME: ExerciseRewards
+
+schemes:
+  ExerciseRewards:
+    build:
+      targets:
+        ExerciseRewards: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  # 上架素材截圖專用 scheme：只跑 ExerciseRewardsUITests，主 scheme 保持原樣。
+  ExerciseRewardsScreenshots:
+    build:
+      targets:
+        ExerciseRewards: [run, test]
+        ExerciseRewardsUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - ExerciseRewardsUITests
+      environmentVariables:
+        # 測試會把 PNG 直接寫到這個 host 目錄；$(SRCROOT) 是 App/。
+        SCREENSHOT_OUTPUT_DIR: $(SRCROOT)/../docs/screenshots/raw
