@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sports Rewards — App Store 6.9" screenshot composer (zh-Hant).
+Exercise Rewards — App Store 6.9" screenshot composer (zh-Hant).
 
 Derived from the aso-cosmicmeta-ss skill's compose.py, adapted for:
   - Traditional Chinese headlines (Heiti TC, no space-based word wrap;
@@ -46,13 +46,19 @@ EYEBROW_Y = 138
 EYEBROW_PAD_X = 40
 EYEBROW_PAD_Y = 20
 VERB_TOP = 258
-VERB_SIZE_MAX = 184
+VERB_SIZE_MAX = 156
 VERB_SIZE_MIN = 128
-VERB_STROKE = 5
+VERB_STROKE = 2
+# Heiti's CJK glyphs fill their em box almost edge to edge, so a headline set at
+# the natural advance width has no visible gap between characters and the dense
+# glyphs smear together at thumbnail size. PIL has no letter-spacing, so the
+# headline is drawn one character at a time with this much extra tracking
+# (a fraction of the font size) inserted after each glyph.
+VERB_TRACK = 0.12
 VERB_DESC_GAP = 56
 DESC_SIZE = 64
 DESC_LINE_GAP = 22
-MAX_TEXT_W = int(CANVAS_W * 0.87)
+MAX_TEXT_W = int(CANVAS_W * 0.86)
 
 
 def font(size):
@@ -64,13 +70,40 @@ def text_size(draw, text, f, stroke=0):
     return b[2] - b[0], b[3] - b[1], b
 
 
-def fit_verb(draw, text):
+def verb_width(f, text):
+    """Advance width of the headline once VERB_TRACK tracking is inserted."""
+    track = VERB_TRACK * f.size
+    return sum(f.getlength(ch) for ch in text) + track * (len(text) - 1)
+
+
+def fit_verb(text):
     for size in range(VERB_SIZE_MAX, VERB_SIZE_MIN - 1, -2):
         f = font(size)
-        w, _, _ = text_size(draw, text, f, VERB_STROKE)
-        if w <= MAX_TEXT_W:
+        if verb_width(f, text) + 2 * VERB_STROKE <= MAX_TEXT_W:
             return f
     return font(VERB_SIZE_MIN)
+
+
+def render_verb(text, f):
+    """Render the headline glyph by glyph with tracking, cropped to its ink.
+
+    Returning a tightly cropped layer lets the caller centre on the real ink
+    box and place the ink top exactly at VERB_TOP, the same anchoring the
+    single-call ``draw.text(anchor="mt")`` version used to give us.
+    """
+    track = VERB_TRACK * f.size
+    pad = 4 * VERB_STROKE + 8
+    layer = Image.new("RGBA",
+                      (int(verb_width(f, text) + 2 * pad + f.size),
+                       int(f.size * 2.5 + 2 * pad)),
+                      (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    x = float(pad)
+    for ch in text:
+        d.text((x, pad + f.size * 0.4), ch, font=f, fill=VERB_FG, anchor="la",
+               stroke_width=VERB_STROKE, stroke_fill=VERB_FG)
+        x += f.getlength(ch) + track
+    return layer.crop(layer.getbbox())
 
 
 def background():
@@ -112,11 +145,12 @@ def compose(shot_path, eyebrow, verb, desc, out_path):
     d = ImageDraw.Draw(canvas)
 
     # headline
-    vf = fit_verb(d, verb)
-    vw, vh, vb = text_size(d, verb, vf, VERB_STROKE)
-    d.text((CANVAS_W // 2, VERB_TOP - vb[1]), verb, font=vf, fill=VERB_FG,
-           anchor="mt", stroke_width=VERB_STROKE, stroke_fill=VERB_FG)
-    y = VERB_TOP + vh + VERB_DESC_GAP
+    vf = fit_verb(verb)
+    vimg = render_verb(verb, vf)
+    if vimg.width > MAX_TEXT_W:
+        raise SystemExit(f"headline too wide ({vimg.width}px > {MAX_TEXT_W}): {verb}")
+    canvas.alpha_composite(vimg, ((CANVAS_W - vimg.width) // 2, VERB_TOP))
+    y = VERB_TOP + vimg.height + VERB_DESC_GAP
 
     df = font(DESC_SIZE)
     for line in desc.split("\n"):
@@ -172,7 +206,8 @@ def compose(shot_path, eyebrow, verb, desc, out_path):
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     canvas.convert("RGB").save(out_path, "PNG")
     im = Image.open(out_path)
-    print(f"{out_path}  {im.size[0]}x{im.size[1]}  verb={verb}")
+    print(f"{out_path}  {im.size[0]}x{im.size[1]}  "
+          f"verb={verb} size={vf.size} w={vimg.width}")
     assert im.size == (CANVAS_W, CANVAS_H)
 
 
