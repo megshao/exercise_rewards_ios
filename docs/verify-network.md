@@ -221,7 +221,6 @@ App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logou
 
 ## 7. 發現異常怎麼回報
 
-- 信箱：megshao0918@gmail.com
 - GitHub issue：<https://github.com/megshao/exercise_rewards_ios/issues>
 
 請附：App 版本（「我的資料」頁最底下）、iOS 版本、你看到的網域或欄位名、當時在做什麼操作。**請把身分證號、生日、手機、cookie、`_csrf`、驗證碼、券碼先塗掉**——我們不需要那些就能查。
