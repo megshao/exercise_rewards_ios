@@ -26,6 +26,9 @@ struct OnboardingView: View {
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var envStore: AppEnvironmentStore
     @StateObject private var viewModel = OnboardingViewModel()
+    /// 手機號碼欄位的焦點。出生日期選完之後要接著填手機，所以焦點由這一層控制，
+    /// 不能留在 `ProfileField` 內部（`.focused` 必須綁在真正可聚焦的 view 上）。
+    @FocusState private var phoneFocused: Bool
 
     var body: some View {
         formStep
@@ -67,10 +70,14 @@ struct OnboardingView: View {
                 VStack(spacing: 16) {
                     ProfileField(label: "身分證號", text: $viewModel.draft.idNo, placeholder: "A123456789")
 
-                    BirthDateField(isoDate: $viewModel.draft.birthDate)
+                    // 選完出生日期直接把焦點交給手機號碼：滾輪是這張表單裡唯一
+                    // 「填完不會自然接到下一格」的欄位（它不吃鍵盤，也就沒有 next／return）。
+                    BirthDateField(isoDate: $viewModel.draft.birthDate,
+                                   onCommit: { phoneFocused = true })
 
                     ProfileField(label: "手機號碼", text: $viewModel.draft.phone,
-                                 placeholder: "09xxxxxxxx", keyboard: .phonePad)
+                                 placeholder: "09xxxxxxxx", keyboard: .phonePad,
+                                 focus: $phoneFocused)
                 }
 
                 if viewModel.isNotRegistered {

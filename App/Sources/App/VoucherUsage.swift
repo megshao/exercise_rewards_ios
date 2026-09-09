@@ -20,7 +20,7 @@ import ExerciseRewardsKit
 /// - **純本機狀態**：只寫 UserDefaults（App 容器），不送官網、不進遙測。
 ///   券到底還能不能用，一律以現場條碼掃得過為準；這裡只是使用者自己的紀錄。
 /// - **可還原**：標錯了要能改回來，因此 `setUsed(_:for:)` 兩個方向都支援。
-/// - **算「本機資料」**：`clear()` 必須被「立即清除本機資料」與示範模式切換呼叫，
+/// - **算「本機資料」**：`clear()` 必須被「立即登出並清除本機資料」與示範模式切換呼叫，
 ///   否則會出現「示範資料的券被標成已使用」或「清完資料還記得你用過哪張」。
 ///
 /// ## key 用期別 UUID 而不是期數
@@ -51,7 +51,7 @@ enum VoucherUsage {
         defaults.set(ids.sorted(), forKey: key)
     }
 
-    /// 清除所有標記（「立即清除本機資料」與示範模式切換時呼叫）。
+    /// 清除所有標記（「立即登出並清除本機資料」與示範模式切換時呼叫）。
     static func clear(defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: key)
     }
@@ -100,7 +100,7 @@ final class VoucherUsageStore: ObservableObject {
         usedIDs = VoucherUsage.usedIDs(defaults: defaults)
     }
 
-    /// 示範模式切換與「立即清除本機資料」用。
+    /// 示範模式切換與「立即登出並清除本機資料」用。
     func clear() {
         VoucherUsage.clear(defaults: defaults)
         usedIDs = []

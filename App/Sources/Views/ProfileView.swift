@@ -1,12 +1,18 @@
 import SwiftUI
 import ExerciseRewardsKit
 
-/// 我的資料：3 欄位表單（身分證、生日、手機），存/讀透過 ProfileStoring（KeychainStore）。
+/// 我的資料：3 個欄位（身分證、生日、手機）**唯讀**顯示，讀取透過 ProfileStoring（KeychainStore）。
 /// 個資最小化到登入必需：姓名/email/健保卡卡號皆不在此收集，保留在 `Profile` model 中
 /// （欄位不變，只是 UI 不收集），存 Keychain 時維持空字串。
 ///
-/// 安全與隱私的所有選項（本機資料說明、一鍵清除）都直接放在這一層，
+/// **為什麼這一頁不給改**：這三個欄位是官網的登入憑證，存在本機只是免得每次登入重打。
+/// 在這裡改掉不會動到官網上的任何東西，只會讓下一次登入失敗——而且失敗的原因
+/// （憑證被改過）從畫面上完全看不出來。要換成另一個身分，唯一正確的做法是把這支手機上的
+/// 資料清乾淨再以新身分登入，也就是下方那顆「立即登出並清除本機資料」。
+///
+/// 安全與隱私的所有選項（本機資料說明、使用統計、原始碼）都直接放在這一層，
 /// 不再多一層「資安中心」子頁——個資與保護個資的開關本來就該在同一個畫面看得完。
+/// 清除／換帳號**刻意不放在那張清單裡**（見 `switchAccountButton`）。
 struct ProfileView: View {
     @Environment(\.appEnvironment) private var environment
     @EnvironmentObject private var envStore: AppEnvironmentStore
@@ -17,7 +23,7 @@ struct ProfileView: View {
     @State private var showClearConfirm = false
     @State private var showCleared = false
     /// 「傳送匿名使用統計」開關。直接綁 Telemetry 用的同一個 UserDefaults 鍵，
-    /// 所以「立即清除本機資料」重設偏好時，這個 Toggle 會自己跟著彈回去。
+    /// 所以「立即登出並清除本機資料」重設偏好時，這個 Toggle 會自己跟著彈回去。
     @AppStorage(Telemetry.preferenceKey) private var telemetryEnabled = Telemetry.defaultEnabled
 
     var body: some View {
@@ -31,37 +37,32 @@ struct ProfileView: View {
 
                 securitySection
 
+                switchAccountButton
+
                 footer
             }
             .padding(20)
-            .padding(.bottom, 100)
         }
         .background(Theme.Colors.background)
         .navigationTitle("我的資料")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { Telemetry.screenAppeared(.profile) }
-        .safeAreaInset(edge: .bottom) {
-            saveBar
-        }
         .task {
             viewModel.configure(profileStore: environment.profileStore)
             viewModel.load()
         }
-        .alert("清除本機所有資料？", isPresented: $showClearConfirm) {
-            Button("清除", role: .destructive) { clearLocalData() }
+        .alert("登出並清除本機資料？", isPresented: $showClearConfirm) {
+            Button("登出並清除", role: .destructive) { clearLocalData() }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("將刪除本機儲存的個人資料與登入狀態，App 會回到初次設定畫面。此動作無法復原。")
+            Text("將登出並刪除這支手機上儲存的個人資料與登入狀態，App 會回到初次設定畫面，你可以用另一組身分登入。官方網站上的活動紀錄不受影響。此動作無法復原。")
         }
-        .alert("已清除", isPresented: $showCleared) {
+        .alert("已登出", isPresented: $showCleared) {
             Button("好", role: .cancel) {}
         } message: {
-            Text("本機資料已刪除。")
+            Text("本機資料已刪除，請重新登入。")
         }
-        .alert("已儲存到本機", isPresented: $viewModel.showSavedAlert) {
-            Button("好", role: .cancel) {}
-        }
-        .alert("儲存失敗", isPresented: $viewModel.showErrorAlert) {
+        .alert("讀取失敗", isPresented: $viewModel.showErrorAlert) {
             Button("好", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "請稍後再試")
@@ -88,7 +89,10 @@ struct ProfileView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 privacyBullet("本 App 沒有伺服器也沒有後台。你的個資不會上傳雲端、不會同步 iCloud、不會寫進任何紀錄，也不會給第三方——這一點沒有例外。")
-                privacyBullet("以下三個欄位只在你登入時，由這支手機直接送到官方網站 500.gov.tw；平常以加密方式存在這支手機（Keychain），可隨時用下方「立即清除本機資料」永久刪除。")
+                privacyBullet("以下三個欄位只在你登入時，由這支手機直接送到官方網站 500.gov.tw；平常以加密方式存在這支手機（Keychain），可隨時用下方「立即登出並清除本機資料」永久刪除。")
+                // 唯讀是刻意的，而且理由跟隱私無關（改了不會外傳，只是會登不進去）。
+                // 放在這一段講，是因為使用者第一個疑問就是「為什麼不能改」。
+                privacyBullet("三個欄位只能檢視、不能修改：它們是官網的登入憑證，在這裡改掉不會變更官網上的資料，只會讓下次登入失敗。要換成另一個身分，請用下方「立即登出並清除本機資料」。")
                 // 剪貼簿是一條新的資料路徑（與其他 App 共用），要在講個資界線的地方一併揭露，
                 // 不能只藏在那顆按鈕旁邊的小字裡。
                 privacyBullet("官網改版、App 讀不到頁面時，畫面上會多一顆「複製身分證號」讓你到官網少打一欄。只有你按下它才會複製，而且只複製身分證號；內容只留在這支手機的剪貼簿約 3 分鐘、不同步到其他裝置，時間到自動清除。")
@@ -117,27 +121,28 @@ struct ProfileView: View {
 
     // MARK: - 欄位
 
+    /// 三欄一律唯讀（見檔頭說明）。生日**不遮罩**——原本的 `BirthDateField` 也沒有遮，
+    /// 敏感度與身分證號／手機不同級，這裡維持一致而不順手加嚴。
     private var fieldGroup: some View {
         VStack(spacing: 16) {
-            ProfileField(
+            ProfileValueRow(
                 label: "身分證號",
-                text: $viewModel.draft.idNo,
-                placeholder: "A123456789",
-                sensitive: true,
-                isRevealed: viewModel.isRevealed,
-                maskedText: viewModel.maskedIdNo
+                value: viewModel.draft.idNo,
+                maskedValue: viewModel.maskedIdNo,
+                isRevealed: viewModel.isRevealed
             )
 
-            BirthDateField(isoDate: $viewModel.draft.birthDate)
+            ProfileValueRow(
+                label: "出生日期",
+                value: viewModel.birthDateDisplay,
+                badge: viewModel.birthDateRocText
+            )
 
-            ProfileField(
+            ProfileValueRow(
                 label: "手機號碼",
-                text: $viewModel.draft.phone,
-                placeholder: "09xxxxxxxx",
-                sensitive: true,
-                isRevealed: viewModel.isRevealed,
-                maskedText: viewModel.maskedPhone,
-                keyboard: .phonePad
+                value: viewModel.draft.phone,
+                maskedValue: viewModel.maskedPhone,
+                isRevealed: viewModel.isRevealed
             )
             // email/健保卡卡號/姓名不在此收集：個資最小化到登入必需三欄。
         }
@@ -172,8 +177,8 @@ struct ProfileView: View {
                 telemetryRow
                 Divider().padding(.leading, 62)
                 sourceCodeRow
-                Divider().padding(.leading, 62)
-                clearRow
+                // 清除／換帳號不在這張清單裡：它是這一頁唯一會改變狀態的動作，
+                // 混在幾個唯讀說明與一個開關中間太容易被當成另一個設定項。
             }
             .cardStyle(padding: 0)
         }
@@ -287,28 +292,53 @@ struct ProfileView: View {
         }
     }
 
-    private var clearRow: some View {
-        Button {
-            showClearConfirm = true
-        } label: {
-            HStack(spacing: 13) {
-                iconBox("trash.fill", tint: Theme.Colors.danger, bg: Color(hex: 0xFDECEB))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("立即清除本機資料")
-                        .font(.system(size: 14.5, weight: .semibold))
-                        .foregroundStyle(Theme.Colors.danger)
-                    Text("刪除個資與登入狀態，回到初次設定")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(Theme.Colors.muted)
+    /// 換帳號的唯一手段，所以從「安全與隱私」清單裡拉出來獨立成一顆按鈕。
+    ///
+    /// 一顆按鈕同時是「清除本機資料」與「換帳號」：這兩件事在這支 App 裡本來就是同一個動作
+    /// ——沒有伺服器、沒有帳號切換 API，換身分就是把這支手機上的憑證清掉再重新登入。
+    /// 標題把使用者要的結果（重新登入）放前面，把代價（清除本機資料）明講在後面，
+    /// 而不是只寫「清除」讓人猜得到不到自己想要的東西。
+    ///
+    /// padding 與背景一律畫在 label **裡面**並加 `.buttonStyle(.plain)`，整塊才都可點
+    /// （兌換頁那顆「兌換」就是因為加在 Button 外面，八成面積點不到）。
+    private var switchAccountButton: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel("換帳號")
+
+            Button {
+                showClearConfirm = true
+            } label: {
+                HStack(spacing: 13) {
+                    iconBox("person.crop.circle.badge.xmark",
+                            tint: Theme.Colors.danger, bg: Color(hex: 0xFDECEB))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("立即登出並清除本機資料")
+                            .font(.system(size: 14.5, weight: .bold))
+                            .foregroundStyle(Theme.Colors.danger)
+                        Text("刪除這支手機上的個資與登入狀態，回到初次設定後以另一組身分登入")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Theme.Colors.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(hex: 0xC3C8D0))
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0xC3C8D0))
+                .padding(15)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                        .stroke(Theme.Colors.danger.opacity(0.35), lineWidth: 1)
+                )
             }
-            .padding(15)
+            .buttonStyle(.plain)
+            // label 是個容器（圖示＋標題＋副標＋箭頭），XCUITest 會把子元素的 label 串成一長串，
+            // 用標題查不到這顆按鈕——所以給它一個明確的 id（比照 `voucherRevealButton`）。
+            .accessibilityIdentifier("switchAccountButton")
         }
-        .buttonStyle(.plain)
     }
 
     /// 版本號讀 Info.plist 的 `CFBundleShortVersionString`，不硬編碼——避免哪天送審版本
@@ -326,21 +356,7 @@ struct ProfileView: View {
             .padding(.top, 6)
     }
 
-    private var saveBar: some View {
-        VStack(spacing: 0) {
-            Divider()
-            Button {
-                viewModel.save()
-            } label: {
-                Text("儲存到本機")
-            }
-            .buttonStyle(.huihanPrimary)
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-        }
-        .background(Theme.Colors.card)
-    }
+    // 沒有「儲存到本機」了：這一頁不再修改任何東西（見檔頭說明）。
 
     // MARK: - Helpers
 
@@ -362,6 +378,11 @@ struct ProfileView: View {
     }
 
     /// 清除本機所有資料：刪 Keychain 個資、重置 onboarding 旗標，回初次設定。
+    ///
+    /// 同時也是**換帳號**的實作（見 `switchAccountButton`）：這支 App 沒有伺服器也沒有
+    /// 帳號切換的概念，換身分就是把這支手機上的憑證與工作階段清乾淨後重新登入。
+    /// 清除的範圍刻意**沒有**為了「換帳號比較快」而縮小——歡迎頁與免責聲明的同意紀錄
+    /// 照樣重置，因為這顆按鈕同時承諾了「清除本機資料」，那個承諾優先。
     private func clearLocalData() {
         // E26 必須在**這一行**送出：後面的 `Telemetry.resetPreference()` 會把偏好關掉並重置
         // app instance ID，那之後就再也送不出去了。順序＝先記錄、再重置、最後回到未同意狀態。
@@ -395,9 +416,70 @@ struct ProfileView: View {
 
 }
 
+/// 唯讀的個資列：標籤 + 值（敏感欄位依 `isRevealed` 決定遮罩），另可掛一顆說明用的膠囊標籤。
+///
+/// **為什麼不是給 `ProfileField` 加一個 `isEditable` 旗標**：那支元件的遮罩綁在
+/// 「未聚焦時遮、聚焦時顯示真值」上，而唯讀情境根本沒有聚焦這件事，旗標會讓它的
+/// `showMasked` 條件變成兩套互相排斥的邏輯。它也還被 Onboarding 的填寫頁共用——
+/// 那裡必須保持可輸入，不該為了這一頁的需求去動它。
+///
+/// 底色用 `disabledBackground`（而不是輸入框的白底）讓「不能改」在視覺上就看得出來，
+/// 不必等使用者點下去才發現沒反應。
+private struct ProfileValueRow: View {
+    let label: String
+    let value: String
+    var maskedValue: String? = nil
+    var badge: String? = nil
+    var isRevealed: Bool = true
+
+    /// 有遮罩字串、未展開、且真的有值時才遮；沒值一律顯示佔位符。
+    private var shown: String {
+        if let maskedValue, !isRevealed, !value.isEmpty { return maskedValue }
+        return value
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.Colors.muted)
+
+            HStack(spacing: 8) {
+                Text(shown.isEmpty ? "—" : shown)
+                    .font(.system(size: 15))
+                    .foregroundColor(shown.isEmpty ? Theme.Colors.dim : Theme.Colors.text)
+                    // 以欄位標籤定位，與原本的輸入框一致（差別是現在是 staticText）。
+                    .accessibilityIdentifier(label)
+
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Theme.Colors.muted)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Theme.Colors.card)
+                        .clipShape(Capsule())
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.Colors.disabledBackground)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                    .stroke(Theme.Colors.line2, lineWidth: 1)
+            )
+        }
+    }
+}
+
 /// 單一欄位輸入元件。所有欄位皆可直接輸入；敏感欄位在「未聚焦且已有值、且未展開」時
 /// 以遮罩顯示，點一下即可聚焦編輯真實內容。文字色固定為深色，避免深色模式白底白字。
-/// 非 private：Onboarding 的個資填寫頁沿用同一元件維持樣式一致。
+///
+/// 非 private，但**目前只有 Onboarding 的個資填寫頁在用**——「我的資料」改成唯讀之後
+/// 走的是 `ProfileValueRow`。這裡刻意保留可輸入的行為不動：首次設定必須能打字。
 struct ProfileField: View {
     let label: String
     var sublabel: String? = nil
@@ -407,11 +489,17 @@ struct ProfileField: View {
     var isRevealed: Bool = true
     var maskedText: String? = nil
     var keyboard: UIKeyboardType = .default
-    @FocusState private var focused: Bool
+    /// 讓呼叫端控制這一格的焦點（例如出生日期選完之後把焦點交給手機號碼）。
+    /// 給 nil 時用元件自己的內部狀態——單獨使用的欄位不必為了焦點多宣告一個 `@FocusState`。
+    var focus: FocusState<Bool>.Binding? = nil
+    @FocusState private var internalFocus: Bool
+
+    /// 實際生效的焦點狀態：有外部綁定就看外部的。
+    private var isFocused: Bool { focus?.wrappedValue ?? internalFocus }
 
     /// 是否要蓋上遮罩（僅敏感欄位、未展開、未聚焦、且已有值時）。
     private var showMasked: Bool {
-        sensitive && !isRevealed && !focused && !text.isEmpty
+        sensitive && !isRevealed && !isFocused && !text.isEmpty
     }
 
     var body: some View {
@@ -427,16 +515,7 @@ struct ProfileField: View {
                 }
             }
             ZStack(alignment: .leading) {
-                TextField(placeholder, text: $text)
-                    // 截圖用 UI 測試以欄位標籤定位輸入框（見 App/UITests/ScreenshotTests.swift）。
-                    .accessibilityIdentifier(label)
-                    .focused($focused)
-                    .keyboardType(keyboard)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .font(.system(size: 15))
-                    .foregroundColor(Theme.Colors.text)
-                    .tint(Theme.Colors.primary)
+                textField
                     .opacity(showMasked ? 0 : 1)
                 if showMasked {
                     Text(maskedText ?? "")
@@ -450,11 +529,40 @@ struct ProfileField: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
-                    .stroke(focused ? Theme.Colors.primary : Theme.Colors.line2,
-                            lineWidth: focused ? 1.5 : 1)
+                    .stroke(isFocused ? Theme.Colors.primary : Theme.Colors.line2,
+                            lineWidth: isFocused ? 1.5 : 1)
             )
             .contentShape(Rectangle())
-            .onTapGesture { focused = true }
+            .onTapGesture { setFocused() }
+        }
+    }
+
+    /// `.focused` 只能綁在真正可聚焦的 view 上（把它加在外層容器沒有作用），
+    /// 所以外部／內部兩種綁定在這裡分流。兩個分支的型別相同，不會產生 _ConditionalContent。
+    @ViewBuilder
+    private var textField: some View {
+        let base = TextField(placeholder, text: $text)
+            // 截圖用 UI 測試以欄位標籤定位輸入框（見 App/UITests/ScreenshotTests.swift）。
+            .accessibilityIdentifier(label)
+            .keyboardType(keyboard)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .font(.system(size: 15))
+            .foregroundColor(Theme.Colors.text)
+            .tint(Theme.Colors.primary)
+
+        if let focus {
+            base.focused(focus)
+        } else {
+            base.focused($internalFocus)
+        }
+    }
+
+    private func setFocused() {
+        if let focus {
+            focus.wrappedValue = true
+        } else {
+            internalFocus = true
         }
     }
 }
@@ -518,7 +626,13 @@ enum BirthDate {
 /// 非 private：Onboarding 的個資填寫頁沿用同一元件維持樣式一致。
 struct BirthDateField: View {
     @Binding var isoDate: String
+    /// 使用者在滾輪上按了「完成」（不是「取消」）之後呼叫，時機是 sheet **已經收掉**之後。
+    /// 填寫頁用它把焦點交給下一格（見 `OnboardingView`）。
+    var onCommit: (() -> Void)? = nil
     @State private var showPicker = false
+    /// 這次關閉是「完成」還是「取消」。焦點不能在「完成」的 action 裡搶——
+    /// 那時 sheet 還在關閉動畫中，剛設好的焦點會被它一起帶走，所以改在 `onDismiss` 才動作。
+    @State private var didCommit = false
 
     private var parts: BirthDate.Parts? { BirthDate.parse(isoDate) }
 
@@ -572,8 +686,12 @@ struct BirthDateField: View {
             .accessibilityLabel("出生日期")
             .accessibilityValue(parts.map(BirthDate.display) ?? "尚未選擇")
         }
-        .sheet(isPresented: $showPicker) {
-            BirthDatePickerSheet(isoDate: $isoDate)
+        .sheet(isPresented: $showPicker, onDismiss: {
+            guard didCommit else { return }
+            didCommit = false
+            onCommit?()
+        }) {
+            BirthDatePickerSheet(isoDate: $isoDate, onCommit: { didCommit = true })
         }
     }
 }
@@ -582,6 +700,8 @@ struct BirthDateField: View {
 /// 不使用系統 DatePicker，避免裝置語系是英文時整個日曆變英文。
 struct BirthDatePickerSheet: View {
     @Binding var isoDate: String
+    /// 按下「完成」時通知呼叫端（「取消」不會呼叫）。只記錄意圖，實際動作留給 `onDismiss`。
+    var onCommit: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     enum Era: String, CaseIterable { case ad, roc }
@@ -591,8 +711,9 @@ struct BirthDatePickerSheet: View {
     @State private var month: Int
     @State private var day: Int
 
-    init(isoDate: Binding<String>) {
+    init(isoDate: Binding<String>, onCommit: (() -> Void)? = nil) {
         _isoDate = isoDate
+        self.onCommit = onCommit
         let parts = BirthDate.parse(isoDate.wrappedValue) ?? BirthDate.defaultParts
         _year = State(initialValue: parts.year)
         _month = State(initialValue: parts.month)
@@ -620,6 +741,7 @@ struct BirthDatePickerSheet: View {
 
                 Button {
                     isoDate = BirthDate.iso(selected)
+                    onCommit?()
                     dismiss()
                 } label: {
                     Text("完成")
@@ -693,9 +815,10 @@ struct BirthDatePickerSheet: View {
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
+    /// 從 Keychain 讀出來的個資。**這一頁只顯示、不寫回**（沒有 `save()`），
+    /// 名稱維持 `draft` 是為了不動到遮罩相關的既有屬性名。
     @Published var draft = Profile()
     @Published var isRevealed = false
-    @Published var showSavedAlert = false
     @Published var showErrorAlert = false
     @Published var errorMessage: String?
 
@@ -719,20 +842,11 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    func save() {
-        guard let profileStore else { return }
-        do {
-            try profileStore.save(draft)
-            showSavedAlert = true
-            // E25：只有成功／失敗。`draft`（身分證、生日、手機）永遠不進 Telemetry。
-            Telemetry.logEvent(.profileSave(outcome: .ok))
-        } catch {
-            errorMessage = "無法寫入本機安全儲存，請確認裝置已解鎖後再試一次。"
-            showErrorAlert = true
-            Telemetry.logEvent(.profileSave(outcome: .error))
-            Self.recordStorageFailure(error, op: .save)
-        }
-    }
+    // 沒有 `save()`：「我的資料」不再修改個資（見 `ProfileView` 檔頭）。
+    // 個資唯一的寫入點是 Onboarding 的首次設定（`OnboardingViewModel`）。
+    //
+    // 連帶影響：E25 `profile_save` 事件因此不再有人送。事件定義留在 `Telemetry.swift`
+    // 沒有一起刪——移掉一個事件會讓既有的 Firebase 報表斷掉，那是資料上的決定，不是程式碼上的。
 
     /// Keychain 的操作代碼。只用於 N10 的 `op` 參數。
     private enum StorageOp: String, Sendable {
@@ -761,6 +875,18 @@ final class ProfileViewModel: ObservableObject {
 
     var maskedIdNo: String { Self.mask(draft.idNo, prefix: 1, suffix: 2) }
     var maskedPhone: String { Self.mask(draft.phone, prefix: 4, suffix: 3) }
+
+    // MARK: 唯讀顯示
+
+    /// 「1990 年 1 月 1 日」。存的是 ISO 字串，解析不出來時回空字串（畫面顯示「—」）。
+    var birthDateDisplay: String {
+        BirthDate.parse(draft.birthDate).map(BirthDate.display) ?? ""
+    }
+
+    /// 「民國 79 年」。與 `BirthDateField` 顯示同一組換算，唯讀頁不該少掉這個對照。
+    var birthDateRocText: String? {
+        BirthDate.parse(draft.birthDate).map { BirthDate.rocYearText($0.year) }
+    }
 
     private static func mask(_ value: String, prefix: Int, suffix: Int) -> String {
         guard !value.isEmpty else { return "" }

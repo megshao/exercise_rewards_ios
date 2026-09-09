@@ -11,7 +11,7 @@ public protocol AppEnvironment: Sendable {
     var profileStore: ProfileStoring { get }
     var upload: UploadServicing { get }
 
-    /// 清掉官方站的登入 session（cookie）。「立即清除本機資料」與登出都要呼叫，
+    /// 清掉官方站的登入 session（cookie）。「立即登出並清除本機資料」與登出都要呼叫，
     /// 否則 cookie 會留在 App 沙盒容器裡跨啟動續用，等於沒真的清乾淨。
     func resetSession() async
 }
