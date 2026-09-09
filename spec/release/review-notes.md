@@ -203,6 +203,11 @@ The app does not create accounts, so there is no app account to delete. Users ca
 | Phone | `+886REDACTED` |
 | Email | `megshao0918@gmail.com` |
 
+> **`REDACTED` 是刻意的**：審查聯絡人的姓名與電話屬個人資料，這個 repo 是公開的，
+> 所以不入版控（2026-09-10 起連歷史一併移除）。真值請直接看 App Store Connect 的
+> **App Review Information**。聯絡信箱保留明碼——它本來就是對外公開的支援窗口，
+> Apple 也要求商店頁必須有一個。
+
 **電話為什麼寫成 +886 開頭**：使用者給的是 `09REDACTED`，但審查員可能從美國撥號，本地格式的前導 0 撥不通，所以轉成國際格式。
 
 **Email 用 `megshao0918@gmail.com` 而不是開發者帳號的信箱**：對外文件（描述、支援頁、隱私權政策）一律用這個信箱，聯絡窗口跟著一致，審查員回信才不會落到使用者不看的地方。

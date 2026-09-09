@@ -259,6 +259,7 @@ v1.0.0 把 HealthKit 整個移除之後，那個理由一條都不剩——App �
 ### 送審前剩下的（只剩隱私標籤要人工做）
 
 - [x] **App Review Information 的聯絡人**：REDACTED / REDACTED、`+886REDACTED`、`megshao0918@gmail.com`（見 `review-notes.md` §8）
+  —— 姓名與電話刻意不入版控（公開 repo），真值見 App Store Connect。
 - [x] **價格與供應地區**：免費（`customerPrice 0 / proceeds 0`，基準地區 TWN），**只在台灣上架**——175 個地區只有 `TWN` 為 `available`，且 `availableInNewTerritories = false`，Apple 日後新增地區不會自動跟著上架。
 
   > `POST /v2/appAvailabilities` 不接受「只列出要開的地區」：只給 `TWN` 會被逐一退回其餘 174 個地區的 `RELATIONSHIP.INVALID`。必須把全部地區都放進 `included`，各自帶 `available` 布林值，並用 `${local-id}` 格式的 inline id。
