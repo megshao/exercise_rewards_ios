@@ -49,6 +49,12 @@ final class HTMLParserReDoSTests: XCTestCase {
     private var pad: String { String(repeating: " ", count: Self.adversarialLength) }
     private var digits: String { String(repeating: "1", count: Self.adversarialLength) }
 
+    /// 對抗輸入用的卡片開頭。**帶一個空的 `period-range`**：`TaskParser.splitCards` 收緊之後，
+    /// 塊內沒有 `period-no|range|state` 任一標記的 `<li>` 會被當成無關列丟掉，`parse` 在碰到被測
+    /// 樣式之前就以 `parsing` 收場——測試會綠，但什麼都沒量到。空的 range 讓卡片過得了篩選、
+    /// 又不會替 `period-range` 樣式製造額外的比對成本。
+    private let cardOpen = #"<li class="period-card"><span class="period-range"></span>"#
+
     /// 一個合法的 `voucher-figure`，讓 `parseView` 不會在抓到 figure 之前就丟錯。
     private let figure =
         #"<section class="voucher-figure" data-format="CODE_128" data-value="X"></section>"#
@@ -57,28 +63,31 @@ final class HTMLParserReDoSTests: XCTestCase {
 
     /// 原 `period-remaining">\s*([^<]+?)\s*<`：`\s` ⊂ `[^<]`，三層量詞互相回溯。
     func testTaskParserRemainingTextWithUnterminatedWhitespace() {
-        let html = #"<li class="period-card"><span class="period-remaining">"# + pad
+        let html = cardOpen + #"<span class="period-remaining">"# + pad
         assertPrompt("TaskParser.period-remaining（純空白、無收尾 `<`）") {
             _ = try? TaskParser.parse(html: html)
         }
+        // 哨兵：對抗輸入必須真的被切成一張卡、跑到欄位樣式。若 `splitCards` 日後再收緊而把它濾掉，
+        // 上面那條會靠 early throw 變綠卻什麼都沒量到——這一行會先亮。
+        XCTAssertEqual(try TaskParser.parse(html: html).count, 1, "對抗輸入沒有走到被測的欄位樣式")
     }
 
     /// 空白與非空白交錯的變體（實測最慢的一種形狀）。
     func testTaskParserRemainingTextWithMixedWhitespaceRun() {
         let filler = String(repeating: " a  b ", count: Self.adversarialLength / 6)
-        let html = #"<li class="period-card"><span class="period-remaining">"# + filler
+        let html = cardOpen + #"<span class="period-remaining">"# + filler
         assertPrompt("TaskParser.period-remaining（空白-字元-空白交錯）") {
             _ = try? TaskParser.parse(html: html)
         }
     }
 
     func testTaskParserUploadedAtWithUnterminatedWhitespace() {
-        let html = #"<li class="period-card">上傳時間："# + pad
+        let html = cardOpen + "上傳時間：" + pad
         assertPrompt("TaskParser.上傳時間") { _ = try? TaskParser.parse(html: html) }
     }
 
     func testTaskParserReviewedAtWithUnterminatedWhitespace() {
-        let html = #"<li class="period-card">審核時間："# + pad
+        let html = cardOpen + "審核時間：" + pad
         assertPrompt("TaskParser.審核時間") { _ = try? TaskParser.parse(html: html) }
     }
 
@@ -93,9 +102,29 @@ final class HTMLParserReDoSTests: XCTestCase {
 
     /// 大量未閉合標籤：`[^>]*` 會一路掃到文件尾（改用 `[^<>]` 後在下一個 `<` 就停）。
     func testTaskParserWithManyUnclosedTags() {
-        let html = #"<li class="period-card">"#
+        let html = cardOpen
             + String(repeating: "<span ", count: Self.adversarialLength / 6)
         assertPrompt("TaskParser（大量未閉合標籤）") { _ = try? TaskParser.parse(html: html) }
+    }
+
+    /// 切卡片改用 `<li\b[^<>]{0,400}\bclass…` 之後，打的是那條開頭標籤樣式：大量未閉合的 `<li `
+    /// 每一個都是候選起點，`[^<>]` 讓每個候選在下一個 `<` 就放棄，成本與整頁長度脫鉤。
+    func testTaskParserWithManyUnclosedListItems() {
+        let html = String(repeating: "<li ", count: Self.adversarialLength / 4)
+        assertPrompt("TaskParser.splitCards（大量未閉合 <li）") { _ = try? TaskParser.parse(html: html) }
+    }
+
+    /// 有 `class="` 但屬性值永遠閉不起來：`[^"']{0,300}` 的上限讓它在 300 字元內就停。
+    func testTaskParserWithUnterminatedClassAttribute() {
+        let html = #"<li class=""# + String(repeating: "a", count: Self.adversarialLength)
+        assertPrompt("TaskParser.splitCards（class 屬性未閉合）") { _ = try? TaskParser.parse(html: html) }
+    }
+
+    /// 合法的卡片開頭重複出現、每張都只有一點內容：切卡片本身是 O(卡片數)，不能因為卡片數多就變慢。
+    func testTaskParserWithManyTinyCards() {
+        let html = String(repeating: #"<li class="x period-card y"><span class="period-no">第 1 期</span>"#,
+                          count: Self.adversarialLength / 64)
+        assertPrompt("TaskParser.splitCards（大量小卡片）") { _ = try? TaskParser.parse(html: html) }
     }
 
     // MARK: - VoucherParser
@@ -192,9 +221,12 @@ final class HTMLParserReDoSTests: XCTestCase {
     }
 
     func testRemainingTextIsTrimmedButPreservesInnerSpacing() throws {
+        // 空的 `period-range` 只是讓這張合成卡片過得了 `splitCards` 的骨架篩選（真實卡片每張都有），
+        // 這條測的仍然只是 trim。
         let html = """
         <ul class="period-list">
         <li class="period-card">
+        <span class="period-range"></span>
         <span class="period-remaining">
           剩 1 天 22 小時
         </span>
@@ -236,7 +268,7 @@ final class HTMLParserReDoSTests: XCTestCase {
 
     private func adversarialInputs(bytes: Int) -> AdversarialInputs {
         AdversarialInputs(
-            task: #"<li class="period-card"><span class="period-remaining">"#
+            task: cardOpen + #"<span class="period-remaining">"#
                 + String(repeating: " ", count: bytes),
             csrf: String(repeating: "<input ", count: bytes / 7),
             redeem: String(repeating: "<form ", count: bytes / 6),

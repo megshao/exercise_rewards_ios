@@ -1,0 +1,150 @@
+/* Exercise Rewards 說明頁共用樣式：白底亮橘，與 App 內 Theme 一致。 */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #fff8f2;
+  --ink: #1c1b1a;
+  --muted: #6b6663;
+  --accent: #f2711c;
+  --accent-soft: #ffe8d6;
+  --line: #ece7e3;
+  --danger: #c0392b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang TC", "Heiti TC", sans-serif;
+  font-size: 17px;
+  line-height: 1.85;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+header.site {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+header.site .wrap { padding: 24px 20px; }
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.brand strong {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.brand span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+nav.site a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 15px;
+  margin-right: 18px;
+}
+
+nav.site a:hover { text-decoration: underline; }
+
+h1 {
+  font-size: 28px;
+  line-height: 1.4;
+  margin: 8px 0 4px;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 40px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+h3 { font-size: 17px; margin: 24px 0 4px; }
+
+p, li { color: var(--ink); }
+
+.updated { color: var(--muted); font-size: 14px; margin-top: 0; }
+
+.notice {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin: 24px 0;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.notice strong { display: block; margin-bottom: 4px; }
+
+ul, ol { padding-left: 22px; }
+
+li { margin: 6px 0; }
+
+a { color: var(--accent); }
+
+code {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 15px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 15px;
+}
+
+th, td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th { background: var(--surface); font-weight: 600; }
+
+.scroll { overflow-x: auto; }
+
+footer.site {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+footer.site .wrap { padding: 24px 20px 48px; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #17150f;
+    --surface: #221e17;
+    --ink: #f2ede6;
+    --muted: #a49c93;
+    --accent: #ff9448;
+    --accent-soft: #33261a;
+    --line: #332c24;
+  }
+}

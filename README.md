@@ -19,6 +19,77 @@ App Store 上架名稱為 **Exercise Rewards**。活動名「揮汗有禮」只�
 
 ---
 
+## 畫面
+
+全部在**示範模式**下拍攝，所以下面每一張都**沒有任何真實個資**（示範帳號是刻意設計的哨兵值
+`A000000000`，檢查碼不合法，真實使用者不可能誤觸）。原始圖在
+[`docs/screenshots/raw/`](docs/screenshots/raw)，由
+[`App/UITests/ScreenshotTests.swift`](App/UITests/ScreenshotTests.swift) 走完整流程自動產生；
+這裡的縮圖由 [`docs/screenshots/readme/make-thumbs.py`](docs/screenshots/readme/make-thumbs.py) 產生。
+
+Android 版的同一批畫面在 [`megshao/exercise_rewards_android`](https://github.com/megshao/exercise_rewards_android#畫面)
+——**檔名刻意一致**，兩邊可以並排對照。
+
+### 首次啟動：把揭露擋在功能前面
+
+| 免責聲明 | 個資填寫 |
+|---|---|
+| <img src="docs/screenshots/readme/01-disclaimer.png" width="240"> | <img src="docs/screenshots/readme/02-login.png" width="240"> |
+
+**免責聲明**擋在所有功能之前，三個區塊分別講「這不是官方 App」「你的資料只在你手機裡」
+「畫面上的內容來自官方網站」。按下「同意並開始使用」**是整支 App 第一次執行 Firebase 程式碼的時機**
+——在那之前一行都沒跑。這是上面[開源到什麼程度可以被驗證](#開源到什麼程度可以被驗證)第 1 層那個
+「可以被打臉的承諾」的實作位置。
+
+**個資填寫**只收三欄，畫面上那段綠色說明就是承諾本身：這三欄加密只存在這支手機的 Keychain
+（`WhenUnlockedThisDeviceOnly`，不同步 iCloud、不隨備份轉移）。出生日期**同時顯示西元與民國**
+——活動官網用西元，但台灣使用者的身分證上是民國，兩個都顯示才不會填錯。
+
+### 主畫面的三個分頁
+
+| 首頁 | 任務 | 券夾 |
+|---|---|---|
+| <img src="docs/screenshots/readme/03-home.png" width="240"> | <img src="docs/screenshots/readme/04-tasks.png" width="240"> | <img src="docs/screenshots/readme/09-wallet.png" width="240"> |
+
+**首頁**把「這週要做什麼」和「手上有什麼券」放在同一頁——本週任務置頂，下面是加碼券清單，
+不需要在分頁之間來回找。
+
+**任務**列出 14 期。當期高亮，卡片上是「上傳 → 審核 → 兌換」的進度時間軸與剩餘可上傳時間；
+已兌換的期別在下方。「本週是哪一期」「這一期還能不能上傳」是**規則不是排版**，所以寫在
+`ExerciseRewardsKit` 而不是 View 裡——寫在 `if` 裡的規則沒有任何測試搆得到。
+
+**券夾**把券分成「可兌換」（任務完成但還沒選通路）與「可使用」（已兌換、可出示條碼）兩區。
+「標記為已使用」是**純本機紀錄**，只是幫你分辨哪幾張還沒用——實際能不能用以門市掃碼為準。
+
+### 任務流程：上傳 → 兌換 → 出示條碼
+
+| 上傳運動紀錄 | 兌換 | 券碼 |
+|---|---|---|
+| <img src="docs/screenshots/readme/06-upload.png" width="240"> | <img src="docs/screenshots/readme/08-redeem.png" width="240"> | <img src="docs/screenshots/readme/10-voucher.png" width="240"> |
+
+**上傳**從相簿挑一張運動紀錄截圖（`PhotosPicker`，不需要相簿權限）。選好圖之後畫面上會多一行字：
+「送出前已重新編碼，原始檔案的 EXIF（含 GPS 位置）不會一起上傳。」那不是宣傳語——相簿原檔的
+EXIF 常含 GPS 座標，那是「你在哪裡運動」的精確位置，你按確認上傳時完全不會預期它跟著走。
+重新編碼是唯一的去識別化手段，所以它**沒有 fallback**：編碼失敗就報錯，絕不退回送出原檔。
+
+**兌換**列出各通路。「兌換品項」可以先看該通路實際能換到什麼再決定；右邊的「兌換」**只開確認框、
+不直接送出**——兌換會消耗真實次數而且不可更換，這種動作不該一鍵完成。
+
+**券碼**每次進來都要重走一次簡訊驗證（合規要求，不是我們加的關卡）。兩段式券的兩段條碼都會顯示，
+缺一不可。條碼是**在本機用 CoreImage 畫出來的**，不經任何服務。
+
+### 我的資料
+
+| 我的資料 |
+|---|
+| <img src="docs/screenshots/readme/11-profile.png" width="240"> |
+
+三個欄位預設遮罩顯示，要點一下才展開。下面「安全與隱私」那張卡片把這個 App 的立場攤開：
+資料存在哪裡、匿名使用統計的開關與它到底送什麼、以及一鍵永久清除本機資料。
+
+那顆「立即登出並清除本機資料」是真的清乾淨：個資、登入 cookie、任務快取、已使用標記、同意紀錄
+與遙測偏好全部歸零，App 回到剛安裝的狀態，下次啟動會重新看到免責聲明。
+
 ## 這個 App 怎麼看待你的資料
 
 一句話：**開發者沒有任何自建後端**，收不到也看不到你的個資。
@@ -34,7 +105,7 @@ App Store 上架名稱為 **Exercise Rewards**。活動名「揮汗有禮」只�
 
 開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/exercise_rewards_ios/privacy.html#verify)：
 
-1. **不用懂程式**：iOS 內建「App 隱私權報告」列出本 App 連過的網域。**在你按下免責聲明的「同意並開始使用」之前**，只該出現 `500.gov.tw`，以及看截圖時官方網站回傳的圖片儲存網域——那個時間點出現任何 Google 網域就是我們違約，歡迎打臉。同意之後出現 Google 網域是**預期中的**（統計在運作）；把開關關掉並完全重開 App，它們就該再次消失。
+1. **不用懂程式**：iOS 內建「App 隱私權報告」列出本 App 連過的網域。**在你按下免責聲明的「同意並開始使用」之前**，只該出現 `500.gov.tw`，以及看截圖時官方網站回傳的圖片儲存網域（同意之後、進到券夾且需要品項頁備份時，還可能出現 `megshao.github.io`——那是一份公開檔案的單向下載，見[網路出口](#網路出口)）——那個時間點出現任何 Google 網域就是我們違約，歡迎打臉。同意之後出現 Google 網域是**預期中的**（統計在運作）；把開關關掉並完全重開 App，它們就該再次消失。
 2. **懂一點技術**：用 mitmproxy 看每一筆請求的內容——本 App 與 Firebase 都刻意不做 certificate pinning，就是為了讓你看得到。操作步驟與異常判準在 [`docs/verify-network.md`](docs/verify-network.md)。
 3. **工程師**：讀原始碼，用 `./Scripts/bootstrap.sh` 重現一模一樣的相依組合（13 個套件全部鎖到 git commit）。
 4. **必須信任、我們消除不了的兩件事**：
@@ -108,7 +179,7 @@ cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
 | 中間人／降級 | 官方站 302 的 `Location` 是 `http://`，client 一律正規化回 https 再送，避免掉 Secure cookie |
 | 不受信任的 HTML | 四個 parser 一律把官網回應當不受信任輸入。詳見 [parser 的三條規則](#parser-的三條規則) |
 | 上傳的圖片 | 一律 `UIImage.jpegData` 重新編碼去除 EXIF／GPS；編碼失敗報錯，不退回原檔 |
-| 裝置遺失 | iOS 鎖屏 + Keychain `WhenUnlockedThisDeviceOnly`（裝置上鎖時連 App 自己都讀不到）+「立即清除本機資料」。**不做 App 內生物辨識鎖**——登入三碼本來就是使用者記得的資料，再擋一次只是重複擋自己人 |
+| 裝置遺失 | iOS 鎖屏 + Keychain `WhenUnlockedThisDeviceOnly`（裝置上鎖時連 App 自己都讀不到）+「立即登出並清除本機資料」。**不做 App 內生物辨識鎖**——登入三碼本來就是使用者記得的資料，再擋一次只是重複擋自己人 |
 | 健康資料 | **完全不接觸**。無 HealthKit entitlement、無權限提示、無讀取路徑 |
 | 資料誠信 | 不繞過戶役政／健保卡／簡訊 OTP，也不提供任何可竄改運動數據的入口 |
 | 供應鏈 | 唯一第三方相依 firebase-ios-sdk 12.18.0。詳見[相依關係](#相依關係) |
@@ -118,10 +189,19 @@ cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
 
 白名單（`isAllowedHost`）只允許 `500.gov.tw` 及其子網域，擋 suffix spoof，其餘 throw `blockedEgress`。三個組 URL 的地方都會檢查。
 
-**唯一刻意的例外**是檢視自己上傳過的截圖——官方網站會回傳一個自帶簽章的圖片網址。這條路徑有兩道自己的關卡：
+刻意的例外有**兩個**，都不經過那個白名單，各自有自己的關卡。
+
+**例外一：檢視自己上傳過的截圖**——官方網站會回傳一個自帶簽章的圖片網址。這條路徑有兩道自己的關卡：
 
 1. `TasksService.screenshotImageURL` 驗證 302 `Location`：必須是 `https`，host 必須通過 `isAllowedHost` 或是 `*.amazonaws.com`，否則 throw `blockedEgress`。
 2. `ScreenshotView` 用**專用的 `URLSession`**（`ephemeral`、`httpCookieStorage = nil`、`urlCache = nil`）下載後以 `Image(uiImage:)` 顯示。
+
+**例外二：商品目錄備份檔**（`VendorCatalogService`）——`https://megshao.github.io/exercise_rewards_ios/vendor-catalog.json`，全 App 唯一離開 `500.gov.tw` 的請求。
+
+- **刻意不加進白名單**：`URLSessionHTTPClient` 持有登入後的 cookie jar，白名單正是防止憑證外流的機制。把 github.io 加進去，等於讓帶著 `JSESSIONID` 的 session 有機會連上第三方主機。所以它自己開一條 `ephemeral`、`httpCookieStorage = nil` 的 session，兩邊的信任邊界維持分離。
+- `fetch()` 內再驗一次 scheme 與 host（防止日後有人把 URL 改成可注入就靜默變成任意主機）、1 MB 上限、`introPath` 從 JSON 讀回來重新驗證形狀（`/intro/*.html`、擋 `..`／query／fragment）。
+- **只下載、零上傳**，檔案對所有使用者都是同一份。**而且只在需要時才抓**：本機紀錄與官網都湊不出某張已兌換券的品項頁網址時，每個 App session 最多一次（見 `WalletViewModel.needsBackup`）。在 App 內兌換過的券本來就有本機紀錄，完全不會連。
+- 示範模式走 `EmptyVendorCatalogService`，一個請求都不發。
 
 **為什麼不用 `AsyncImage`**：它走 `URLSession.shared`，而 `URLSession.shared` 的 cookie jar 就是 `HTTPCookieStorage.shared`——跟 App 那個 `.default` session 是**同一個 jar**。讓 cookie 不外洩的其實是 cookie 的 domain scope（`500.gov.tw`），不是「這條路徑沒有 cookie」；這個差別在 `Location` 指回官方站自己（同源）時就會現形。順帶解掉的還有 `URLCache.shared` 會把使用者的運動紀錄截圖以網址為 key 落盤到 `Library/Caches`。
 
@@ -129,7 +209,7 @@ cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
 
 **刻意不做 certificate pinning**：pinning 擋掉的是想自己檢查請求內容的使用者，跟「你可以自己查」的立場相反；而在 ATS 已強制 TLS 1.2+／forward secrecy 的前提下，它多擋的只剩「使用者自己在裝置上安裝並信任的憑證」這一種情境。
 
-Cookie 存在 App 沙盒容器（受 iOS 檔案保護、不進 iCloud），**重新登入前**與「立即清除本機資料」時都會 `resetSession()` 清空。
+Cookie 存在 App 沙盒容器（受 iOS 檔案保護、不進 iCloud），**重新登入前**與「立即登出並清除本機資料」時都會 `resetSession()` 清空。
 
 ### parser 的三條規則
 
@@ -165,7 +245,7 @@ SPM 為了解析相依關係會 checkout **13 個套件**，但**實際連進 Ap
 
 **為什麼同意之後直接是開的**：當機報告要有足夠樣本才修得到 bug，而「預設關 + 藏在設定頁第三層」實際上等於沒人會打開。與其換一個「技術上是 opt-in」的說法，不如把揭露擺在使用者一定看得到的地方，再由他自己按下同意。
 
-代價要講清楚：使用者按下同意的那一刻 Firebase 就已經初始化，`first_open` 與 Installations 連線是實際發生的。反向也一樣誠實：關掉開關只會關收集旗標、重置 instance ID、刪未送報告，SDK 在本次執行期間仍在記憶體裡，要回到「一行都不跑」得等下一次冷啟動。「立即清除本機資料」會一併重置同意紀錄與遙測偏好，下次啟動會重新看到免責聲明。
+代價要講清楚：使用者按下同意的那一刻 Firebase 就已經初始化，`first_open` 與 Installations 連線是實際發生的。反向也一樣誠實：關掉開關只會關收集旗標、重置 instance ID、刪未送報告，SDK 在本次執行期間仍在記憶體裡，要回到「一行都不跑」得等下一次冷啟動。「立即登出並清除本機資料」會一併重置同意紀錄與遙測偏好，下次啟動會重新看到免責聲明。
 
 **型別擋到哪為止**：全 App 唯一的遙測出口是 `App/Sources/App/Telemetry.swift`（其他檔案禁止 import Firebase）。事件名與參數值都來自封閉列舉——`AnalyticsValue` 的底層儲存是 `private`，唯一能產生字串參數的建構子 `code(_:)` 只收封閉列舉的 rawValue，所以自由字串**值**在編譯期就構造不出來；使用者屬性是一個空列舉，根本無法建構。但參數的**鍵**與 Crashlytics 的 breadcrumb 仍然是字串，那兩處靠的是送出前的樣式掃描，不是編譯器。
 

@@ -371,3 +371,14 @@ public final class MockUploadService: UploadServicing, @unchecked Sendable {
         }
     }
 }
+
+/// 不打網路的備份目錄。**示範模式與 Preview 一律用這一支**——`DemoMode` 明訂
+/// 示範環境「不會發出任何網路請求」，那條界線不能為了一顆瀏覽按鈕破例。
+/// 回空清單的效果是：券夾對已兌換的券找不到品項頁，那顆按鈕就不出現（與官網沒給連結時相同）。
+public struct EmptyVendorCatalogService: VendorCatalogFetching {
+    public init() {}
+
+    public func fetch() async throws -> VendorCatalogBackup {
+        VendorCatalogBackup(capturedAt: "", vendors: [])
+    }
+}

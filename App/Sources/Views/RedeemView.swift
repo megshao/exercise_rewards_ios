@@ -18,6 +18,12 @@ struct RedeemView: View {
     /// 這一頁自己不用它，但兌換成功後開的 `VoucherView` 需要——sheet 的內容在這個
     /// codebase 一律顯式注入依賴（見同檔的 `.environment(\.appEnvironment, …)`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 同樣是為了兌換成功後開的 `VoucherView`——它關閉時要導回券夾。
+    @EnvironmentObject private var tabRouter: TabRouter
+    /// 兌換成功時要記下選到的廠商品項頁，供券夾使用（見 `VendorIntroStore`）。
+    @EnvironmentObject private var vendorIntro: VendorIntroStore
+    /// 券碼頁關閉時連這一層 sheet 一起收掉（見 `showVoucher` 的 `onDismiss`）。
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = RedeemViewModel()
     @State private var showVoucher = false
     @State private var introOption: RedeemOption?
@@ -41,7 +47,8 @@ struct RedeemView: View {
         // E1：不帶 taskID。
         .onAppear { Telemetry.screenAppeared(.redeem) }
         .task {
-            viewModel.configure(redeem: environment.redeem, taskID: taskID, periodIndex: periodIndex)
+            viewModel.configure(redeem: environment.redeem, taskID: taskID,
+                                periodIndex: periodIndex, vendorIntro: vendorIntro)
             if viewModel.options.isEmpty && viewModel.result == nil {
                 await viewModel.load()
             }
@@ -51,28 +58,37 @@ struct RedeemView: View {
             isPresented: Binding(
                 get: { viewModel.pendingOption != nil },
                 set: { isPresented in
-                    // 滑掉 alert 等同取消。
-                    if !isPresented { viewModel.cancelPending() }
+                    // **這裡只能收掉狀態，不能判定「使用者取消了」**：按 alert 任一顆鈕，
+                    // SwiftUI 都是先把 isPresented 設成 false，**再**執行那顆鈕的 action。
+                    // 先前這裡呼叫 `cancelPending()`，於是「確認兌換」的 action 還沒跑，
+                    // `pendingOption` 就已經是 nil——`confirmRedeem()` 的 guard 直接 return，
+                    // 整顆確認鈕變成空操作（而且每次確認都被記成一次 `redeem_cancel`）。
+                    if !isPresented { viewModel.clearPending() }
                 }
             ),
             presenting: viewModel.pendingOption
-        ) { _ in
+        ) { option in
             Button("取消", role: .cancel) {
-                // E17
-                viewModel.cancelPending()
+                // E17：iOS 的 alert 關不掉也滑不掉，所以「使用者取消」只有這一條路。
+                viewModel.reportCancel(option)
             }
             Button("確認兌換", role: .destructive) {
-                Task { await viewModel.confirmRedeem() }
+                // 帶著 `presenting` 捕捉到的 option 走，不回頭讀已被清空的 `pendingOption`。
+                Task { await viewModel.confirmRedeem(option) }
             }
         } message: { option in
             Text("將兌換「\(option.vendorName)．\(option.itemName)」。兌換後不可更換，需簡訊驗證出示券碼。")
         }
-        .sheet(isPresented: $showVoucher) {
+        // 券碼頁關掉之後，這張兌換結果卡就沒有用途了（兌換已經送出，要再看券碼可以從券夾進去）。
+        // 連這一層 sheet 一起收掉，使用者才不會卡在結果卡上、得再關一次才回得到分頁。
+        // `VoucherView` 自己負責把分頁切到券夾（見它的 `onDisappear`）。
+        .sheet(isPresented: $showVoucher, onDismiss: { dismiss() }) {
             NavigationStack {
                 VoucherView(taskID: taskID, source: .redeemResult, periodIndex: periodIndex)
             }
             .environment(\.appEnvironment, environment)
             .environmentObject(voucherUsage)
+            .environmentObject(tabRouter)
         }
         // 只有 introPath 不是 nil 的品項才點得出這個 sheet（見 VendorRow）。
         .sheet(item: $introOption) { option in
@@ -94,7 +110,13 @@ struct RedeemView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let result = viewModel.result {
+        if viewModel.isSiteHandoff {
+            // 5a：兌換頁解析不到品項、或送出兌換時頁面連 `_csrf` 都沒有——都是官網結構對不上。
+            // 排在 `result` 前面：送出失敗那條路不產生 `result`，直接交接到官網那一期的兌換頁。
+            SiteHandoffState(destination: .redeem(taskID: taskID)) {
+                await viewModel.load()
+            }
+        } else if let result = viewModel.result {
             resultView(result)
         } else if viewModel.isLoading && viewModel.options.isEmpty {
             ProgressView()
@@ -211,15 +233,20 @@ private struct VendorRow: View {
                 .accessibilityLabel("查看\(option.vendorName)可兌換商品")
             }
 
+            // padding 與背景一律畫在 label **裡面**（寫法比照上面的「兌換品項」）。
+            // 加在 Button 外側的話版面會撐大、色塊也照樣畫得出來，但 Button 的可點區
+            // 仍然只有 `Text` 本身——實機量到可點區 26×15.7pt、色塊 58×35.7pt，
+            // 有八成是死區，點在藥丸上卻沒反應。
             Button(action: onRedeem) {
                 Text("兌換")
                     .font(Theme.displayFont(13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(isSubmitting ? Theme.Colors.dim : Theme.Colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(isSubmitting ? Theme.Colors.dim : Theme.Colors.primary)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.plain)
             .disabled(isSubmitting)
         }
         .padding(15)
@@ -288,15 +315,23 @@ final class RedeemViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var result: RedeemResult?
     @Published var pendingOption: RedeemOption?
+    /// 最近一次載入或送出是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    /// 為真時整頁改走接手畫面（見 `RedeemView.content`）；`load()` 開頭歸零。
+    @Published private(set) var isSiteHandoff = false
 
     private var redeem: RedeemServicing?
+    /// 兌換成功時把選到的廠商品項頁記進本機（券夾要靠它長出「查看可兌換品項」）。
+    /// 弱參考不必要——store 由 `HuihanApp` 持有，生命週期比這個 ViewModel 長。
+    private var vendorIntro: VendorIntroStore?
     private var taskID = ""
     /// 活動週次（1–14）。遙測只送這個，不送 `taskID`。
     private var periodIndex: Int?
 
-    func configure(redeem: RedeemServicing, taskID: String, periodIndex: Int? = nil) {
+    func configure(redeem: RedeemServicing, taskID: String, periodIndex: Int? = nil,
+                   vendorIntro: VendorIntroStore? = nil) {
         guard self.redeem == nil else { return }
         self.redeem = redeem
+        self.vendorIntro = vendorIntro
         self.taskID = taskID
         self.periodIndex = periodIndex
     }
@@ -309,10 +344,16 @@ final class RedeemViewModel: ObservableObject {
         Telemetry.logEvent(.redeemSelect(vendor: Vendor(vendorName: option.vendorName)))
     }
 
-    /// E17：使用者在確認 alert 按了取消（或滑掉）。
-    func cancelPending() {
-        guard let option = pendingOption else { return }
+    /// alert 收起來時歸零狀態，**不送遙測**。
+    ///
+    /// SwiftUI 會先關 alert 再跑按鈕的 action，所以在這個時間點還不知道使用者按的是哪一顆；
+    /// 「取消」的遙測由 `reportCancel(_:)` 負責，確認那條路則走 `confirmRedeem(_:)`。
+    func clearPending() {
         pendingOption = nil
+    }
+
+    /// E17：使用者在確認 alert 按了取消。
+    func reportCancel(_ option: RedeemOption) {
         Telemetry.logEvent(.redeemCancel(vendor: Vendor(vendorName: option.vendorName)))
     }
 
@@ -320,6 +361,7 @@ final class RedeemViewModel: ObservableObject {
         guard let redeem else { return }
         isLoading = true
         errorMessage = nil
+        isSiteHandoff = false
         defer { isLoading = false }
         do {
             let loaded = try await redeem.options(taskID: taskID)
@@ -329,7 +371,12 @@ final class RedeemViewModel: ObservableObject {
                                               reason: nil, optionCount: loaded.count))
             reportIntroLinkDrift(loaded)
         } catch {
-            errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
+            // 官網結構對不上走接手畫面；其他錯誤（網路、狀態碼）才是「請確認網路連線」。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                errorMessage = "無法載入兌換清單，請確認網路連線後重新整理"
+            }
             let reason = Telemetry.reportFailure(error, endpoint: .redeem)
             Telemetry.logEvent(.redeemOptions(outcome: .error, reason: reason, optionCount: 0))
         }
@@ -352,8 +399,10 @@ final class RedeemViewModel: ObservableObject {
                                  extras: ["options": .int(loaded.count)])
     }
 
-    func confirmRedeem() async {
-        guard let redeem, let option = pendingOption else { return }
+    /// 送出兌換。`option` 由 alert 的 `presenting:` 傳進來——**不要**改回讀 `pendingOption`，
+    /// 那個值在這支被呼叫前就已經被 alert 的 isPresented binding 清成 nil 了。
+    func confirmRedeem(_ option: RedeemOption) async {
+        guard let redeem else { return }
         let vendor = Vendor(vendorName: option.vendorName)
         pendingOption = nil
         isSubmitting = true
@@ -365,12 +414,25 @@ final class RedeemViewModel: ObservableObject {
             let redeemResult = try await redeem.redeem(taskID: taskID, vendorId: option.vendorId,
                                                        item: option.itemId)
             result = redeemResult
+            // 記下這一期換到的廠商品項頁。**只在真的送出成功時記**，而且只有官網真的
+            // 提供那一頁時才有路徑可記（`introPath == nil` 是正常狀況，見 `RedeemOption`）。
+            // 已兌換的期別在官網沒有兌換頁了，這是唯一還看得到這個路徑的時機。
+            if redeemResult.submitted, let introPath = option.introPath {
+                vendorIntro?.remember(id: taskID, introPath: introPath,
+                                      vendorName: option.vendorName)
+            }
             // E19：`RedeemResult.message` 即使是 App 自己的靜態文案也不送，維持「無字串」原則。
             Telemetry.logEvent(.redeemResult(outcome: redeemResult.submitted ? .submitted : .stayedOnPage,
                                              vendor: vendor,
                                              durationMs: Telemetry.elapsedMs(since: startedAt)))
         } catch {
-            result = RedeemResult(submitted: false, message: "兌換失敗，請稍後再試，或改用官網確認任務狀態")
+            // 送出前要先 GET 兌換頁抓 `_csrf`；頁面改版時這一步會丟 `csrfNotFound`。
+            // 那不是「稍後再試」能解決的，直接交接到官網這一期的兌換頁（不產生 `result`）。
+            if SiteHandoff.shouldHandoff(error) {
+                isSiteHandoff = true
+            } else {
+                result = RedeemResult(submitted: false, message: "兌換失敗，請稍後再試，或改用官網確認任務狀態")
+            }
             let reason = Telemetry.reportFailure(error, endpoint: .redeem)
             let outcome: RedeemOutcome
             switch reason {
