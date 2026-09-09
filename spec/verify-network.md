@@ -175,17 +175,43 @@ GET  /registrant/member/voucher/<期別 UUID>/view         → 200 HTML，內含
 
 **要看的重點**：簡訊驗證碼只出現在往 `500.gov.tw` 的那一筆 POST。券碼只出現在 `/view` 的回應裡，之後不會再被送到任何地方。
 
-### 「立即清除本機資料」
+### 「立即登出並清除本機資料」
 
-App 目前**沒有登出按鈕**，所以你不會看到 `POST /registrant/logout`。cookie 會在兩個時機被清掉，兩者都不發任何額外請求：
+這顆按鈕就是這支 App 的登出。它**不會**打 `POST /registrant/logout`（官網的登出是表單 POST，
+App 不需要它——清掉本機 cookie 就等於這台裝置登出了）。cookie 會在兩個時機被清掉，
+兩者都不發任何額外請求：
 
 - **重新登入時**：登入流程一開始就先清空舊 cookie，再走 `access` → `login` 握手。
-- **「立即清除本機資料」時**：直接清空本機 cookie 與 Keychain 欄位。
+- **「立即登出並清除本機資料」時**：直接清空本機 cookie 與 Keychain 欄位。
 
 清除本機資料時，如果統計開關本來是開的，**會先送出最後一筆 `local_data_clear` 事件**，
 然後才重置偏好與同意紀錄——順序是刻意的，因為偏好一旦重置那筆事件就送不出去了。
 所以你會在 mitmproxy 上看到一筆往 Google 的請求，**那是正常的**。之後就不會再有了：
 同意紀錄也被清掉，下次啟動會重新看到免責聲明。
+
+### 商品目錄備份檔（唯一一個離開 500.gov.tw 的自有請求）
+
+1.1 起多了一條出口，**這是 App 自己發出的**（不是 SDK 內部連線），所以你在 mitmproxy 上會看到：
+
+```
+GET https://megshao.github.io/exercise_rewards_ios/vendor-catalog.json    → 200 JSON
+```
+
+**要看的重點**（這幾項就是隱私政策的承諾，逐項可驗）：
+
+- **沒有 Cookie header**。它走的是自己的 `URLSessionConfiguration.ephemeral`
+  （`httpCookieStorage = nil`），不是那個持有 `JSESSIONID` 的 session。
+  若你在這一筆看到任何 cookie，那就是我們違約。
+- **沒有 request body、沒有 query string**。純 GET，零上傳。
+- **URL 對所有使用者都一樣**，裡面沒有任何能區分你的東西。
+- **一次 App 使用期間最多只會出現一筆**。第二次之後由 `VendorCatalogService` 的行程內快取
+  接手（兩個呼叫點共用），不會再打網路。
+- **不是每次都會出現**。只有在券夾需要某張已兌換券的品項頁網址、而本機紀錄與官網都湊不出來時才發。
+  如果你的加碼券都是在這個 App 內兌換的，這一筆**一次都不會出現**。
+- **示範模式下一次都不該出現**（走 `EmptyVendorCatalogService`）。出現就是 bug。
+
+怎麼刻意觸發它：進入「券夾」，且該帳號有「在官網兌換、而 App 沒有本機紀錄」的期別。
+最簡單的做法是先按「立即登出並清除本機資料」（清掉本機紀錄）再重新登入，然後進券夾。
 
 ## 4. 遙測打開後會多出什麼
 

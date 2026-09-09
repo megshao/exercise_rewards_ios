@@ -63,6 +63,24 @@ public struct VendorCatalogBackup: Equatable, Sendable {
     }
 }
 
+/// 抓取結果的行程內快取。
+///
+/// **為什麼需要**：備份有兩個呼叫點——券夾的路徑解析（`WalletViewModel`）與品項頁的內容
+/// 備援（`VendorIntroViewModel`）。前者自己有 once-per-session 守衛，後者**沒有**
+/// （每次開 sheet 都是新的 ViewModel），所以同一次 App 使用期間可能重複抓同一份 70 KB。
+///
+/// 這不只是浪費：隱私政策向使用者承諾「一次 App 使用期間最多抓一次」，
+/// 那句話必須為真。把快取放在 service 上（由 `AppEnvironment` 持有單一實例），
+/// 兩個呼叫點就共用同一次抓取——承諾由**機制**保證，而不是靠每個呼叫端自律。
+///
+/// 只快取成功結果。失敗不快取，讓下一次呼叫還有機會重試。
+private actor CatalogCache {
+    private var cached: VendorCatalogBackup?
+
+    func value() -> VendorCatalogBackup? { cached }
+    func store(_ backup: VendorCatalogBackup) { cached = backup }
+}
+
 public final class VendorCatalogService: VendorCatalogFetching {
     /// 備份檔的固定位置。**只有這一個主機、這一個路徑**。
     public static let defaultURL = URL(
@@ -73,6 +91,7 @@ public final class VendorCatalogService: VendorCatalogFetching {
 
     private let url: URL
     private let session: URLSession
+    private let cache = CatalogCache()
     private let log = SecureLog(.network)
 
     public init(url: URL = VendorCatalogService.defaultURL) {
@@ -90,6 +109,10 @@ public final class VendorCatalogService: VendorCatalogFetching {
     }
 
     public func fetch() async throws -> VendorCatalogBackup {
+        // 這一次 App 使用期間已經抓過就直接給快取——見 `CatalogCache`，
+        // 這是隱私政策那句「最多一次」的實作。
+        if let cached = await cache.value() { return cached }
+
         // 主機再確認一次。URL 是編譯期常數，但這道檢查讓「日後有人把它改成可注入」
         // 不會靜默變成任意主機都能連。
         guard url.scheme == "https", url.host == VendorCatalogService.defaultURL.host else {
@@ -113,7 +136,9 @@ public final class VendorCatalogService: VendorCatalogFetching {
             log.error("vendor catalog schemaVersion mismatch")
             throw AppError.parsing("unsupported vendor catalog schemaVersion")
         }
-        return payload.model()
+        let backup = payload.model()
+        await cache.store(backup)
+        return backup
     }
 }
 

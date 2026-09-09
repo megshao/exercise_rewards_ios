@@ -173,7 +173,7 @@ Exercise Rewards 是一款非官方的個人輔助工具，協助你更省事地
    - 本 App 不使用 HealthKit，不讀取任何健康資料，亦未申請健康權限。
    - **匿名使用統計與當機回報**：使用 Google Firebase Analytics／Crashlytics；**首次啟動的免責聲明會先揭露，使用者按下同意才初始化 Firebase，同意後預設開啟、可隨時關閉**；送出什麼、送給誰（Google LLC，伺服器在美國）、怎麼關掉。**不得再寫「預設關閉」或「opt-in」。**
    - **網域白名單的界線**：App 自己只連 `500.gov.tw`，但 Firebase SDK 走自己的連線、不受該白名單管轄。
-   - 使用者可隨時以「立即清除本機資料」永久刪除；刪除 App 亦同。
+   - 使用者可隨時以「立即登出並清除本機資料」永久刪除；刪除 App 亦同。
    - 聯絡方式與更新日期。
    - https://megshao.github.io/exercise_rewards_ios/privacy.html　（責任主體：megshao，個人開發者）
 3. **行銷 URL**：可留空。若填，指向同一個 repo 頁面即可。
@@ -239,7 +239,7 @@ v1.0.0 把 HealthKit 整個移除之後，那個理由一條都不剩——App �
 | 廣告識別碼（IDFA） | **否** | 使用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`），**結構上不含 IDFA 收集能力**；Release 二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`（`otool -l` 可驗），因此不會出現 ATT 提示 |
 | 是否含第三方內容 | 否 | App 內不顯示任何第三方內容。**但相依上有一個第三方 SDK**：firebase-ios-sdk 12.18.0（Analytics + Crashlytics），SPM 解析 13 個套件、實際連結 6 個——這一格問的是內容不是相依，答否，相依的部分寫在隱私標籤與 Review Notes |
 | 版權（Copyright） | `2026 megshao` | 需與開發者帳號名稱相符 |
-| 帳號刪除（Guideline 5.1.1(v)） | App 內提供「立即清除本機資料」；官方帳號本身需到 `500.gov.tw` 處理——需在支援頁面提供官網帳號管理的深連結 | `spec/app-review-risk.md`；`App/Sources/Views/ProfileView.swift` |
+| 帳號刪除（Guideline 5.1.1(v)） | App 內提供「立即登出並清除本機資料」；官方帳號本身需到 `500.gov.tw` 處理——需在支援頁面提供官網帳號管理的深連結 | `spec/app-review-risk.md`；`App/Sources/Views/ProfileView.swift` |
 
 ---
 
