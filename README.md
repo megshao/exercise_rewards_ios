@@ -106,7 +106,7 @@ EXIF 常含 GPS 座標，那是「你在哪裡運動」的精確位置，你按�
 開源不等於「你手機上那個版本就是這份程式碼」。這中間有一段我們也消除不了的落差，與其宣稱「完全可驗證」，不如把邊界寫清楚。四層階梯完整版在[隱私權政策第 8 節](https://megshao.github.io/exercise_rewards_ios/privacy.html#verify)：
 
 1. **不用懂程式**：iOS 內建「App 隱私權報告」列出本 App 連過的網域。**在你按下免責聲明的「同意並開始使用」之前**，只該出現 `500.gov.tw`，以及看截圖時官方網站回傳的圖片儲存網域（同意之後、進到券夾且需要品項頁備份時，還可能出現 `megshao.github.io`——那是一份公開檔案的單向下載，見[網路出口](#網路出口)）——那個時間點出現任何 Google 網域就是我們違約，歡迎打臉。同意之後出現 Google 網域是**預期中的**（統計在運作）；把開關關掉並完全重開 App，它們就該再次消失。
-2. **懂一點技術**：用 mitmproxy 看每一筆請求的內容——本 App 與 Firebase 都刻意不做 certificate pinning，就是為了讓你看得到。操作步驟與異常判準在 [`docs/verify-network.md`](docs/verify-network.md)。
+2. **懂一點技術**：用 mitmproxy 看每一筆請求的內容——本 App 與 Firebase 都刻意不做 certificate pinning，就是為了讓你看得到。操作步驟與異常判準在 [`spec/verify-network.md`](spec/verify-network.md)。
 3. **工程師**：讀原始碼，用 `./Scripts/bootstrap.sh` 重現一模一樣的相依組合（13 個套件全部鎖到 git commit）。
 4. **必須信任、我們消除不了的兩件事**：
    - **Apple** — 商店版經重新簽章與 FairPlay 加密，任何人（包括我們）都無法從商店版算出對應原始碼的雜湊。所以本專案**不公布 ipa 的 SHA-256**：對 iOS App 那是驗不到東西的做法。

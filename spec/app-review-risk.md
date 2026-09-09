@@ -85,7 +85,7 @@
 | 5 | 移除 WebView JS 注入 | ✅ 已做 | 全專案無 `WKWebView`／`WebKit`（`grep` 零命中），註冊改以外部 Safari 開官網 → 等同上表方案 **D** |
 | 6 | Demo Mode + 示範影片 | ⚠️ 部分 | `App/Sources/App/DemoMode.swift` 已實作（哨兵三碼、全 Mock、常駐橫幅、個資只在記憶體）；示範影片與 Review Notes 文字待補 |
 | 7 | 聯繫運動部取得「知悉不反對」 | ❌ 未做 | 5.2.2 授權文件仍拿不出 |
-| 8 | 隱私權政策 + 隱私標籤如實勾 | ⚠️ 文件已備妥，**ASC 尚未填** | 需在 App Store Connect 填。Health 仍為 Not Collected（不傳給開發者，也不進遙測）；身分資料屬「與第三方（500.gov.tw）分享」；**2026-09-06 起另有四格因 Firebase 改為 Collected / Not Linked**——Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data。逐格答案見 `docs/release/privacy-labels.md`（2026-09-06 大改版）|
+| 8 | 隱私權政策 + 隱私標籤如實勾 | ⚠️ 文件已備妥，**ASC 尚未填** | 需在 App Store Connect 填。Health 仍為 Not Collected（不傳給開發者，也不進遙測）；身分資料屬「與第三方（500.gov.tw）分享」；**2026-09-06 起另有四格因 Firebase 改為 Collected / Not Linked**——Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data。逐格答案見 `spec/release/privacy-labels.md`（2026-09-06 大改版）|
 
 ### 決策紀錄：首頁標頭保留「揮汗有禮」（2026-09-05）
 
@@ -123,7 +123,7 @@
    (a) 網域白名單管不到 SDK 自己的連線，不要讓「只連 500.gov.tw」看起來比實際範圍大；
    (b) **審查員自己的裝置會連一次 Google**——免責聲明擋在 Onboarding 之前、示範模式在 Onboarding 之後，
    所以順序是「先同意（Firebase 於此初始化）→ 才進示範模式」。主動講，不要等審查員自己發現。
-   詳見 `docs/release/review-notes.md` §2／§5b。
+   詳見 `spec/release/review-notes.md` §2／§5b。
 
 
 ---
@@ -136,7 +136,7 @@ SPM 解析 13 個套件、實際連進二進位 6 個。
 **2026-09-06 二次修訂（遙測預設值）**：`Telemetry.defaultEnabled` 由 `false` 改為 `true`，初始化時機綁到**首次啟動免責聲明的同意**上
 （`DisclaimerConsent.record()` → `Telemetry.configure()`）。正確敘述是「先告知 → 使用者主動同意 → 之後預設開啟 → 隨時可關」，
 **不是 opt-in**。本節下方的逐條重評已依此更新，新增的部分標為「二次修訂」。
-決策紀錄與代價見 `docs/PRD.md` §8.2；量測設計見 `docs/analytics-plan.md`。
+決策紀錄與代價見 `spec/PRD.md` §8.2；量測設計見 `spec/analytics-plan.md`。
 
 ### 總體風險變化
 
@@ -150,7 +150,7 @@ SPM 解析 13 個套件、實際連進二進位 6 個。
 |---|---|---|---|---|
 | R1 | **5.1.3(i)** 健康資料 | 高風險，但辯護乾淨：「binary 裡沒有任何第三方 SDK」 | **仍高風險，辯護變長** | 一個帶 HealthKit entitlement 的 App 裡出現 Google SDK，審查員必然會問「健康資料有沒有進 Firebase」。**事實上沒有**：`AnalyticsEvent`／`UserProperty`／`CrashKey` 都是封閉列舉，沒有任何成員帶步數、距離、運動時間，**連「今日是否達標」這種由步數推導的布林值都刻意不送**（`Telemetry.swift` 檔頭列為禁止項第 2 條，並引用本條為理由）。唯一沾邊的是 `health_link_tap`——「使用者按了連結 Apple 健康的按鈕」這個純 UI 動作，按下當下 HealthKit 尚未被呼叫，**授權結果也不送**；`UserProperty` 是不可建構的空列舉，完全不設任何使用者屬性。**應對**：Review Notes §5b 與 §7 的 5.1.3(i) 段已逐點主動揭露；隱私標籤 Health / Fitness 維持 Not Collected。**這是本次變更代價最高的一格。**<br>**二次修訂後：風險等級不變。** 遙測「送得出去的東西」是封閉列舉決定的，跟預設值無關；預設開啟不會讓任何健康資料變得送得出去。改變的只有「審查員實際會看到 Firebase 在跑」，所以 5.1.3(i) 的解釋從「可能被問」升級成「一定會被問」——但答案與證據完全相同。 |
 | R2 | **5.1.1(ix)** 敏感服務的資料蒐集 | 高風險（政府服務 + 身分證號 + 個人開發者帳號） | **略升** | 原本可以說「開發者什麼都收不到」。現在要改成更精確的版本：**身分資料仍然一筆都不進遙測**（任何形式，含雜湊、截斷、拼接），開發者收到的只有匿名操作事件與當機報告。**應對**：Review Notes 的 5.1.1(ix) 段已改寫成「邊界式」論述，不再宣稱「什麼都沒有」。**真正的主風險仍是提交者身分（個人 vs 組織帳號），這一點沒有因為 Firebase 而改變。**<br>**二次修訂後：風險等級不變。** 身分資料進不進遙測，是封閉列舉與六道閘門決定的，跟預設值無關。可辯護的部分反而變強了一點：揭露從「設定頁第三層的開關」升級成「進 App 必經、必須主動勾選的阻斷式畫面」。 |
-| R3 | **5.1.1／5.1.2** 隱私標籤一致性 | 低（幾乎全 Not Collected，不容易填錯） | **明顯升高，且是本次最容易踩到的一條** | 四格從 Not Collected 改為 Collected（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data）。標籤不實可導致下架與 metadata 違規。**應對**：依 `docs/release/privacy-labels.md`（2026-09-06 大改版）逐格填，並與 `App/Resources/PrivacyInfo.xcprivacy` 交叉核對——最終隱私報告是 App manifest 與所有 SDK manifest 的聯集，問卷不能比它少。**Location › Coarse Location 仍是 `TODO(待確認)`。**<br>**二次修訂後：逐格答案（Collected／Linked／Tracking／Purpose）一格都沒有變**，理由見 `privacy-labels.md` 前提 C——Optional Disclosure 豁免在改動前就不成立，改成預設開啟只會更不成立。但**風險強度升高**：改動前實務上多數使用者不會打開，現在同意即開始收集，所以「標籤要與實際行為一致」從理論義務變成每一台裝置上都在發生的事實。 |
+| R3 | **5.1.1／5.1.2** 隱私標籤一致性 | 低（幾乎全 Not Collected，不容易填錯） | **明顯升高，且是本次最容易踩到的一條** | 四格從 Not Collected 改為 Collected（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data、Diagnostics › Other Diagnostic Data）。標籤不實可導致下架與 metadata 違規。**應對**：依 `spec/release/privacy-labels.md`（2026-09-06 大改版）逐格填，並與 `App/Resources/PrivacyInfo.xcprivacy` 交叉核對——最終隱私報告是 App manifest 與所有 SDK manifest 的聯集，問卷不能比它少。**Location › Coarse Location 仍是 `TODO(待確認)`。**<br>**二次修訂後：逐格答案（Collected／Linked／Tracking／Purpose）一格都沒有變**，理由見 `privacy-labels.md` 前提 C——Optional Disclosure 豁免在改動前就不成立，改成預設開啟只會更不成立。但**風險強度升高**：改動前實務上多數使用者不會打開，現在同意即開始收集，所以「標籤要與實際行為一致」從理論義務變成每一台裝置上都在發生的事實。 |
 | R4 | **2.3.1** 準確的 metadata／無隱藏功能 | 低 | **低，但多一項要講** | 遙測開關是使用者看得到的設定，不是隱藏旗標；但 Crashlytics 會向 `firebase-settings.crashlytics.com` 取自己的設定，這在字面上是一種「遠端設定」。**應對**：Review Notes 的 2.3.1 段已主動說明——那是 Google SDK 自我設定，改變不了本 App 的任何行為或功能，且我們自己沒有任何 remote config 或 feature flag 服務。<br>**二次修訂後：這是唯一風險形態真的改變的一條，但仍是低。** 2.3.1 管的是「描述與實際是否一致」。只要商店描述、隱私政策、官網、Review Notes、隱私標籤五處都寫「同意後預設開啟」而不是「opt-in／預設關閉」，就沒有問題；**風險完全來自文件沒改乾淨**，不是來自行為本身。舊稿的「預設關閉」「出廠是關的」「opt-in」字樣已全面清除，日後複貼回來就是不實陳述。 |
 | R5 | **2.1** App 完整性／審查可測 | 中（靠示範模式） | **不變（但一句舊承諾被推翻）** | 示範模式仍完全不發 App 自己的網路請求、一個遙測事件都不送，且會強制關閉 SDK 收集旗標。**二次修訂推翻的舊承諾**：「示範模式下對 Google 零連線」**不再成立**。免責聲明擋在 Onboarding 之前（`RootView` 依 `disclaimerAgreedVersion` 判斷），示範模式卻是在 Onboarding 的登入表單輸入示範三碼才進入的（`OnboardingView`／`enterDemoIfSentinel`），所以審查員的實際路徑是「同意免責聲明 → **Firebase 在此初始化、送出 `first_open`、Installations 連線一次** → 才進示範模式」。時序改不掉：示範模式也走 `finish()`，無法用 `hasCompletedOnboarding` 事先區分；要避開就得把初始化延到真實登入成功，那會失去整個 onboarding 漏斗。**應對：在 Review Notes §2 與 §5b 主動告知審查員這個時序**——審查員自己發現一個沒人提過的 Google 連線，比我們先講糟得多；而且這個時序本身就是最好的證明：**任何東西被收集之前，一定先出現揭露畫面**。**副作用不變**：審查期間的當機仍收不到（示範模式擋住），送審前自行在示範模式跑完整流程作為補償。 |
 | R6 | **3.1 / 廣告與追蹤** | 不適用 | **仍不適用** | 用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`），結構上不含 IDFA 收集能力；Release 二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`（`otool -l` 可驗）。因此 `NSPrivacyTracking = false`、無追蹤網域、不需要也不可能出現 ATT 提示。 |
@@ -159,8 +159,8 @@ SPM 解析 13 個套件、實際連進二進位 6 個。
 
 ### 這次變更帶來的新硬約束（違反即為不實陳述）
 
-以下四句同時出現在 `README.md`、`CHANGELOG.md`、`site/privacy.html` §5、`site/index.html`、
-`docs/release/app-store-metadata.md`、`docs/release/review-notes.md` §5b 與隱私標籤。任何一句在程式碼裡變成假的，
+以下四句同時出現在 `README.md`、`CHANGELOG.md`、`docs/privacy.html` §5、`docs/index.html`、
+`spec/release/app-store-metadata.md`、`spec/release/review-notes.md` §5b 與隱私標籤。任何一句在程式碼裡變成假的，
 上述所有文件都要同步改：
 
 1. ~~**遙測預設關閉**（`Telemetry.defaultEnabled == false`）~~ → **2026-09-06 二次修訂，已作廢。** 取而代之的是：
@@ -173,12 +173,12 @@ SPM 解析 13 個套件、實際連進二進位 6 個。
 4. **不連結廣告識別框架**（`AdSupport`／`AppTrackingTransparency`／`AdServices`）。
 5. **對外文案不得出現「預設關閉」「出廠是關的」「opt-in」「使用者自己打開才會送」**——這些現在都是不實陳述。
 
-建議把這五條做成 CI 檢查（見 `docs/PRD.md` §8.5）。`TODO(待確認：CI 檢查尚未建立)`
+建議把這五條做成 CI 檢查（見 `spec/PRD.md` §8.5）。`TODO(待確認：CI 檢查尚未建立)`
 
 ### 送審前必做
 
 - [ ] App Store Connect 隱私標籤依 `privacy-labels.md` 2026-09-06 版填寫，並與 `PrivacyInfo.xcprivacy` 對齊
-- [ ] `site/privacy.html` §5 已上線（隱私政策 URL 的內容須與標籤逐格一致）
+- [ ] `docs/privacy.html` §5 已上線（隱私政策 URL 的內容須與標籤逐格一致）
 - [ ] Review Notes 貼上含 §5b 的版本（**必須是二次修訂版**：含「同意後預設開啟」與「審查員會先同意、Firebase 於此初始化、之後才進示範模式」的時序說明）
 - [ ] 全文 grep 一次 `預設關閉`／`出廠是關`／`opt-in`／`自己打開`，確認送審資料裡沒有殘留舊敘述
 - [ ] archive 內確實含正式的 `GoogleService-Info.plist`（不進版控，缺檔時遙測全程 no-op）

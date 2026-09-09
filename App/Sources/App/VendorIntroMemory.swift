@@ -8,7 +8,7 @@ import ExerciseRewardsKit
 ///
 /// 券夾要在已兌換的券卡上提供「查看可兌換品項」，就需要那家廠商的 `introPath`。
 /// 但**已兌換的期別在官網上沒有兌換頁了**——`TaskParser` 檔內註解與
-/// `docs/redeem-flow-capture.md` 都記著：兌換後那張卡片只剩 voucher／screenshot 連結，
+/// `spec/redeem-flow-capture.md` 都記著：兌換後那張卡片只剩 voucher／screenshot 連結，
 /// 而 `intro/vendor-*.html` 的連結只長在**兌換頁**上。已兌換期別手上只剩
 /// `TaskPeriod.voucherSummary`（官網原文「通路／品項」）。
 ///

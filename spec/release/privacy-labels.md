@@ -29,10 +29,10 @@
 **結論：算，要如實揭露。**
 
 理由與取捨：
-- 嚴格照字面看，開發者**沒有自建伺服器、拿不到任何身分資料**（`docs/PRD.md §4.3`、`README.md` 威脅模型「個資外洩」列），而 `500.gov.tw` 是**使用者自己的帳號所在網站**、由使用者主動觸發登入才送出。照這個讀法，理論上可以主張連「蒐集」都不成立。
+- 嚴格照字面看，開發者**沒有自建伺服器、拿不到任何身分資料**（`spec/PRD.md §4.3`、`README.md` 威脅模型「個資外洩」列），而 `500.gov.tw` 是**使用者自己的帳號所在網站**、由使用者主動觸發登入才送出。照這個讀法，理論上可以主張連「蒐集」都不成立。
 - 但 Apple 的問卷是**以使用者視角**描述「這支 App 會把我的什麼資料送出去」，不是只描述開發者拿到什麼。身分證號與手機號碼**確實離開了裝置**。
 - 而且這條也不能走 Apple 的「選擇性揭露（Optional Disclosure）」豁免——豁免要求「蒐集只發生在非主要功能、且對使用者為選填」，但登入送出三碼**正是本 App 的主要功能**，不符合。
-- 本專案的既定立場也是如此（`docs/app-review-risk.md` 降險清單第 8 條：「資料送 500.gov.tw 屬『與第三方分享』，隱私標籤如實勾」）。
+- 本專案的既定立場也是如此（`spec/app-review-risk.md` 降險清單第 8 條：「資料送 500.gov.tw 屬『與第三方分享』，隱私標籤如實勾」）。
 
 **風險取捨**：多勾的代價只是商店頁面的隱私卡片多幾列，並要在隱私權政策把 `500.gov.tw` 寫清楚；少勾的代價是「隱私標籤不實」，可能導致下架與 metadata 違規。**選多勾。**
 
@@ -69,7 +69,7 @@ App 會從 GitHub Pages **下載**一份公開的商品目錄備份檔（`vendor
 
 **開發者自己仍然沒有任何「接收」資料的伺服器**——GitHub Pages 是靜態託管，後面沒有程式在收東西。
 但「開發者完全沒有任何伺服器」這句話從此不能再無條件地講，所以本文與
-`site/privacy.html` 都已改成「沒有任何**會接收你資料的**伺服器」。
+`docs/privacy.html` 都已改成「沒有任何**會接收你資料的**伺服器」。
 
 ### 這需要多勾一格嗎？
 
@@ -84,7 +84,7 @@ App 會從 GitHub Pages **下載**一份公開的商品目錄備份檔（`vendor
   少勾的代價是標籤不實。這裡之所以仍然判斷「不勾」，不是為了少勾，而是因為
   **沒有任何一個類別的定義涵蓋「只下載、零上傳」**——硬勾一格反而會誤導使用者
   以為 App 把什麼東西送給了 GitHub。
-- 取而代之的作法：在 `site/privacy.html` 第 3 節用整整一小節講清楚 IP 會被看到、
+- 取而代之的作法：在 `docs/privacy.html` 第 3 節用整整一小節講清楚 IP 會被看到、
   什麼時候才會抓、裡面有什麼。**揭露的義務用文字履行，而不是用一格錯誤的勾選履行。**
 
 若日後 Apple 或法務認為仍該勾，最接近的類別是 **Diagnostics → Other Diagnostic Data（Not Linked）**；
@@ -106,7 +106,7 @@ App 會從 GitHub Pages **下載**一份公開的商品目錄備份檔（`vendor
 |---|---|---|---|---|---|---|
 | **Contact Info** | Name 姓名 | **No** | — | — | — | App 從不收集姓名。`OnboardingView.swift` 註解明寫「主表單只收 3 欄，`name`/`email`/`nhiCardNo` 維持空字串，App 從不收集」 |
 | | Email Address | **No** | — | — | — | 同上，Email 欄位已從 UI 移除 |
-| | Phone Number 手機號碼 | **Yes** | **Yes** | No | App Functionality | 登入三碼之一，登入時由裝置直送 `500.gov.tw`（`AuthService.login`，`docs/PRD.md §6.2`） |
+| | Phone Number 手機號碼 | **Yes** | **Yes** | No | App Functionality | 登入三碼之一，登入時由裝置直送 `500.gov.tw`（`AuthService.login`，`spec/PRD.md §6.2`） |
 | | Physical Address | No | — | — | — | 從不收集 |
 | | Other User Contact Info | No | — | — | — | 從不收集 |
 | **Health & Fitness** | Health 健康 | **No** | — | — | — | 見下方 §2。本版**完全不讀取健康資料**，無 entitlement、無權限提示、無讀取路徑 |
@@ -207,11 +207,11 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
    **首次啟動的免責聲明會明白揭露這件事，使用者按下「同意並開始使用」時才初始化 Firebase；同意之後預設開啟**，
    可隨時於「我的資料 › 安全與隱私 › 傳送匿名使用統計」關閉；
    送出的是匿名操作事件、當機報告與一組可重置的隨機安裝編號；**不含身分證號、出生日期、手機號碼、截圖與券碼**；
-   資料傳往 Google 位於美國的伺服器；如何關閉。→ 已寫入 `site/privacy.html` §5「使用統計與當機回報（同意後預設開啟）」。
+   資料傳往 Google 位於美國的伺服器；如何關閉。→ 已寫入 `docs/privacy.html` §5「使用統計與當機回報（同意後預設開啟）」。
    **文字上不得再出現「預設關閉」或「opt-in」**——那已經是不實陳述。
 7. **網域白名單的界線**：App 自己的 HTTP client 只連 `500.gov.tw`，但 Firebase SDK 走自己的連線、不受該白名單管轄；遙測運作時會連往
    `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com`、`crashlyticsreports-pa.googleapis.com`、`firebaselogging.googleapis.com`。
-   → 已寫入 `site/privacy.html` §3。
+   → 已寫入 `docs/privacy.html` §3。
 
 ---
 
@@ -284,4 +284,4 @@ Apple 的資料類型清單沒有「國民身分證號」或「出生日期」�
   Google 官方的「App Store data disclosure」對照表歷來對此有明確建議，但版本會變動。
   **送審前請直接查一次 Google 當時的官方對照表再決定這一格**，不要照抄本文件。若查不到明確結論，保守勾 **Yes / Not Linked / No tracking / Analytics**。
 - **Firebase 主控台端設定尚未確認是否已做**（這些會影響上面幾格的辯護力道）：GA4 資料保留期設為最短、關閉 Google Signals、關閉廣告個人化、
-  關閉精細位置與裝置資料蒐集（只留國家層級）、不開啟 BigQuery 匯出。→ 見 `docs/analytics-plan.md` §6.6 結尾。
+  關閉精細位置與裝置資料蒐集（只留國家層級）、不開啟 BigQuery 匯出。→ 見 `spec/analytics-plan.md` §6.6 結尾。

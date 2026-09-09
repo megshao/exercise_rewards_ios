@@ -401,7 +401,7 @@ flowchart TD
   **決策紀錄（1.0 變更，2026-09-06）**
   - **為什麼改**：官網是純 HTML 刮取的對象，改版就會整個功能失效；沒有任何遙測時，我們只能等使用者來信才知道
     解析器壞了，而使用者通常是站在超商櫃檯前發現的。1.0 需要一條「官網改版時最早的警報」。
-    完整的量測目標與事件設計見 `docs/analytics-plan.md`。
+    完整的量測目標與事件設計見 `spec/analytics-plan.md`。
   - **考慮過的替代方案**：`analytics-plan.md` §8 的零 SDK 方案（MetricKit + App Store Connect 分析 + Xcode Organizer
     + CI 端 parser 冒煙測試）。它不動任何承諾，但拿不到事件層級的漏斗，也無法區分「官網改版」與「使用者網路不好」。
   - **代價（誠實記錄，不粉飾）**：
@@ -418,7 +418,7 @@ flowchart TD
       而是「knowing consent + opt-out」。真正的保障是**同意之前 Firebase 一行程式碼都不執行**，不是預設值。
     - **新增的代價**：(e) App Store 審查員實際體驗到的行為改變了——他會先同意免責聲明（Firebase 於此初始化、
       送出 `first_open`、Installations 連線一次），**之後**才在 Onboarding 的登入表單進入示範模式。
-      所以舊文件寫的「示範模式下對 Google 零連線」已不成立，`docs/release/review-notes.md` 已改為主動向審查員說明這個時序。
+      所以舊文件寫的「示範模式下對 Google 零連線」已不成立，`spec/release/review-notes.md` 已改為主動向審查員說明這個時序。
       進入示範模式之後仍然一個事件都不送（`Telemetry.gate` 第一道，唯一沒有 bypass 的閘門）。
   - **不變的部分**：個資與健康資料仍然完全不外傳。這一點沒有因為這次變更打任何折扣，
     隱私標籤的 Health / Fitness 兩格仍是 Not Collected。

@@ -26,7 +26,8 @@
 
 <div class="notice">
   <strong>先講最重要的兩句</strong>
-  開發者沒有任何自建伺服器。你的身分證號、出生日期、手機號碼只存在你自己的 iPhone 裡，或在你按下登入時由你的手機直接送到活動官方網站。本 App 不讀取任何健康資料。<br>
+  開發者沒有任何會接收你資料的伺服器。你的身分證號、出生日期、手機號碼只存在你自己的 iPhone 裡，或在你按下登入時由你的手機直接送到活動官方網站。本 App 不讀取任何健康資料。<br>
+  （開發者確實在 GitHub Pages 上放了一份公開的商品目錄備份檔，但那是單向下載的靜態檔案，沒有任何程式在後面接收東西。詳見第 3 節。）<br>
   另外要老實說：這個版本內建了 Google Firebase 的匿名使用統計與當機回報，而且<strong style="display:inline">同意之後預設是開的</strong>。第一次打開 App 會先看到一頁簡介，按「開始使用」後緊接著就擋一張免責聲明，上面就寫著這件事；你按下「同意並開始使用」它才會啟動，之後隨時可以到「我的資料 › 安全與隱私」關掉。送出的東西裡沒有任何個資。詳見第 5 節。
 </div>
 
@@ -36,7 +37,7 @@
   本 App 與運動部及任何政府機關<strong>沒有隸屬、合作、贊助或授權關係</strong>，也不代表活動主辦單位。活動規則與最終權益一律以官方公告為準。
 </p>
 
-<h2>1. 開發者不營運任何伺服器（但有一個第三方套件）</h2>
+<h2>1. 開發者不營運任何接收資料的伺服器</h2>
 <ul>
   <li>本 App <strong>沒有自建後端服務</strong>。你的身分證號、出生日期與手機號碼，開發者不接收、不儲存，也無法存取。</li>
   <li>本 App 使用<strong>一個</strong>第三方套件：Google 的 Firebase（Analytics 與 Crashlytics），用來收集匿名的使用統計與當機回報。
@@ -57,6 +58,12 @@
   <li>Keychain 屬性為 <code>WhenUnlockedThisDeviceOnly</code>——只有在<strong>這支裝置解鎖時</strong>才讀得到。</li>
   <li><strong>不同步 iCloud、不隨備份轉移到新手機。</strong>換機或重裝要重新輸入，這是刻意的設計。</li>
   <li>絕不寫入 <code>UserDefaults</code>、設定檔或任何明文檔案，也不會出現在任何紀錄檔（log）中。</li>
+</ul>
+<p>還有一條<strong>只在你自己按下時</strong>才會發生的路徑——剪貼簿：</p>
+<ul>
+  <li>官方網站改版、App 讀不到頁面時，畫面上會出現「前往官網」與「複製身分證號」。按下後者，App 會把<strong>身分證號這一個欄位</strong>放進 iOS 剪貼簿，讓你到官網登入時少打一欄；出生日期與手機號碼不會被複製。</li>
+  <li>剪貼簿是所有 App 共用的。為了縮小暴露面，這次複製標記為「僅限本機」（不會透過 Universal Clipboard 同步到你的其他 Apple 裝置），並設定約 3 分鐘後由系統自動清除。在那之前，你切換過去、會讀取剪貼簿的 App 都有機會讀到它（iOS 會在 App 讀取剪貼簿時顯示提示）。</li>
+  <li>還沒填過個資、或處於示範模式時，這顆按鈕不會出現。這個動作不會送出任何使用統計。</li>
 </ul>
 
 <h2>3. 會離開你手機的資料</h2>
@@ -84,7 +91,26 @@
   這些資料送達之後如何被處理，適用 <a href="https://500.gov.tw/" target="_blank" rel="noopener">500.gov.tw</a> 自身的隱私政策與活動辦法，不在本 App 的控制範圍內。
 </p>
 <p>
-  技術上，本 App 自己發出的請求只允許連到 <code>500.gov.tw</code>（含其子網域）；連往其他網域的請求會被程式主動阻擋，並且強制使用 HTTPS 加密傳輸。
+  上面這張表是「<strong>你的資料往外送</strong>」的完整清單。另外有一種情況是<strong>只下載、不送出</strong>：App 會去 GitHub 取一份公開的商品目錄備份檔（見本節末）。
+  那次連線<strong>不夾帶任何你的資料</strong>，但老實說——任何連線都會讓對方看到你的 IP 位址與時間，這一次也不例外。GitHub（Microsoft）因此可能在它的伺服器紀錄裡留下這些。
+  它看不到你是誰、看不到你的帳號、也看不到你選了哪一家商店，因為那個檔案<strong>對所有使用者都是同一份</strong>，請求裡沒有任何能區分你的東西。
+</p>
+<h3>那份商品目錄備份檔是什麼、什麼時候才會抓</h3>
+<p>
+  在券夾裡，已經兌換的加碼券可以按「查看可兌換品項」去看那家商店能換什麼。這份清單原本是從官方網站抓的，但<strong>已兌換的期別在官方網站上已經沒有兌換頁了</strong>，
+  App 因此可能找不到那家商店的品項頁網址。為了讓那顆按鈕還能用，開發者把一份公開的目錄快照放在 GitHub Pages 上當備份。
+</p>
+<ul>
+  <li><strong>裡面沒有任何個人資料</strong>：只有商店名稱、品項頁網址與商品名稱，而且刻意不含任何「可以送回官方網站」的識別碼。它是所有人共用的同一份公開檔案，你可以自己打開來看：
+      <a href="https://megshao.github.io/exercise_rewards_ios/vendor-catalog.json" target="_blank" rel="noopener">vendor-catalog.json</a>。</li>
+  <li><strong>不是每次都會抓</strong>：只有在你打開券夾、而且 App 從本機紀錄與官方網站都湊不出某張券的品項頁網址時，才會去抓一次；一次 App 使用期間最多一次。
+      如果你的加碼券都是在這個 App 裡兌換的，App 本來就記得，<strong>完全不會連到 GitHub</strong>。</li>
+  <li><strong>是快照，不是即時資料</strong>：畫面上顯示備份內容時會一併標出擷取日期。官方網站自己也寫著「實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準」。</li>
+  <li><strong>那條連線是獨立的</strong>：沒有 cookie 罐子、不帶登入狀態、不寫入網頁快取，也不會送出任何東西。</li>
+</ul>
+<p>
+  技術上，本 App 帶著你登入狀態的那條連線<strong>只允許連到 <code>500.gov.tw</code></strong>（含其子網域）；連往其他網域的請求會被程式主動阻擋，並且強制使用 HTTPS 加密傳輸。
+  除此之外還有<strong>一個唯讀的例外</strong>：<code>megshao.github.io</code> 上一份公開的商品目錄備份檔（見下方第 3 節）。那是一條完全獨立的連線，沒有 cookie 罐子、不帶你的登入狀態，也不送出任何資料——只把一個所有人都一樣的公開檔案下載下來。
   這裡有兩個例外，都講清楚：
 </p>
 <ul>
@@ -241,7 +267,7 @@
 </p>
 <p>
   步驟、每個操作預期會看到的請求、以及怎麼判斷有沒有異常，寫在
-  <a href="https://github.com/megshao/exercise_rewards_ios/blob/main/docs/verify-network.md" target="_blank" rel="noopener">docs/verify-network.md</a>。
+  <a href="https://github.com/megshao/exercise_rewards_ios/blob/main/spec/verify-network.md" target="_blank" rel="noopener">spec/verify-network.md</a>。
   門檻：要在手機上安裝並信任一張憑證，全程約 15 分鐘；驗完記得把憑證移除。
 </p>
 

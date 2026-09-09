@@ -5,7 +5,7 @@ import Foundation
 /// ## 為什麼需要它
 ///
 /// 已兌換的期別在官網上沒有兌換頁了（見 `TaskParser` 的 id 註解與
-/// `docs/redeem-flow-capture.md`），而 `intro/vendor-*.html` 的連結只長在兌換頁上。
+/// `spec/redeem-flow-capture.md`），而 `intro/vendor-*.html` 的連結只長在兌換頁上。
 /// 所以券夾要在已兌換的券卡上提供「查看可兌換品項」，就需要一份不依賴那一頁的
 /// 「廠商名 → introPath」對應。這份備份同時也在官網品項頁載不到時接手顯示內容。
 ///

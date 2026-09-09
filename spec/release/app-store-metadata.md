@@ -9,7 +9,7 @@
 - **平台**：iOS 16.0 以上、僅 iPhone、僅直向
 - **字數計算方式**：以字元數計（中文一字算一字元，標點、換行也各算一字元）。下列「實際」為本文件所附文案的實測值。
 
-> 文案原則（沿用 `docs/copy-candidates.md`）：短、口語、動詞開頭、不用公文腔。
+> 文案原則（沿用 `spec/copy-candidates.md`）：短、口語、動詞開頭、不用公文腔。
 > 硬規則：**任何欄位都不得暗示與運動部或政府有關聯**，且第一段就要講清楚這是非官方工具。
 
 ---
@@ -25,13 +25,13 @@ Exercise Rewards
 **說明**：對應 `App/project.yml` 的 `CFBundleDisplayName: Exercise Rewards`，兩者必須一致。
 
 **為什麼是 `Exercise Rewards`，不是 `Sports Rewards`（2026-09-07 改名）**：運動部的英文名是
-**Ministry of Sports**（本專案文件自己的譯法，見 `docs/release/review-notes.md`）。一個非官方 App
+**Ministry of Sports**（本專案文件自己的譯法，見 `spec/release/review-notes.md`）。一個非官方 App
 用 **Sports** Rewards 去做 Ministry of **Sports** 的獎勵活動，等於在英文名上與主辦機關共用關鍵字，
 這是 Guideline 4.1（Copycats／Impersonation）與 5.2.1 的**裁量面**——審查員會不會往那個方向讀，
 不在我們手上。`Exercise Rewards` 把那個字拿掉，語意（運動／獎勵）一點沒少，可裁量的空間卻小了一塊。
 中文曝光不受影響：搜尋命中靠副標「揮汗有禮非官方串接」與 §5 的關鍵字，兩者都不含 Sports 或 Exercise。
 
-**不可以用**「揮汗有禮」當 App 名稱——那是官方活動名稱，會踩 Guideline 4.1（Copycats／Impersonation）與 5.2.1；官方已在做「運動幣 App 需求調查」，官方 App 一出現風險會再升高（見 `docs/app-review-risk.md` 風險 #5）。名稱與圖示也不得含「運動部／政府／官方／500／國徽」等元素。
+**不可以用**「揮汗有禮」當 App 名稱——那是官方活動名稱，會踩 Guideline 4.1（Copycats／Impersonation）與 5.2.1；官方已在做「運動幣 App 需求調查」，官方 App 一出現風險會再升高（見 `spec/app-review-risk.md` 風險 #5）。名稱與圖示也不得含「運動部／政府／官方／500／國徽」等元素。
 
 ---
 
@@ -43,7 +43,7 @@ Exercise Rewards
 揮汗有禮非官方串接
 ```
 
-**說明**：定案文案（使用者指定）。這正是 `docs/app-review-risk.md` 降險清單第 1 條的做法——
+**說明**：定案文案（使用者指定）。這正是 `spec/app-review-risk.md` 降險清單第 1 條的做法——
 **App 名稱用中性工具名（Exercise Rewards）、活動名只出現在副標並緊接「非官方」**，讓商店頁面
 第一屏就同時交代「這是什麼活動的工具」與「它不是官方的」。
 
@@ -52,7 +52,7 @@ Exercise Rewards
   直接踩 Guideline 4.1（Copycats／Impersonation）與 5.2.1。
 - 副標與名稱、圖示都不得出現「運動部／政府／官方／500／國徽」等元素。
 - 日後若官方推出自己的 App，此副標的 impersonation 風險會升高，屆時需重新評估
-  （見 `docs/app-review-risk.md` 風險 #5）。
+  （見 `spec/app-review-risk.md` 風險 #5）。
 
 先前草擬、未採用的候選（保留備查）：
 - `看步數、管好券，非官方輔助工具`（15 字元）
@@ -239,7 +239,7 @@ v1.0.0 把 HealthKit 整個移除之後，那個理由一條都不剩——App �
 | 廣告識別碼（IDFA） | **否** | 使用 `FirebaseAnalyticsCore`（底層 `GoogleAppMeasurementCore`），**結構上不含 IDFA 收集能力**；Release 二進位未連結 `AdSupport`／`AppTrackingTransparency`／`AdServices`（`otool -l` 可驗），因此不會出現 ATT 提示 |
 | 是否含第三方內容 | 否 | App 內不顯示任何第三方內容。**但相依上有一個第三方 SDK**：firebase-ios-sdk 12.18.0（Analytics + Crashlytics），SPM 解析 13 個套件、實際連結 6 個——這一格問的是內容不是相依，答否，相依的部分寫在隱私標籤與 Review Notes |
 | 版權（Copyright） | `2026 megshao` | 需與開發者帳號名稱相符 |
-| 帳號刪除（Guideline 5.1.1(v)） | App 內提供「立即清除本機資料」；官方帳號本身需到 `500.gov.tw` 處理——需在支援頁面提供官網帳號管理的深連結 | `docs/app-review-risk.md`；`App/Sources/Views/ProfileView.swift` |
+| 帳號刪除（Guideline 5.1.1(v)） | App 內提供「立即清除本機資料」；官方帳號本身需到 `500.gov.tw` 處理——需在支援頁面提供官網帳號管理的深連結 | `spec/app-review-risk.md`；`App/Sources/Views/ProfileView.swift` |
 
 ---
 
@@ -247,9 +247,9 @@ v1.0.0 把 HealthKit 整個移除之後，那個理由一條都不剩——App �
 
 - [x] 描述最後一行已換成真實聯絡方式（megshao0918@gmail.com）
 - [x] 支援 URL 與隱私權政策 URL 都已填且可公開開啟（另已填行銷 URL、分類、版權、分級問卷、第三方內容宣告）
-- [ ] 隱私權政策內容與 `docs/release/privacy-labels.md` 的勾選完全一致
-- [x] 示範帳號欄位已填入 `docs/release/review-notes.md` 所載的三碼
-- [x] Review Notes 已貼上 `docs/release/review-notes.md` 的 **Part A-短**（Part A 有 31,016 字元，超過欄位 4,000 上限）
+- [ ] 隱私權政策內容與 `spec/release/privacy-labels.md` 的勾選完全一致
+- [x] 示範帳號欄位已填入 `spec/release/review-notes.md` 所載的三碼
+- [x] Review Notes 已貼上 `spec/release/review-notes.md` 的 **Part A-短**（Part A 有 31,016 字元，超過欄位 4,000 上限）
 - [x] 截圖不含任何真實個資、不含政府識別標誌（7 張逐張目視確認，全為 `A000000000` / `1990/01/01` / `0900000000` 佔位值）
 - [ ] App 內殘留的舊字樣已更新（見 `review-notes.md` §殘留待辦）
 - [ ] 隱私標籤已依 `privacy-labels.md` **2026-09-06 大改後**的版本填寫（Identifiers › Device ID、Usage Data › Product Interaction、Diagnostics › Crash Data／Other Diagnostic Data 四格改為 Yes / Not Linked / 不追蹤）
