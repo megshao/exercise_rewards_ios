@@ -1,7 +1,7 @@
 > **命名已定案（2026-09-05，1.0 送審版）**：技術名 **ExerciseRewards**（SPM ExerciseRewardsKit／bundle
 > `com.megshao.exerciserewards`）；**App Store 上架顯示名 = `Exercise Rewards`**（`CFBundleDisplayName`）。
 > 「揮汗有禮」**不再作為 App 名稱**，只能出現在說明文字裡描述所參加的活動——理由見
-> `docs/app-review-risk.md` 風險 #5（以官方活動名命名會踩 guideline 4.1(b) impersonation 與 5.2.1）。
+> `spec/app-review-risk.md` 風險 #5（以官方活動名命名會踩 guideline 4.1(b) impersonation 與 5.2.1）。
 > 以下為當初的命名發想紀錄（含已淘汰的「颯步 Sabo」與「揮汗有禮」候選），保留作歷史參考。
 
 # 品牌命名與介面文案候選

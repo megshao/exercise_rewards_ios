@@ -276,14 +276,14 @@ https://github.com/megshao/exercise_rewards_ios — see DemoMode.swift, Telemetr
 | # | 殘餘風險 | 條號 | 現況與可做的準備 |
 |---|---|---|---|
 | 1 | ~~**帶 HealthKit entitlement 的 App 裡出現 Google SDK**~~ **已消除**：HealthKit 功能整個移除後，App 不再帶 entitlement、不再讀任何健康資料，「健康資料有沒有進 Firebase」這個問題不再成立。Part A §4 與 §7 的 5.1.3(i) 段改為主動說明「完全不使用」。 | 5.1.3(i) | 無殘餘風險。**唯一要守住的是不要把功能加回來**——一旦加回，這一列連同 `privacy-labels.md` 的 Health 格都要重寫。 |
-| 2 | **隱私標籤必須與實際行為完全一致**。四格從 Not Collected 改成 Collected，任何一格填錯就是 metadata 違規（可下架）。 | 5.1.1 / 5.1.2 | 依 `docs/release/privacy-labels.md`（2026-09-06 大改版）逐格填；送審前對照 `PrivacyInfo.xcprivacy` 再核一次，兩邊不可以不一致。**Location › Coarse Location 那格仍是 `TODO(待確認)`**，送審前務必查 Google 當時的官方對照表。 |
+| 2 | **隱私標籤必須與實際行為完全一致**。四格從 Not Collected 改成 Collected，任何一格填錯就是 metadata 違規（可下架）。 | 5.1.1 / 5.1.2 | 依 `spec/release/privacy-labels.md`（2026-09-06 大改版）逐格填；送審前對照 `PrivacyInfo.xcprivacy` 再核一次，兩邊不可以不一致。**Location › Coarse Location 那格仍是 `TODO(待確認)`**，送審前務必查 Google 當時的官方對照表。 |
 | 3 | **「同意前 Firebase 一行程式碼都不執行」這句話必須永遠為真**。預設值改成 `true` 之後，這句話取代了舊的「預設關閉」成為本案唯一的辯護點，同時出現在 Review Notes、隱私政策、官網、商店描述與 CHANGELOG。任何人把 `DisclaimerConsent.record()` 裡的 `Telemetry.configure()` 搬到別的時機、拿掉 `configure()` 三道前置條件的任一道、或從 `DisclaimerView` 拿掉使用統計那一條揭露，這五個地方會同時變成不實陳述。 | 2.3.1 | 建議在 CI 加檢查：`DisclaimerConsent.record()` 包含 `Telemetry.configure()`、`configure()` 的三道 guard 都在、四個 Info.plist 旗標仍為 `false`，且 `DisclaimerView` 的揭露文案含「匿名使用統計」字樣，否則 fail。**目前沒有這些檢查。** |
 | 4 | **送審 archive 必須含正式的 `GoogleService-Info.plist`**。它不進版控，缺檔時遙測全程 no-op——使用者打開開關也不會有任何反應。這不會被拒審，但會變成「宣稱有、實際沒有」的落差。 | — | 打包前確認 `App/Resources/GoogleService-Info.plist` 存在。已列入 `app-store-metadata.md` §11 檢查清單。 |
 | 5 | **審查期間的當機收不到，但審查員的裝置仍會連一次 Google**。免責聲明擋在 Onboarding 之前，示範模式卻是在 Onboarding 的登入表單才進入的，所以審查員的實際路徑是「先同意（Firebase 於此初始化、送出 `first_open`、Installations 連線一次）→ 才進示範模式」。進入之後一個事件都不送，所以當機仍然收不到。**舊版 Review Notes 寫的「示範模式下對 Google 零連線」已經不成立，已全面改寫。** | — | 時序改不掉（示範模式也走 `finish()`，無法用 `hasCompletedOnboarding` 事先區分），除非把初始化延到真實登入成功——那會失去整個 onboarding 漏斗。**決定：不改時序，改為在 Part A §2 與 §5b 主動告知審查員**——審查員自己發現一個沒人提過的 Google 連線，比我們先講糟得多。補救方式仍是送審前自己在示範模式把全部流程跑一遍。 |
 | 6 | **開源 + 公開 repo 的灌水風險**。`GoogleService-Info.plist` 雖不進版控，但 App 一上架，任何人都可以從 IPA 取出設定並灌假事件。 | — | 在 GCP 主控台**限制 API key 的 bundle ID**。`TODO(待確認：是否已設定)` |
 | 7 | **預設開啟本身的曝險**：審查員實際體驗到的行為從「不碰 Google」變成「同意後就開始送」。但揭露點也從「設定頁第三層的一個開關」提升成「進 App 必經、必須主動勾選的阻斷式畫面」，這一點是變好的。 | 2.3.1 / 5.1.1 | 這不是審查問題，是**描述一致性**問題：只要商店描述、隱私標籤、隱私政策、Review Notes 四者都說「同意後預設開啟」而不是「opt-in」，就沒有 2.3.1 風險。**已全面改完。**反而要防的是日後有人把舊稿的「opt-in」字樣複貼回來。 |
 
-## B1d. 實作與 `docs/analytics-plan.md` 的已知落差（送審前請自行決定要不要補）
+## B1d. 實作與 `spec/analytics-plan.md` 的已知落差（送審前請自行決定要不要補）
 
 `analytics-plan.md` 是設計提案，實作只落實了其中一部分。以下差異**目前不影響上面任何一句對外宣稱的真偽**，但會影響辯護力道：
 
@@ -303,7 +303,7 @@ https://github.com/megshao/exercise_rewards_ios — see DemoMode.swift, Telemetr
 
 ## B3. 做完降險後仍然消不掉的殘餘風險
 
-以下四項**不是文案能解決的**，寫在這裡讓你在送審前先決定要不要承擔（依據 `docs/app-review-risk.md`）：
+以下四項**不是文案能解決的**，寫在這裡讓你在送審前先決定要不要承擔（依據 `spec/app-review-risk.md`）：
 
 | # | 殘餘風險 | 條號 | 你能做的準備 |
 |---|---|---|---|

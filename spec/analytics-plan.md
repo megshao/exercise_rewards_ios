@@ -18,8 +18,8 @@
 | 位置 | 原文 | 衝突點 |
 |---|---|---|
 | `README.md:56` | 「零第三方相依 … **無任何 analytics 或 crash SDK**」 | 直接相反 |
-| `docs/PRD.md §8.2` | 「**禁用**會外傳個資的第三方 analytics / crash SDK；若需 crash 收集，須本機化且不含個資」 | 直接相反 |
-| `docs/TASKS.md:5` | 硬約束「不上雲、不寫 log、**只連 500.gov.tw**」 | Firebase 會連 `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com` 等（網域以 Release 二進位內實際出現者為準） |
+| `spec/PRD.md §8.2` | 「**禁用**會外傳個資的第三方 analytics / crash SDK；若需 crash 收集，須本機化且不含個資」 | 直接相反 |
+| `spec/TASKS.md:5` | 硬約束「不上雲、不寫 log、**只連 500.gov.tw**」 | Firebase 會連 `app-analytics-services.com`、`firebaseinstallations.googleapis.com`、`firebase-settings.crashlytics.com` 等（網域以 Release 二進位內實際出現者為準） |
 | `App/Sources/Views/ProfileView.swift:80` | 「不會上傳雲端、不會同步 iCloud、不會寫入紀錄檔，也**不會提供給任何第三方**」 | Crashlytics／Analytics 就是第三方 |
 | `App/Sources/Views/ProfileView.swift:267` | 頁尾「個資不上雲 · 不寫紀錄檔 · **只連 500.gov.tw**」 | 同上 |
 | `App/Sources/Views/HomeView.swift:227`、`OnboardingView.swift:113` | 「個資只存這支手機 · 不會上傳雲端」「不會寫入紀錄檔」 | 個資確實不會，但「不寫紀錄檔」在 Crashlytics 存在時語意變模糊 |
@@ -290,7 +290,7 @@
 | §6.1 的理由 | 現在還成立嗎 | 說明 |
 |---|---|---|
 | 1. 承諾的絕對性——預設開的話，「不會提供給任何第三方」在使用者看到開關之前就已經是假的 | **論證成立，但被「移動揭露點」解掉了** | 這一點的真正內容是「**使用者不該在讀到說明之前就開始被收集**」——它反對的是「無揭露就收集」，不是「預設開啟」本身。實作把揭露點從設定頁移到**進 App 必經的阻斷式畫面**，並把初始化綁在那個畫面的同意上，所以「使用者看到之前資料已經送出去」這件事仍然不會發生。§0 那幾處文案已全部改寫。 |
-| 2. 審查曝險——預設關讓 Review Notes 可以寫「任何第三方 SDK 在使用者明示同意前零連線」 | **這句話仍然為真，而且是現在唯一的辯護點** | 「明示同意前零連線」照樣成立，只是「明示同意」的位置從設定頁的 Toggle 換成免責聲明的勾選。**但有一句舊承諾被推翻**：「示範模式下對 Google 零連線」不再成立——免責聲明擋在 Onboarding 之前，示範模式在 Onboarding 之後，所以審查員是「先同意（Firebase 於此初始化）→ 才進示範模式」。已在 `docs/release/review-notes.md` §2／§5b 主動告知審查員。 |
+| 2. 審查曝險——預設關讓 Review Notes 可以寫「任何第三方 SDK 在使用者明示同意前零連線」 | **這句話仍然為真，而且是現在唯一的辯護點** | 「明示同意前零連線」照樣成立，只是「明示同意」的位置從設定頁的 Toggle 換成免責聲明的勾選。**但有一句舊承諾被推翻**：「示範模式下對 Google 零連線」不再成立——免責聲明擋在 Onboarding 之前，示範模式在 Onboarding 之後，所以審查員是「先同意（Firebase 於此初始化）→ 才進示範模式」。已在 `spec/release/review-notes.md` §2／§5b 主動告知審查員。 |
 | 3. Crashlytics 不比 Analytics 無害，所以不拆兩個開關 | **完全成立，已照做** | 仍然只有一個總開關同時管 Analytics 與 Crashlytics。這一點沒有因為預設值改變而動搖。 |
 | 4. 開源可稽核——「預設有沒有送」要能用一行設定證明 | **成立，但證明的對象換了** | 現在要能用程式碼證明的不是「`defaultEnabled == false`」，而是「`DisclaimerConsent.record()` 裡有 `Telemetry.configure()`，而且那是唯一的初始化入口」。這一樣是 grep 得到的一行。Info.plist 四個旗標仍為 `false`，意義改成「冷啟動預設值／還沒 `configure()` 就絕不收集」。 |
 | 5. 代價：安裝數分母得從 App Store Connect 拿、樣本偏向願意分享的人、審查員的當機不會回報 | **第 1、3 項不變；第 2 項正是改動的原因** | 分母仍建議從 App Store Connect 拿（`first_open` 發生在同意當下，不是安裝當下）。審查員的當機仍然收不到（示範模式擋住）。而「樣本偏向願意分享的人」這個代價在舊設計下大到讓整個方案失去意義——這就是改成預設開啟的動機。 |
@@ -308,7 +308,7 @@
 理由：
 
 1. **承諾的絕對性**。§0 那六處文案是「不會提供給任何第三方」這種沒有例外的句子，也是 Onboarding 第一屏就講的價值主張。預設開的話，這些句子在使用者第一次啟動、還沒看到任何開關之前就已經是假的——Firebase 在 `configure()` 當下就產生 app instance ID 並送 `first_open`。
-2. **審查曝險**。`docs/app-review-risk.md` 已把 5.1.1(ix)（政府敏感個資）與 5.1.3(i)（HealthKit 不得分享第三方）列為最高風險；一個帶 HealthKit entitlement 的 App 裡出現 Google SDK，審查員會直接問「健康資料有沒有進 Firebase」。預設關讓 Review Notes 可以寫「任何第三方 SDK 在使用者明示同意前零連線」，這句話比「我們有過濾」有說服力得多。
+2. **審查曝險**。`spec/app-review-risk.md` 已把 5.1.1(ix)（政府敏感個資）與 5.1.3(i)（HealthKit 不得分享第三方）列為最高風險；一個帶 HealthKit entitlement 的 App 裡出現 Google SDK，審查員會直接問「健康資料有沒有進 Firebase」。預設關讓 Review Notes 可以寫「任何第三方 SDK 在使用者明示同意前零連線」，這句話比「我們有過濾」有說服力得多。
 3. **Crashlytics 不比 Analytics 無害**。當機報告帶 installation UUID、裝置指紋、以及 custom keys／breadcrumbs 描述的 App 狀態；「當機報告預設開、統計預設關」的常見做法，在「不會提供給任何第三方」的承諾下一樣站不住。所以不拆兩個開關——拆了只會讓設定頁多一個要解釋的東西。
 4. **開源可稽核是賣點**。任何人 grep 到 `FirebaseApp.configure()` 都會問「預設有沒有送」；預設關 + Info.plist 硬關（§6.6）讓答案可以用一行設定證明。
 5. **代價要講清楚**：opt-in 表示 `first_open` 只在同意當下才發生，**安裝數的分母得從 App Store Connect 拿**；樣本會偏向願意分享的人；示範模式與審查員的當機不會回報。這些都是本 App 定位下可以接受的代價。
@@ -356,10 +356,10 @@
 | `App/Sources/Views/ProfileView.swift:267` | 頁尾「只連 500.gov.tw」→「只連 500.gov.tw（匿名統計開啟時另連 Firebase）」或拿掉這句 |
 | `App/Sources/Views/HomeView.swift:227`、`OnboardingView.swift:113` | 「不會上傳雲端」仍為真（指個資），可保留；「不會寫入紀錄檔」建議改為「不會把個資寫入任何紀錄」 |
 | `README.md:56` | 「零第三方相依 … 無任何 analytics 或 crash SDK」→ 如實描述 Firebase 存在、**初始化綁在免責聲明同意之後（同意後預設開啟）**、白名單例外網域清單 |
-| `docs/PRD.md §8.2、§8.3、§2.3` | 第三方 SDK 禁令改為「僅限**已取得免責聲明同意**且不含個資／健康資料」；白名單加註例外；反指標定義更新 |
-| `docs/TASKS.md:5` | 硬約束「只連 500.gov.tw」加註 |
-| `docs/copy-candidates.md §5` | 信任文案同步 |
-| `docs/app-review-risk.md` Review Notes 段 | 新增第五點：「第三方 SDK：Firebase Analytics／Crashlytics，**首次啟動的免責聲明先揭露，使用者按下同意才初始化，同意後預設開啟、可隨時關閉**；絕不含 HealthKit 資料與個資（附本文件連結）」。**另須主動說明審查員的實際時序**（先同意 → Firebase 初始化 → 才進示範模式）。 |
+| `spec/PRD.md §8.2、§8.3、§2.3` | 第三方 SDK 禁令改為「僅限**已取得免責聲明同意**且不含個資／健康資料」；白名單加註例外；反指標定義更新 |
+| `spec/TASKS.md:5` | 硬約束「只連 500.gov.tw」加註 |
+| `spec/copy-candidates.md §5` | 信任文案同步 |
+| `spec/app-review-risk.md` Review Notes 段 | 新增第五點：「第三方 SDK：Firebase Analytics／Crashlytics，**首次啟動的免責聲明先揭露，使用者按下同意才初始化，同意後預設開啟、可隨時關閉**；絕不含 HealthKit 資料與個資（附本文件連結）」。**另須主動說明審查員的實際時序**（先同意 → Firebase 初始化 → 才進示範模式）。 |
 | 隱私政策 `privacy.html` | 新增 Firebase 段：蒐集項目、用途、Google 為處理者、資料傳到美國、保存期限、如何關閉 |
 | App Store Connect「App 隱私」 | §7 |
 

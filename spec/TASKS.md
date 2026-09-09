@@ -1,19 +1,19 @@
 # Exercise Rewards App — 實作 Task 拆解
 
-命名：上架名 **Exercise Rewards**；「揮汗有禮」只作為活動說明用語，不作為 App 名稱（見 `docs/app-review-risk.md`）。
+命名：上架名 **Exercise Rewards**；「揮汗有禮」只作為活動說明用語，不作為 App 名稱（見 `spec/app-review-risk.md`）。
 技術：iOS 原生 SwiftUI + URLSession。
 硬約束：個資只存 Keychain（`WhenUnlockedThisDeviceOnly`）、不上雲、不寫 log、**App 自己只連 500.gov.tw**、將開源。
 
 > **1.0 硬約束變更（一）**：原本列在硬約束裡的「FaceID 鎖」已於 1.0 移除。裝置遺失的防線改為
 > iOS 裝置鎖屏 + Keychain `WhenUnlockedThisDeviceOnly`（裝置上鎖時連 App 自己都讀不到）
-> 加上「立即清除本機資料」。詳細理由見 `docs/PRD.md` §8.1 決策紀錄。
+> 加上「立即清除本機資料」。詳細理由見 `spec/PRD.md` §8.1 決策紀錄。
 >
 > **1.0 硬約束變更（二）：「禁用第三方 analytics/crash SDK」已於 1.0 變更（2026-09-06）。**
-> 原本的硬約束是「不上雲、不寫 log、只連 500.gov.tw」，並在 `docs/PRD.md` §8.2 明訂禁用會外傳個資的
+> 原本的硬約束是「不上雲、不寫 log、只連 500.gov.tw」，並在 `spec/PRD.md` §8.2 明訂禁用會外傳個資的
 > 第三方 analytics / crash SDK。1.0 加入了 **firebase-ios-sdk 12.18.0**（Analytics + Crashlytics）。
 >
 > - **為什麼改**：本 App 靠刮官網 HTML 運作，官網一改版功能就整組失效；沒有遙測時，我們只能等使用者來信
->   才知道解析器壞了。需要一條「官網改版時最早的警報」。量測設計見 `docs/analytics-plan.md`。
+>   才知道解析器壞了。需要一條「官網改版時最早的警報」。量測設計見 `spec/analytics-plan.md`。
 > - **變更後的六條前提**（缺一不可）：初始化綁在免責聲明的主動同意之後（同意前 Firebase 一行程式碼都不執行）／
 >   個資零外傳／不讀取任何健康資料（v1.1 起）／單一出口 + 封閉列舉／
 >   六道閘門（示範模式・截圖模式・使用者關閉・未初始化・敏感樣式・整數值域）／不引入廣告識別能力。
@@ -30,12 +30,12 @@
 > - **Info.plist 四個旗標仍為 `false`**，但意義變了：那是冷啟動預設值，由 `applyCollectionFlags` 在初始化後覆寫，
 >   用來守住「還沒 `configure()` 就絕不收集」——不是「預設關閉」的證據。
 > - **連帶失效的舊承諾**：「示範模式下對 Google 零連線」不再成立（免責聲明擋在 Onboarding 之前，
->   示範模式是在 Onboarding 才進入的），詳見 `docs/release/review-notes.md` §2／§5b 與 `docs/PRD.md` §8.2 決策紀錄。
-> - 對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、`site/index.html`、`site/privacy.html` §5／§8、`site/support.html`、
->   `docs/release/privacy-labels.md`、`docs/release/review-notes.md`、`docs/release/app-store-metadata.md`、`docs/app-review-risk.md`。
+>   示範模式是在 Onboarding 才進入的），詳見 `spec/release/review-notes.md` §2／§5b 與 `spec/PRD.md` §8.2 決策紀錄。
+> - 對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、`docs/index.html`、`docs/privacy.html` §5／§8、`docs/support.html`、
+>   `spec/release/privacy-labels.md`、`spec/release/review-notes.md`、`spec/release/app-store-metadata.md`、`spec/app-review-risk.md`。
 > - **沒有改變的部分**：個資仍然完全不外傳，隱私標籤的 Health / Fitness 兩格仍是 Not Collected（v1.1 起理由更單純——App 根本不讀健康資料）。
-> - 完整決策紀錄與代價清單見 `docs/PRD.md` §8.2；對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、
->   `site/privacy.html` §5、`docs/release/privacy-labels.md`、`docs/release/review-notes.md` §5b。
+> - 完整決策紀錄與代價清單見 `spec/PRD.md` §8.2；對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、
+>   `docs/privacy.html` §5、`spec/release/privacy-labels.md`、`spec/release/review-notes.md` §5b。
 
 ---
 
@@ -50,7 +50,7 @@
   - 原產出 `App/Sources/Security/BiometricLock.swift`（`BiometricGate`）與 `SensitiveAuth.swift`
     （`SensitiveAuthCoordinator` + email/手機 fallback），連同 `NSFaceIDUsageDescription` 一併刪除
     （commit `refactor(app): drop biometric gate and sensitive-action re-auth`）。
-  - 移除理由與替代防線見 `docs/PRD.md` §8.1；`docs/onboarding-auth-spec.md` B/C/D 節已標為歷史紀錄。
+  - 移除理由與替代防線見 `spec/PRD.md` §8.1；`spec/onboarding-auth-spec.md` B/C/D 節已標為歷史紀錄。
 
 ## Phase 1 — 一鍵登入（MVP 第一刀）
 - [x] 1.1 **HttpClient**：URLSession + HTTPCookieStorage（記憶體、登出即清）、強制 http→https 修正、統一錯誤處理
@@ -83,7 +83,7 @@
 - [x] 3.4 **圖卡產生器**：忠實呈現真實 HealthKit 數據（日期/步數/距離/時間），標「資料來源 Apple 健康・未經修改」；渲染成可上傳圖片
 
 ## Phase 4 — 上傳 + 兌換（第四刀，含未決點）
-- [x] 4.1 ✅ 已實測：`/member/upload` multipart file 欄位名 = `screenshot`（PRD R1，見 docs/redeem-flow-capture.md）
+- [x] 4.1 ✅ 已實測：`/member/upload` multipart file 欄位名 = `screenshot`（PRD R1，見 spec/redeem-flow-capture.md）
 - [x] 4.2 UploadService：multipart POST `/member/upload`（圖卡或相簿選圖）
 - [x] 4.3 兌換畫面（商店清單）+ RedeemService `POST /member/redeem/{uuid}(vendorId,item)`
 - [x] 4.4 ⚠️ 待補：兌換後 OTP 端點與券碼結構（PRD R2，會消耗真實次數，需你同意再實測）
