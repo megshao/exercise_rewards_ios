@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<!-- 此頁是 static HTML，無法共用 Thymeleaf analytics fragment。 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZT3BSJ50TW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-ZT3BSJ50TW');
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>萬家福/樂家康可兌換商品</title>
+  <meta name="description" content="萬家福/樂家康運動幣加碼活動可兌換商品清單">
+  <link rel="icon" type="image/png" href="../images/sportscoin/sabo-icon.png">
+  <style>
+    :root{--orange:#ff681b;--orange-dark:#e9520a;--brown:#3b2117;--cream:#fff8eb;--line:#eadfd1;--yellow:#ffd94e}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--cream);color:var(--brown);font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}
+    .site-shell{min-height:100vh;background:radial-gradient(circle at 8% 25%,rgba(255,191,98,.22),transparent 22rem),radial-gradient(circle at 94% 20%,rgba(255,217,78,.18),transparent 24rem),var(--cream)}
+    .top-action{width:min(1040px,calc(100% - 32px));margin:0 auto;padding-top:22px}
+    .page-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:10px 20px;border:2px solid var(--orange);border-radius:999px;color:var(--orange-dark);background:#fff;text-decoration:none;font-weight:900;box-shadow:0 7px 18px rgba(255,104,27,.12);transition:.2s}
+    .page-button:hover{color:#fff;background:var(--orange);transform:translateY(-1px)}
+    main{width:min(1040px,calc(100% - 32px));margin:0 auto;padding:24px 0 70px}
+    .hero{position:relative;overflow:hidden;padding:20px 34px;border-radius:36px;background:linear-gradient(125deg,var(--orange),#ff8e35);color:#fff;box-shadow:0 18px 42px rgba(255,104,27,.22)}
+    .hero::after{content:"";position:absolute;right:-65px;top:-110px;width:300px;height:300px;border:46px solid rgba(255,255,255,.13);border-radius:50%}
+    .hero-copy{position:relative;z-index:1}
+    .hero h1{margin:0;font-size:clamp(32px,5vw,52px);line-height:1.12}
+    .hero p{margin:8px 0 0;font-size:18px;font-weight:700}
+    .catalog{margin-top:28px;padding:36px;border-radius:34px;background:rgba(255,255,255,.92);border:1px solid var(--line);box-shadow:0 16px 38px rgba(90,50,15,.08)}
+    .catalog h2{margin:0 0 24px;color:var(--orange);font-size:30px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:20px;background:#fff}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th,td{padding:17px 20px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;line-height:1.65}
+    th{background:#fff0e5;color:var(--orange-dark);font-size:17px;font-weight:900}
+    th:first-child,td:first-child{width:31%;font-weight:800}
+    tbody tr:nth-child(even){background:#fffaf4}
+    tbody tr:hover{background:#fff6df}
+    tbody tr:last-child td{border-bottom:0}
+    .notice{margin-top:25px;padding:25px 28px;border-radius:24px;background:#fff1d4;border-left:7px solid var(--yellow)}
+    .notice h2{margin:0 0 6px;font-size:18px}
+    .notice p{margin:0;line-height:1.7}
+    .bottom-action{margin-top:28px;text-align:center}
+    .site-footer{padding:28px 16px;text-align:center;border-top:1px solid var(--line);background:rgba(255,248,235,.82)}
+    .footer-row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;font-size:15px;font-weight:600}
+    .copyright{margin-top:10px;color:#6f5a50;font-size:13px}
+    @media(max-width:700px){
+      .top-action{width:calc(100% - 24px);padding-top:14px}
+      main{width:calc(100% - 24px);padding:18px 0 48px}
+      .hero{padding:18px 20px;border-radius:27px}
+      .hero h1{font-size:32px}
+      .hero p{font-size:16px;line-height:1.65}
+      .catalog{margin-top:18px;padding:24px 14px;border-radius:26px}
+      .catalog h2{font-size:25px}
+      table{min-width:650px}
+      th,td{padding:14px 15px}
+      th:first-child,td:first-child{width:34%}
+      .footer-row{gap:8px;font-size:13px;line-height:1.7}
+      .copyright{font-size:12px;line-height:1.5}
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <div class="top-action"><a class="page-button back-button" href="../member/tasks"><span aria-hidden="true">←</span>返回兌換列表頁面</a></div>
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <h1>萬家福/樂家康</h1>
+          <p>以下為運動幣加碼活動可兌換商品類別</p>
+        </div>
+      </section>
+      <section class="catalog" id="products">
+        <h2>商品清單</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">分類</th><th scope="col">舉例</th></tr></thead>
+            <tbody>
+              <tr><td>無糖咖啡</td><td>黑咖啡/美式咖啡</td></tr>
+              <tr><td>運動飲料</td><td>舒跑/寶礦力/Fin</td></tr>
+              <tr><td>維他命飲料</td><td>黑木耳膠原飲/葉黃素/補品</td></tr>
+              <tr><td>乳酸飲料</td><td>健酪</td></tr>
+              <tr><td>無糖茶</td><td>每朝健康/分解茶</td></tr>
+              <tr><td>瓶裝水類</td><td>礦泉水/氣泡水</td></tr>
+              <tr><td>保健食品/營養補充品</td><td>葡萄糖胺/維他命/乳清蛋白</td></tr>
+              <tr><td>燕麥片</td><td>燕麥片等</td></tr>
+              <tr><td>穀物棒</td><td>穀物棒/燕麥棒/營養棒</td></tr>
+              <tr><td>能量果凍</td><td>in果凍/蛋白機能凍</td></tr>
+              <tr><td>發酵製品</td><td>優酪乳/優格</td></tr>
+              <tr><td>鮮乳、豆奶</td><td>鮮乳/米漿/豆漿/保久乳</td></tr>
+              <tr><td>蛋類</td><td>蛋/茶葉蛋</td></tr>
+              <tr><td>豆製品</td><td>豆腐</td></tr>
+              <tr><td>毛豆</td><td>毛豆等</td></tr>
+              <tr><td>雞胸</td><td>雞胸肉(含未料理雞胸肉)/蛋白棒</td></tr>
+              <tr><td>水果</td><td>水果</td></tr>
+              <tr><td>運動用品</td><td>網球/桌球/健身器材等</td></tr>
+              <tr><td>一般麵製品(不含調味包)</td><td>好勁道/五木...等</td></tr>
+              <tr><td>蔬果汁</td><td>果菜汁</td></tr>
+              <tr><td>成人奶粉</td><td>銀養奶粉高鈣/挺鈣奶粉</td></tr>
+              <tr><td>沖泡穀物</td><td>全天然五麥/全穀堅果奶</td></tr>
+              <tr><td>沖泡咖啡</td><td>研磨咖啡粉/濾掛式咖啡</td></tr>
+              <tr><td>沖泡茶包</td><td>茗間情/天仁茗茶...各類茶包</td></tr>
+              <tr><td>堅果/核仁</td><td>無調味綜合堅果</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <aside class="notice"><h2>兌換注意事項</h2><p>實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準。</p></aside>
+      <div class="bottom-action"><a class="page-button" href="#top">回頁首<span aria-hidden="true">↑</span></a></div>
+    </main>
+    <footer class="site-footer">
+      <div class="footer-row"><span>客服電話：02-7752-3658</span><span>客服時間：週一至週日 09:00–18:00（12:00–13:00 暫停服務）</span></div>
+      <div class="copyright">運動部 2023©版權所有（所有圖資未經本部同意不得轉載及重製）</div>
+    </footer>
+  </div>
+<script>
+(function () {
+  const backButton = document.querySelector('.back-button');
+  if (!backButton) return;
+  try {
+    const previous = new URL(document.referrer);
+    if (previous.origin === window.location.origin && previous.pathname.includes('/member/redeem/')) {
+      backButton.href = previous.href;
+    }
+  } catch (error) {
+    // 無有效來源頁時保留 ../member/tasks 後備連結。
+  }
+})();
+</script>
+</body>
+</html>

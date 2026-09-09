@@ -14,7 +14,6 @@ struct TasksView: View {
     @StateObject private var viewModel = TasksViewModel()
     @State private var screenshotPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
-    @State private var voucherPeriod: TaskPeriod?
     @State private var uploadPeriod: TaskPeriod?
 
     var body: some View {
@@ -56,16 +55,9 @@ struct TasksView: View {
             .environmentObject(voucherUsage)
             .environmentObject(tabRouter)
         }
-        // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
-        // 不論在哪一頁寫入，這一頁都會立刻重畫。
-        .sheet(item: $voucherPeriod) { period in
-            NavigationStack {
-                VoucherView(taskID: period.id, source: .tasks, periodIndex: period.index)
-            }
-            .environment(\.appEnvironment, environment)
-            .environmentObject(voucherUsage)
-            .environmentObject(tabRouter)
-        }
+        // 任務頁不再自己開券碼頁：「檢視加碼券」只切到券夾分頁（見 `onVoucherTap`），
+        // 所以這裡原本那個 `voucherPeriod` sheet 一起移除了。
+        // `VoucherSource.tasks` 因此不再有人送——列舉留著沒刪，移掉會斷既有的 Firebase 報表。
         .sheet(item: $uploadPeriod, onDismiss: {
             // 上傳成功後官網會把該期改成 UNDER_REVIEW，但 App 這邊不會自己知道。
             // 沒有這一行，徽章會一直停在「未上傳」——而且因為首頁與這裡共用同一個
@@ -105,7 +97,10 @@ struct TasksView: View {
                             // 兌換本身在 RedeemView 有「確認兌換」二次確認，這裡不再多一道驗證。
                             onRedeemTap: { redeemPeriod = period },
                             onScreenshotTap: { screenshotPeriod = period },
-                            onVoucherTap: { voucherPeriod = period },
+                            // 只切到券夾分頁，不直接開券碼頁。券夾才是這張券的完整入口
+                            // （可兌換品項、出示條碼、標記已使用都在那裡），而直接跳進
+                            // 簡訊驗證會把使用者推進一條他還沒決定要走的流程。
+                            onVoucherTap: { tabRouter.selection = .wallet },
                             onUploadTap: { uploadPeriod = period }
                         )
                     }

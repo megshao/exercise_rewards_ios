@@ -17,6 +17,8 @@ struct ProfileView: View {
     @Environment(\.appEnvironment) private var environment
     @EnvironmentObject private var envStore: AppEnvironmentStore
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 廠商品項頁的本機紀錄，也算「本機資料」，登出時要一起清（見 `clearLocalData`）。
+    @EnvironmentObject private var vendorIntro: VendorIntroStore
     @StateObject private var viewModel = ProfileViewModel()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
@@ -97,6 +99,9 @@ struct ProfileView: View {
                 // 不能只藏在那顆按鈕旁邊的小字裡。
                 privacyBullet("官網改版、App 讀不到頁面時，畫面上會多一顆「複製身分證號」讓你到官網少打一欄。只有你按下它才會複製，而且只複製身分證號；內容只留在這支手機的剪貼簿約 3 分鐘、不同步到其他裝置，時間到自動清除。")
                 privacyBullet("唯一會離開這支手機的是下方的「傳送匿名使用統計」：把「按了哪個按鈕、哪一步失敗、有沒有當機」送給 Google Firebase，用來修 bug。裡面沒有個資、沒有你上傳的截圖與券碼，不想送可以在下面關掉。")
+                // 只下載、零上傳的那條連線也要講。放在最後一點，因為它是三種對外行為裡
+                // 影響最小的一種——但「影響小」不是可以不說的理由。
+                privacyBullet("券夾在找不到某張券的品項頁時，會去 GitHub 下載一份公開的商品目錄備份檔（所有人同一份）。那次連線不送出任何資料，但對方會看到你的 IP 與時間；在這個 App 裡兌換過的券本來就記得，不會用到它。")
             }
         }
         .padding(14)
@@ -348,7 +353,9 @@ struct ProfileView: View {
     }
 
     private var footer: some View {
-        Text("Exercise Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 只連 500.gov.tw · 使用統計開著時會連 Firebase")
+        // 「只連 500.gov.tw」在 1.1 之後不再為真（多了一個唯讀的公開備份檔），
+        // 頁尾字數有限，所以只講「個資只送官網」——完整的出口清單在隱私權政策。
+        Text("Exercise Rewards v\(appVersion) · 非官方工具\n個資不上雲 · 個資只送 500.gov.tw · 使用統計開著時會連 Firebase")
             .font(.system(size: 11.5))
             .foregroundStyle(Theme.Colors.dim)
             .multilineTextAlignment(.center)
@@ -394,6 +401,9 @@ struct ProfileView: View {
         // 不能靠它順手清掉，所以這裡明確再清一次。走 store 而非直接寫 UserDefaults，
         // 這樣三個分頁的畫面會立刻跟著歸零。
         voucherUsage.clear()
+        // 「這一期換了哪家廠商」同樣是本機紀錄，不清掉就會出現「資料都清了卻還記得
+        // 你換過哪一家」，與這顆按鈕的承諾不符。
+        vendorIntro.clear()
         // 遙測偏好也算「本機資料」：清除後回到預設的關閉狀態，並立刻停止收集。
         Telemetry.resetPreference()
         // 免責聲明的同意紀錄也屬於「初次設定狀態」的一部分：清除後下次開 App

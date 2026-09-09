@@ -10,6 +10,9 @@ public protocol AppEnvironment: Sendable {
     var voucher: VoucherServicing { get }
     var profileStore: ProfileStoring { get }
     var upload: UploadServicing { get }
+    /// 廠商品項目錄的離線備份。**全 App 唯一離開 500.gov.tw 的請求**
+    /// （見 `VendorCatalogService`）；示範模式給不打網路的 stub。
+    var vendorCatalog: VendorCatalogFetching { get }
 
     /// 清掉官方站的登入 session（cookie）。「立即登出並清除本機資料」與登出都要呼叫，
     /// 否則 cookie 會留在 App 沙盒容器裡跨啟動續用，等於沒真的清乾淨。
@@ -27,6 +30,7 @@ public struct DefaultAppEnvironment: AppEnvironment {
     public let voucher: VoucherServicing
     public let profileStore: ProfileStoring
     public let upload: UploadServicing
+    public let vendorCatalog: VendorCatalogFetching
 
     /// 正式環境才有的共用 HTTP client（cookie jar 就在它身上）。Preview／測試／示範模式
     /// 走可注入版本、沒有真實連線，因此為 nil，`resetSession()` 直接是 no-op。
@@ -43,6 +47,7 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.voucher = VoucherService(http: http)
         self.profileStore = KeychainStore()
         self.upload = UploadService(http: http)
+        self.vendorCatalog = VendorCatalogService()
         self.http = http
     }
 
@@ -53,7 +58,8 @@ public struct DefaultAppEnvironment: AppEnvironment {
         redeem: RedeemServicing,
         voucher: VoucherServicing,
         profileStore: ProfileStoring = KeychainStore(),
-        upload: UploadServicing = UploadServiceStub()
+        upload: UploadServicing = UploadServiceStub(),
+        vendorCatalog: VendorCatalogFetching = EmptyVendorCatalogService()
     ) {
         self.auth = auth
         self.tasks = tasks
@@ -61,6 +67,7 @@ public struct DefaultAppEnvironment: AppEnvironment {
         self.voucher = voucher
         self.profileStore = profileStore
         self.upload = upload
+        self.vendorCatalog = vendorCatalog
         self.http = nil
     }
 

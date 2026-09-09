@@ -20,6 +20,8 @@ struct RedeemView: View {
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
     /// 同樣是為了兌換成功後開的 `VoucherView`——它關閉時要導回券夾。
     @EnvironmentObject private var tabRouter: TabRouter
+    /// 兌換成功時要記下選到的廠商品項頁，供券夾使用（見 `VendorIntroStore`）。
+    @EnvironmentObject private var vendorIntro: VendorIntroStore
     /// 券碼頁關閉時連這一層 sheet 一起收掉（見 `showVoucher` 的 `onDismiss`）。
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = RedeemViewModel()
@@ -45,7 +47,8 @@ struct RedeemView: View {
         // E1：不帶 taskID。
         .onAppear { Telemetry.screenAppeared(.redeem) }
         .task {
-            viewModel.configure(redeem: environment.redeem, taskID: taskID, periodIndex: periodIndex)
+            viewModel.configure(redeem: environment.redeem, taskID: taskID,
+                                periodIndex: periodIndex, vendorIntro: vendorIntro)
             if viewModel.options.isEmpty && viewModel.result == nil {
                 await viewModel.load()
             }
@@ -317,13 +320,18 @@ final class RedeemViewModel: ObservableObject {
     @Published private(set) var isSiteHandoff = false
 
     private var redeem: RedeemServicing?
+    /// 兌換成功時把選到的廠商品項頁記進本機（券夾要靠它長出「查看可兌換品項」）。
+    /// 弱參考不必要——store 由 `HuihanApp` 持有，生命週期比這個 ViewModel 長。
+    private var vendorIntro: VendorIntroStore?
     private var taskID = ""
     /// 活動週次（1–14）。遙測只送這個，不送 `taskID`。
     private var periodIndex: Int?
 
-    func configure(redeem: RedeemServicing, taskID: String, periodIndex: Int? = nil) {
+    func configure(redeem: RedeemServicing, taskID: String, periodIndex: Int? = nil,
+                   vendorIntro: VendorIntroStore? = nil) {
         guard self.redeem == nil else { return }
         self.redeem = redeem
+        self.vendorIntro = vendorIntro
         self.taskID = taskID
         self.periodIndex = periodIndex
     }
@@ -406,6 +414,13 @@ final class RedeemViewModel: ObservableObject {
             let redeemResult = try await redeem.redeem(taskID: taskID, vendorId: option.vendorId,
                                                        item: option.itemId)
             result = redeemResult
+            // 記下這一期換到的廠商品項頁。**只在真的送出成功時記**，而且只有官網真的
+            // 提供那一頁時才有路徑可記（`introPath == nil` 是正常狀況，見 `RedeemOption`）。
+            // 已兌換的期別在官網沒有兌換頁了，這是唯一還看得到這個路徑的時機。
+            if redeemResult.submitted, let introPath = option.introPath {
+                vendorIntro?.remember(id: taskID, introPath: introPath,
+                                      vendorName: option.vendorName)
+            }
             // E19：`RedeemResult.message` 即使是 App 自己的靜態文案也不送，維持「無字串」原則。
             Telemetry.logEvent(.redeemResult(outcome: redeemResult.submitted ? .submitted : .stayedOnPage,
                                              vendor: vendor,

@@ -11,6 +11,10 @@ struct HuihanApp: App {
     /// 必須共用同一份才會一起更新（見 `VoucherUsageStore` 的說明）。
     @StateObject private var voucherUsage = VoucherUsageStore()
 
+    /// 「這一期換的是哪家廠商、品項頁在哪」的本機紀錄，供券夾長出「查看可兌換品項」。
+    /// 與 `voucherUsage` 同一個理由要共用一份（見 `VendorIntroStore`）。
+    @StateObject private var vendorIntro = VendorIntroStore()
+
     /// 唯一一次 Firebase 初始化。沒有 GoogleService-Info.plist 時會安全跳過（不會 crash），
     /// 使用者同意免責聲明之前不會初始化 Firebase，也不會送出任何東西。細節見 Telemetry.swift 檔頭。
     ///
@@ -34,11 +38,14 @@ struct HuihanApp: App {
             .environment(\.appEnvironment, envStore.environment)
             .environmentObject(envStore)
             .environmentObject(voucherUsage)
+            .environmentObject(vendorIntro)
             // 進出示範模式時 `AppEnvironmentStore` 會清掉持久化的「已使用」標記
             // （示範資料與真實資料的期別 UUID 不可混用）。這裡把畫面上那份一起歸零，
             // 否則標記會留在畫面上直到下次冷啟動。
             .onChange(of: envStore.isDemo) { _ in
                 voucherUsage.clear()
+                // 示範資料與真實資料的期別 UUID 不可混用，廠商頁紀錄同理。
+                vendorIntro.clear()
             }
             .preferredColorScheme(.light) // 設計為白底單一主題，鎖淺色避免深色模式白底白字
             // 全 App 鎖繁體中文（台灣）：系統提供的元件與數字/日期格式不會跟著裝置語系跑掉。

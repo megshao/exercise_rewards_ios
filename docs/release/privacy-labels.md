@@ -60,7 +60,35 @@ Apple 有一條「選擇性揭露（Optional Disclosure）」豁免，四個條�
 
 **Google LLC**（Firebase Analytics / Crashlytics）現在是本 App 的第三方夥伴之一。
 資料存放於 Google 位在美國的伺服器，適用 Firebase 的資料處理條款。
-另一個是 `500.gov.tw`（前提 B）。**開發者自己仍然沒有任何伺服器。**
+另一個是 `500.gov.tw`（前提 B）。
+
+**GitHub（Microsoft）** 從 1.1 起也算得上一個接觸點，但性質與上面兩者不同，要分清楚：
+App 會從 GitHub Pages **下載**一份公開的商品目錄備份檔（`vendor-catalog.json`，見
+`VendorCatalogService`）。那條連線是獨立的 ephemeral session，**不帶 cookie、不帶登入狀態、
+不送出任何欄位**，而且檔案對所有使用者都是同一份。
+
+**開發者自己仍然沒有任何「接收」資料的伺服器**——GitHub Pages 是靜態託管，後面沒有程式在收東西。
+但「開發者完全沒有任何伺服器」這句話從此不能再無條件地講，所以本文與
+`site/privacy.html` 都已改成「沒有任何**會接收你資料的**伺服器」。
+
+### 這需要多勾一格嗎？
+
+**判斷：不需要新增任何資料類別，但要在隱私政策揭露。**
+
+- 隱私標籤問的是「**蒐集**」（collect）——把資料從 App 傳出去並保留。這次的請求**不傳出任何資料**，
+  所以沒有任何一格對得上：不是 Identifiers、不是 Usage Data、不是 Diagnostics。
+- 唯一會被對方看到的是**發出請求這件事本身**（IP 位址與時間），那是任何 HTTP 請求的固有性質，
+  等同於使用者去連 `500.gov.tw` 或 Firebase 時也會發生。Apple 的標籤制度不要求申報
+  託管商的連線紀錄，否則每個用 CDN 的 App 都得勾 Identifiers。
+- 但本專案的既定立場是「**選多勾**」（前提 C）。多勾的代價只是商店頁多幾列，
+  少勾的代價是標籤不實。這裡之所以仍然判斷「不勾」，不是為了少勾，而是因為
+  **沒有任何一個類別的定義涵蓋「只下載、零上傳」**——硬勾一格反而會誤導使用者
+  以為 App 把什麼東西送給了 GitHub。
+- 取而代之的作法：在 `site/privacy.html` 第 3 節用整整一小節講清楚 IP 會被看到、
+  什麼時候才會抓、裡面有什麼。**揭露的義務用文字履行，而不是用一格錯誤的勾選履行。**
+
+若日後 Apple 或法務認為仍該勾，最接近的類別是 **Diagnostics → Other Diagnostic Data（Not Linked）**；
+但在那之前不主動勾，理由如上。
 
 ### 問卷第一題
 
@@ -123,7 +151,7 @@ Apple 定義 linked 為「可與使用者身分連結」。本 App 的辯護是�
 1. **App 沒有帳號系統**，`Telemetry` 也從不呼叫 `Analytics.setUserID(_:)`（全檔搜尋零命中）。
 2. **完全不設任何使用者屬性**：`UserProperty` 是 `enum UserProperty: Sendable {}`——**不可建構的空列舉**，所以連一個準識別碼屬性都構造不出來。
 3. **IDFV 收集已關閉**（`GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED=false`），app instance ID 因此不與裝置層識別碼綁定。
-4. **使用者可自行重置**：關掉開關即停止收集並重置 app instance ID、刪掉未送出的當機報告；「立即清除本機資料」會把**免責聲明的同意紀錄與遙測偏好一起重置**，下次冷啟動要重新看到聲明並重新同意，`Telemetry.configure()` 在那之前不會執行。
+4. **使用者可自行重置**：關掉開關即停止收集並重置 app instance ID、刪掉未送出的當機報告；「立即登出並清除本機資料」會把**免責聲明的同意紀錄與遙測偏好一起重置**，下次冷啟動要重新看到聲明並重新同意，`Telemetry.configure()` 在那之前不會執行。
 
 Google 官方的 App Store 資料揭露對照表對 Analytics／Crashlytics 的建議答案也是 Not Linked。
 
