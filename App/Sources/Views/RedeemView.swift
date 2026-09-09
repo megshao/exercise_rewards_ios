@@ -51,18 +51,23 @@ struct RedeemView: View {
             isPresented: Binding(
                 get: { viewModel.pendingOption != nil },
                 set: { isPresented in
-                    // 滑掉 alert 等同取消。
-                    if !isPresented { viewModel.cancelPending() }
+                    // **這裡只能收掉狀態，不能判定「使用者取消了」**：按 alert 任一顆鈕，
+                    // SwiftUI 都是先把 isPresented 設成 false，**再**執行那顆鈕的 action。
+                    // 先前這裡呼叫 `cancelPending()`，於是「確認兌換」的 action 還沒跑，
+                    // `pendingOption` 就已經是 nil——`confirmRedeem()` 的 guard 直接 return，
+                    // 整顆確認鈕變成空操作（而且每次確認都被記成一次 `redeem_cancel`）。
+                    if !isPresented { viewModel.clearPending() }
                 }
             ),
             presenting: viewModel.pendingOption
-        ) { _ in
+        ) { option in
             Button("取消", role: .cancel) {
-                // E17
-                viewModel.cancelPending()
+                // E17：iOS 的 alert 關不掉也滑不掉，所以「使用者取消」只有這一條路。
+                viewModel.reportCancel(option)
             }
             Button("確認兌換", role: .destructive) {
-                Task { await viewModel.confirmRedeem() }
+                // 帶著 `presenting` 捕捉到的 option 走，不回頭讀已被清空的 `pendingOption`。
+                Task { await viewModel.confirmRedeem(option) }
             }
         } message: { option in
             Text("將兌換「\(option.vendorName)．\(option.itemName)」。兌換後不可更換，需簡訊驗證出示券碼。")
@@ -217,15 +222,20 @@ private struct VendorRow: View {
                 .accessibilityLabel("查看\(option.vendorName)可兌換商品")
             }
 
+            // padding 與背景一律畫在 label **裡面**（寫法比照上面的「兌換品項」）。
+            // 加在 Button 外側的話版面會撐大、色塊也照樣畫得出來，但 Button 的可點區
+            // 仍然只有 `Text` 本身——實機量到可點區 26×15.7pt、色塊 58×35.7pt，
+            // 有八成是死區，點在藥丸上卻沒反應。
             Button(action: onRedeem) {
                 Text("兌換")
                     .font(Theme.displayFont(13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(isSubmitting ? Theme.Colors.dim : Theme.Colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(isSubmitting ? Theme.Colors.dim : Theme.Colors.primary)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.plain)
             .disabled(isSubmitting)
         }
         .padding(15)
@@ -318,10 +328,16 @@ final class RedeemViewModel: ObservableObject {
         Telemetry.logEvent(.redeemSelect(vendor: Vendor(vendorName: option.vendorName)))
     }
 
-    /// E17：使用者在確認 alert 按了取消（或滑掉）。
-    func cancelPending() {
-        guard let option = pendingOption else { return }
+    /// alert 收起來時歸零狀態，**不送遙測**。
+    ///
+    /// SwiftUI 會先關 alert 再跑按鈕的 action，所以在這個時間點還不知道使用者按的是哪一顆；
+    /// 「取消」的遙測由 `reportCancel(_:)` 負責，確認那條路則走 `confirmRedeem(_:)`。
+    func clearPending() {
         pendingOption = nil
+    }
+
+    /// E17：使用者在確認 alert 按了取消。
+    func reportCancel(_ option: RedeemOption) {
         Telemetry.logEvent(.redeemCancel(vendor: Vendor(vendorName: option.vendorName)))
     }
 
@@ -367,8 +383,10 @@ final class RedeemViewModel: ObservableObject {
                                  extras: ["options": .int(loaded.count)])
     }
 
-    func confirmRedeem() async {
-        guard let redeem, let option = pendingOption else { return }
+    /// 送出兌換。`option` 由 alert 的 `presenting:` 傳進來——**不要**改回讀 `pendingOption`，
+    /// 那個值在這支被呼叫前就已經被 alert 的 isPresented binding 清成 nil 了。
+    func confirmRedeem(_ option: RedeemOption) async {
+        guard let redeem else { return }
         let vendor = Vendor(vendorName: option.vendorName)
         pendingOption = nil
         isSubmitting = true
