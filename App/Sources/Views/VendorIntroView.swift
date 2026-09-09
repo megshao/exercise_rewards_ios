@@ -38,7 +38,8 @@ struct VendorIntroView: View {
         // E1：不帶 introPath，也不帶商家名（官網文字一律不進遙測）。
         .onAppear { Telemetry.screenAppeared(.vendorIntro) }
         .task {
-            viewModel.configure(redeem: environment.redeem, introPath: introPath)
+            viewModel.configure(redeem: environment.redeem, introPath: introPath,
+                                catalog: environment.vendorCatalog)
             await viewModel.load()
         }
     }
@@ -52,8 +53,31 @@ struct VendorIntroView: View {
         } else if let errorMessage = viewModel.errorMessage, viewModel.intro == nil {
             errorState(errorMessage)
         } else if let intro = viewModel.intro {
+            if let capturedAt = viewModel.backupCapturedAt {
+                backupBanner(capturedAt)
+            }
             loaded(intro)
         }
+    }
+
+    /// 這份清單來自離線備份，不是官網即時頁面——**必須讓使用者看到**。
+    ///
+    /// 官網的品項頁自己就寫著「實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準」；
+    /// 官網都不保證自己的清單，一份可能過期好幾週的快照更沒有資格裝成即時資料。
+    /// 所以這裡把來源與擷取日期講明白，讓使用者自己判斷要不要相信。
+    private func backupBanner(_ capturedAt: String) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            Image(systemName: "clock.arrow.circlepath")
+                .foregroundStyle(Theme.Colors.warnText)
+            Text("讀不到官網的品項頁，以下是 \(capturedAt) 擷取的離線備份，可能已經變動。實際可兌換品項以門市現場公告為準。")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.system(size: 12))
+        .foregroundStyle(Theme.Colors.warnText)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.warnBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     @ViewBuilder
@@ -258,7 +282,11 @@ final class VendorIntroViewModel: ObservableObject {
     @Published private(set) var expanded: Set<String> = []
 
     private var redeem: RedeemServicing?
+    private var catalog: VendorCatalogFetching?
     private var introPath = ""
+    /// 這份內容是離線備份、快照日期是哪一天。nil＝來自官網即時頁面。
+    /// **有值時畫面必須告知使用者**（見 `VendorCatalogService` 的說明）。
+    @Published private(set) var backupCapturedAt: String?
 
     var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
     var isSearching: Bool { !trimmedQuery.isEmpty }
@@ -287,9 +315,11 @@ final class VendorIntroViewModel: ObservableObject {
         }
     }
 
-    func configure(redeem: RedeemServicing, introPath: String) {
+    func configure(redeem: RedeemServicing, introPath: String,
+                   catalog: VendorCatalogFetching? = nil) {
         guard self.redeem == nil else { return }
         self.redeem = redeem
+        self.catalog = catalog
         self.introPath = introPath
     }
 
@@ -325,9 +355,29 @@ final class VendorIntroViewModel: ObservableObject {
             intro = loaded
             reportLayoutDrift(loaded)
         } catch {
-            // 這一頁是純資訊，載不到不影響兌換本身，因此只提示、不擋流程。
-            errorMessage = "無法載入可兌換商品清單，請稍後再試。"
             Telemetry.reportFailure(error, endpoint: .vendorIntro)
+            // 官網載不到就退到離線備份。**沒有備份才顯示錯誤**——
+            // 這一頁是純資訊，載不到不影響兌換本身，所以只提示、不擋流程。
+            if await loadBackup() { return }
+            errorMessage = "無法載入可兌換商品清單，請稍後再試。"
+        }
+    }
+
+    /// 用離線備份接手。成功回 true。
+    ///
+    /// 失敗一律安靜結束（連錯誤訊息都交回給呼叫端決定）：備份本身也是加值功能，
+    /// 它抓不到時該顯示的是原本那句「無法載入」，而不是「備份也失敗了」這種
+    /// 對使用者毫無意義的實作細節。
+    private func loadBackup() async -> Bool {
+        guard let catalog else { return false }
+        do {
+            let backup = try await catalog.fetch()
+            guard let vendor = backup.vendor(introPath: introPath) else { return false }
+            intro = vendor.intro
+            backupCapturedAt = backup.capturedAt
+            return true
+        } catch {
+            return false
         }
     }
 }

@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
+    :root{
+      --bg:#f5f6f8; --card:#ffffff; --card2:#fff7ee; --line:#ecedf1; --line2:#e0e3e9;
+      --pri:#ff5a1f; --pri-d:#e8480f; --amber:#ffc24d; --text:#1a1d24; --muted:#697485; --dim:#9aa1ac;
+      --ok:#12a150; --ok-bg:#e6f6ee; --warn:#9a6400; --warn-bg:#fff4d6; --danger:#e5443b; --track:#eceef2;
+      --disp:"Baloo 2","Noto Sans TC",system-ui,-apple-system,sans-serif;
+      --body:"Noto Sans TC",system-ui,-apple-system,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:var(--body);color:var(--text);-webkit-font-smoothing:antialiased}
+    a{color:var(--pri);text-decoration:none} a:hover{color:var(--pri-d)}
+    @keyframes slide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,194,77,.55)}70%{box-shadow:0 0 0 7px rgba(255,194,77,0)}}
+  </style>
+</helmet>
+<div style="width:350px;height:190px;background:#f5f6f8;padding:12px 10px 14px">
+  <div style="height:100%;background:#ffffff;border:1px solid #ecedf1;border-radius:20px;padding:16px 18px;box-shadow:0 8px 22px rgba(17,20,28,.05);display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <div style="font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.2">第 1 期</div>
+          <div style="font-size:12px;color:#697485">09/01 ~ 09/06</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#697485;background:#eef0f3;padding:4px 10px;border-radius:999px">已兌換</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;background:#eef0f3;color:#697485">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#697485" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        <div style="flex:1;font-size:13px;font-weight:700">已兌換 · 09/05 領取</div>
+        <div style="display:flex;align-items:center;gap:2px;font-size:13px;font-weight:700;min-height:44px">券夾<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#697485" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"></path></svg></div>
+      </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

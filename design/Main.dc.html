@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    :root{
+      --bg:#f5f6f8; --card:#ffffff; --card2:#fff7ee;
+      --line:#ecedf1; --line2:#e0e3e9;
+      --pri:#ff5a1f; --pri-d:#e8480f; --amber:#ffc24d;
+      --text:#1a1d24; --muted:#697485; --dim:#9aa1ac;
+      --ok:#12a150; --ok-bg:#e6f6ee;
+      --warn:#9a6400; --danger:#e5443b;
+      --disp:"Baloo 2","Noto Sans TC",system-ui,sans-serif;
+      --body:"Noto Sans TC",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:var(--body);color:var(--text);-webkit-font-smoothing:antialiased}
+    a{color:var(--pri);text-decoration:none} a:hover{color:var(--pri-d)}
+    .phone{width:390px;height:844px;position:relative;overflow:hidden;background:
+      radial-gradient(120% 55% at 82% -8%, rgba(255,90,31,.10), transparent 60%),
+      radial-gradient(90% 48% at -8% 3%, rgba(255,194,77,.16), transparent 55%),
+      var(--bg)}
+    .safe{padding:58px 20px 0}
+    .tabbar{position:absolute;left:0;right:0;bottom:0;height:84px;background:rgba(255,255,255,.94);
+      border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:flex-start;
+      padding-top:12px;backdrop-filter:blur(10px)}
+    .tab{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--dim);
+      font-weight:500}
+    .tab.on{color:var(--pri)}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="safe">
+
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:13px;color:var(--muted);font-weight:500">午安，動起來！</div>
+        <div style="font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:.5px">
+          揮汗<span style="color:var(--pri)">有禮</span></div>
+      </div>
+      <div style="width:44px;height:44px;border-radius:999px;background:var(--card);border:1px solid var(--line2);
+        display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(17,20,28,.05)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>
+      </div>
+    </div>
+
+    <!-- steps ring card -->
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:26px;padding:24px;
+      display:flex;align-items:center;gap:22px;box-shadow:0 14px 34px rgba(17,20,28,.08)">
+      <div style="position:relative;width:132px;height:132px;flex:none">
+        <svg width="132" height="132" viewBox="0 0 132 132">
+          <circle cx="66" cy="66" r="58" fill="none" stroke="#eceef2" stroke-width="13"/>
+          <circle cx="66" cy="66" r="58" fill="none" stroke="url(#g1)" stroke-width="13" stroke-linecap="round"
+            stroke-dasharray="364" stroke-dashoffset="72" transform="rotate(-90 66 66)"/>
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffc24d"/><stop offset="1" stop-color="#ff5a1f"/></linearGradient></defs>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-family:var(--disp);font-weight:800;font-size:32px;line-height:1">9,688</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">今日步數</div>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:var(--ok-bg);color:var(--ok);
+          font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#12a150" stroke-width="2.6"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>已達今日目標</div>
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);line-height:1.6">
+          目標 8,000 步<br>距離 6.4 km · 運動 42 分</div>
+        <div style="margin-top:12px;font-size:12px;color:var(--dim)">來自 Apple 健康 · 09/03</div>
+      </div>
+    </div>
+
+    <!-- one tap login CTA -->
+    <button style="width:100%;margin-top:18px;border:none;cursor:pointer;border-radius:20px;padding:18px;
+      background:linear-gradient(120deg,#ff7a2b,#ff5109);color:#fff;font-family:var(--disp);font-weight:800;
+      font-size:18px;display:flex;align-items:center;justify-content:center;gap:10px;
+      box-shadow:0 12px 26px rgba(255,90,31,.34)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="3"/>
+        <path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg>
+      一鍵登入「我的任務」</button>
+    <div style="text-align:center;margin-top:9px;font-size:12px;color:var(--dim);display:flex;
+      align-items:center;justify-content:center;gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ac" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z"/></svg>
+      個資只存這支手機 · Face ID 保護</div>
+
+    <!-- this week task strip -->
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:var(--disp);font-weight:700;font-size:16px">本週任務</div>
+      <div style="font-size:12px;color:var(--pri);font-weight:600">全部 14 期 ›</div>
+    </div>
+    <div style="margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px 18px;
+      box-shadow:0 8px 22px rgba(17,20,28,.05)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px">第 1 期
+          <span style="font-family:var(--body);font-weight:400;color:var(--muted);font-size:12px">09/01 ~ 09/06</span></div>
+        <div style="font-size:11px;font-weight:700;color:#fff;background:var(--ok);padding:4px 10px;border-radius:999px">可兌換</div>
+      </div>
+      <div style="margin-top:12px;height:8px;background:#eceef2;border-radius:999px;overflow:hidden">
+        <div style="width:100%;height:100%;background:linear-gradient(90deg,#ffc24d,#ff5a1f)"></div></div>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted)">任務完成 · 剩 1 天 22 小時可兌換</div>
+    </div>
+
+  </div>
+
+  <!-- tab bar (no fake status bar) -->
+  <div class="tabbar">
+    <div class="tab on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>首頁</div>
+    <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9aa1ac" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>任務</div>
+    <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9aa1ac" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>健康</div>
+    <div class="tab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9aa1ac" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/></svg>券夾</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

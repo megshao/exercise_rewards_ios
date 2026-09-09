@@ -7,20 +7,36 @@ struct HomeView: View {
     @EnvironmentObject private var envStore: AppEnvironmentStore
     /// 「已使用」標記的共用真相來源。三個分頁同時活著，各自快照會不同步（見 `VoucherUsageStore`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 券碼頁關閉時要導回券夾，sheet 內容需要顯式注入（見 `TabRouter`）。
+    @EnvironmentObject private var tabRouter: TabRouter
     @StateObject private var viewModel = HomeViewModel()
     @State private var showProfile = false
     @State private var redeemPeriod: TaskPeriod?
     @State private var voucherPeriod: TaskPeriod?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                loginCTA
-                weeklyTaskSection
-                voucherSection
+        VStack(spacing: 0) {
+            // 5b：首頁跟任務頁顯示的是同一份快取，官網改版時同樣不能靜默沿用——
+            // 否則下面那行「已登入，任務資料已同步」就成了謊話。
+            if viewModel.showsSiteHandoffBanner {
+                SiteHandoffBanner(destination: .tasks) {
+                    viewModel.isSiteHandoffBannerDismissed = true
+                }
             }
-            .padding(20)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    loginCTA
+                    weeklyTaskSection
+                    voucherSection
+                }
+                .padding(20)
+            }
+            .refreshable {
+                viewModel.refreshProfileState()
+                // 下拉是明確意圖，忽略節流（理由同 TasksView 的 refreshable）。
+                await viewModel.loadWeeklySummary(force: true)
+            }
         }
         .background(Theme.Colors.background)
         .navigationBarTitleDisplayMode(.inline)
@@ -34,11 +50,6 @@ struct HomeView: View {
                                  profileStore: environment.profileStore, envStore: envStore)
             await viewModel.bootstrap()
         }
-        .refreshable {
-            viewModel.refreshProfileState()
-            // 下拉是明確意圖，忽略節流（理由同 TasksView 的 refreshable）。
-            await viewModel.loadWeeklySummary(force: true)
-        }
         // 兌換完官網會把該期改成 REDEEMED，不重抓的話這一列會停在「尚未兌換」。
         .sheet(item: $redeemPeriod, onDismiss: {
             Task { await viewModel.loadWeeklySummary(force: true) }
@@ -47,6 +58,7 @@ struct HomeView: View {
                 .environment(\.appEnvironment, environment)
                 // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
         // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
         // 在券碼頁寫入的當下這一頁就已經重畫了。
@@ -54,6 +66,7 @@ struct HomeView: View {
             NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
                 .environment(\.appEnvironment, environment)
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
     }
 
@@ -111,7 +124,8 @@ struct HomeView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(Theme.Colors.success)
-                    Text("已登入，任務資料已同步")
+                    // 登入成功但任務頁解析失敗時，「已同步」是假的——講清楚同步到哪一步。
+                    Text(viewModel.isSiteHandoff ? "已登入，但讀不到官網的任務資料" : "已登入，任務資料已同步")
                         .foregroundStyle(Theme.Colors.muted)
                 }
                 .font(.system(size: 13))
@@ -174,6 +188,11 @@ struct HomeView: View {
                     .padding(.vertical, 20)
             } else if let task = viewModel.currentWeekTask {
                 TaskSummaryCard(task: task)
+            } else if viewModel.isSiteHandoff {
+                // 5a：沒有快取又讀不到官網——「下拉重新整理試試」會讓人以為是自己的問題。
+                SiteHandoffState(destination: .tasks) {
+                    await viewModel.loadWeeklySummary(force: true)
+                }
             } else {
                 Text("目前沒有任務資料，下拉重新整理試試。")
                     .font(.system(size: 13))
@@ -572,6 +591,20 @@ final class HomeViewModel: ObservableObject {
 
     @Published var isLoadingSummary = false
 
+    /// 最近一次抓任務（或登入）是否撞上「官網結構對不上」（`SiteHandoff.shouldHandoff(_:)`）。
+    ///
+    /// **`bootstrap` 的第一次抓取失敗刻意不算**：冷啟動時那幾乎都是 session 過期，它會接著
+    /// 自動登入再抓一次；真正的判斷落在登入之後的 `loadWeeklySummary(force: true)`，
+    /// 以及登入本身失敗（`/access`／`/login` 頁面讀不到 `_csrf`）的那一刻。
+    @Published private(set) var isSiteHandoff = false
+    /// 使用者關掉了頂端 banner。下一次抓取再失敗時要重新出現，所以每次抓取開頭歸零。
+    @Published var isSiteHandoffBannerDismissed = false
+
+    /// 有快取可顯示、又撞上改版、而且使用者還沒關掉——三個條件都成立才掛 banner。
+    var showsSiteHandoffBanner: Bool {
+        isSiteHandoff && currentWeekTask != nil && !isSiteHandoffBannerDismissed
+    }
+
     /// 首頁的加碼券區塊要跨期別排序，因此保留整份清單而非只留高亮那一期。
     @Published var periods: [TaskPeriod] = []
 
@@ -654,6 +687,9 @@ final class HomeViewModel: ObservableObject {
         guard force || TasksCache.canRefresh() || periods.isEmpty else { return }
         let hadCache = !periods.isEmpty
         isLoadingSummary = periods.isEmpty
+        // 每次抓取都是一次新的判斷（見 `isSiteHandoff`）。
+        isSiteHandoff = false
+        isSiteHandoffBannerDismissed = false
         defer { isLoadingSummary = false }
         let startedAt = DispatchTime.now()
         do {
@@ -676,7 +712,9 @@ final class HomeViewModel: ObservableObject {
                 // post_login 的解析失敗才是改版訊號；一般刷新可能只是 session 剛過期。
                 sessionProbable: !force
             )
-            // 有快取就沿用，不清掉。
+            // 有快取就沿用，不清掉——但官網結構對不上時要掛 banner 說這是舊資料，
+            // 沒快取時則由 `weeklyTaskSection` 走接手畫面（見 `HomeView`）。
+            isSiteHandoff = SiteHandoff.shouldHandoff(error)
         }
     }
 
@@ -751,6 +789,8 @@ final class HomeViewModel: ObservableObject {
         guard let auth, let profileStore else { return }
         isLoggingIn = true
         loginResultMessage = nil
+        // 重新登入是一次新的嘗試：上次的接手狀態歸零，成功後 `loadWeeklySummary` 會再判一次。
+        isSiteHandoff = false
         defer { isLoggingIn = false }
         let trigger: LoginTrigger = silent ? .auto : .manual
         let startedAt = DispatchTime.now()
@@ -806,6 +846,9 @@ final class HomeViewModel: ObservableObject {
         } catch {
             loginResultIsError = true
             loginResultMessage = Self.message(for: error)
+            // `/access`／`/login` 是公開頁，讀不到 `_csrf` 或解析不到內容不可能是 session 過期，
+            // 幾乎就是登入頁改版了——把接手入口一起亮起來，讓使用者可以直接去官網登入。
+            isSiteHandoff = SiteHandoff.shouldHandoff(error)
             Telemetry.setCrashKey(.sessionState(.loginFailed))
             let reason = Telemetry.reportFailure(error, endpoint: .login)
             Telemetry.logEvent(.loginFailed(trigger: trigger, reason: reason,
@@ -818,7 +861,11 @@ final class HomeViewModel: ObservableObject {
         if let appError = error as? AppError {
             switch appError {
             case .network: return "網路連線異常，請檢查網路後再試一次"
-            case .csrfNotFound, .unexpectedResponse, .parsing, .responseTooLarge:
+            // 登入頁讀不到 `_csrf`／解析不到內容：頁面拿到了但長得不一樣，這是改版不是「回應異常」。
+            // 對應的接手入口（前往官網／複製身分證號）由 `isSiteHandoff` 亮在本週任務那一區。
+            case .csrfNotFound, .parsing:
+                return "讀不到官網的登入頁，可能是官網改版了；可先到官網完成登入"
+            case .unexpectedResponse, .responseTooLarge:
                 return "官網回應異常，請稍後再試"
             case .notLoggedIn: return "尚未登入，請先完成一鍵登入"
             case .blockedEgress: return "偵測到非官方網域連線，已阻擋"

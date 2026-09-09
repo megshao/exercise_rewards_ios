@@ -24,25 +24,64 @@ public enum TaskParser {
         }
     }
 
-    /// 把整份 HTML 依 `<li class="period-card` 切成一張一張卡片的原始片段。
-    private static func splitCards(_ html: String) -> [String] {
-        let marker = "<li class=\"period-card"
-        var cards: [String] = []
-        var searchStart = html.startIndex
+    /// 卡片的開頭標籤：class 屬性裡有 `period-card` 這個 token 的 `<li>`。
+    /// **刻意不比對完整字串** `<li class="period-card"`——見 `splitCards` 的說明。
+    ///
+    /// `\bperiod-card\b` 的邊界行為是有意的：`period-card--current` 會匹配（`-` 不是 word char），
+    /// 卡片內的子元素 `period-card__title`／`period-card__meta` 不會（`_` 是 word char）——
+    /// 否則一張卡會被自己的子元素切成好幾張。
+    private static let periodCardOpenTagPattern =
+        #"<li\b[^<>]{0,400}\bclass\s{0,8}=\s{0,8}["'][^"']{0,300}\bperiod-card\b[^"']{0,300}["'][^<>]{0,400}>"#
 
-        while let markerRange = html.range(of: marker, range: searchStart..<html.endIndex) {
-            let cardStart = markerRange.lowerBound
-            let nextSearchStart = markerRange.upperBound
+    /// 一張卡片**該有**的內容：`period-no`／`period-range`／`period-state`。這三個是檔頭列的
+    /// 卡片骨架（其餘 remaining／detail／voucher 都標了「可能沒有」）。切出來的塊至少要含其中之一，
+    /// 否則只是 class 裡碰巧帶著 `period-card` 字樣的無關 `<li>`（例如圖例、說明列）。
+    private static let periodCardContentPattern = #"\bperiod-(?:no|range|state)\b"#
+
+    /// 把整份 HTML 依卡片的 `<li>` 開頭切成一張一張卡片的原始片段。每一塊從標記開始，
+    /// 到下一個標記／`</ul>`／文件尾為止。
+    ///
+    /// **為什麼用正則而不是比對 `<li class="period-card` 這個完整字串**（這裡改過一次，
+    /// 跟 `RedeemParser.splitRowBlocks` 是同一種病）：完整字串比對把 class 屬性的**寫法**也當成
+    /// 契約的一部分。官網只要調換 class 順序（`class="card period-card"`）、在 `<li>` 上多加一個
+    /// 排在 class 前面的屬性、改用單引號、或在 `=` 旁多一個空白，就一張卡都切不到 →
+    /// `parse` 丟 `AppError.parsing` → **整個任務頁死掉**，而官網其實一個欄位都沒改。
+    /// `RedeemParser` 那邊靜默退回舊路徑、按鈕消失；這邊沒有退路，直接全頁失效，
+    /// 所以邊界同樣改成「class 裡有 `period-card` 這個 token」。
+    ///
+    /// 只保留**真的含有卡片內容**（見 `periodCardContentPattern`）的塊：放寬邊界之後，
+    /// 頁面上任何 class 帶 `period-card` 字樣的 `<li>`（`period-card-legend` 之類）都會被切成一塊，
+    /// 不過濾就會多出一張全是預設值的假卡片。
+    ///
+    /// ReDoS 防線同檔案其他樣式：屬性用 `[^<>]`／`[^"']` 且量詞都有上限，
+    /// 大量未閉合的 `<li ` 在下一個 `<` 就停住。
+    private static func splitCards(_ html: String) -> [String] {
+        guard let tagRegex = try? NSRegularExpression(
+            pattern: periodCardOpenTagPattern,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else {
+            return []
+        }
+        let fullRange = NSRange(html.startIndex..<html.endIndex, in: html)
+        let starts = tagRegex.matches(in: html, range: fullRange).compactMap {
+            Range($0.range, in: html)?.lowerBound
+        }
+        guard !starts.isEmpty else { return [] }
+
+        var cards: [String] = []
+        for (offset, cardStart) in starts.enumerated() {
             let cardEnd: String.Index
-            if let nextMarkerRange = html.range(of: marker, range: nextSearchStart..<html.endIndex) {
-                cardEnd = nextMarkerRange.lowerBound
-            } else if let closeULRange = html.range(of: "</ul>", range: nextSearchStart..<html.endIndex) {
+            if offset + 1 < starts.count {
+                cardEnd = starts[offset + 1]
+            } else if let closeULRange = html.range(of: "</ul>", range: cardStart..<html.endIndex) {
                 cardEnd = closeULRange.lowerBound
             } else {
                 cardEnd = html.endIndex
             }
-            cards.append(String(html[cardStart..<cardEnd]))
-            searchStart = nextSearchStart
+            let card = String(html[cardStart..<cardEnd])
+            if card.range(of: periodCardContentPattern, options: [.regularExpression, .caseInsensitive]) != nil {
+                cards.append(card)
+            }
         }
         return cards
     }
