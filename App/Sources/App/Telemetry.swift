@@ -585,7 +585,7 @@ enum AnalyticsEvent: Sendable {
     case profileSave(outcome: TelemetryOutcome)
 
     // E26
-    /// 「立即清除本機資料」。在真的清除之前送，送完立刻重置 app instance ID。
+    /// 「立即登出並清除本機資料」。在真的清除之前送，送完立刻重置 app instance ID。
     case localDataClear
 
     // E27
@@ -1136,7 +1136,7 @@ enum Telemetry {
         log.debug("遙測偏好改為 \(enabled)")
     }
 
-    /// 「立即清除本機資料」時呼叫：把偏好重設回預設值並立刻停止收集。
+    /// 「立即登出並清除本機資料」時呼叫：把偏好重設回預設值並立刻停止收集。
     ///
     /// **預設值現在是 `true`，所以這裡是把偏好清成「開啟」**，看起來反直覺。它之所以
     /// 正確，是因為呼叫端（`ProfileView.clearLocalData`）同時會 `DisclaimerConsent.reset()`

@@ -1,0 +1,143 @@
+<!doctype html>
+<!--
+  全聯（廠商代碼 5）的品項介紹頁。廠商 2026-08-28 交來 PXMart_catagoty.html，原樣收進 repo。
+
+  純靜態頁，不經 Thymeleaf 渲染，由 Spring Boot 直接服務 static/。**檔案在不在就是兌換頁上
+  那個連結出不出現的唯一開關**（VendorIntroPages），不需要改任何設定；也因為是啟動時掃一次，
+  新增或抽換這個檔案要重啟服務才生效。
+
+  原稿的狀況很乾淨：沒有任何外部網域（沒有 CDN 字型、沒有遠端圖片、沒有腳本），
+  樣式內嵌、字型用系統堆疊。收進來時只動了下面四處（作法同 7-11 的 vendor-2.html，
+  見 docs/前端資產與樣式規範.md 三之一）：
+
+  ‧ 原稿指向 coupon.html 的返回按鈕會 404，改為與其他店家一致的「返回兌換列表頁面」。
+  ‧ 頁尾版權年份 2023 → 2026，對齊 fragments/site-footer.html（該頁尾是我方頁尾的複本）
+  ‧ 橘色系色票對齊 css/sportscoin/tokens.css。原稿把「商品清單」標題染成 --orange
+    （#ff681b，白底 2.90:1）、表頭染成 #e9520a（米底 3.32:1），兩處都不符規範五的 AA 門檻。
+    --orange 只留給框線與色塊，承載文字的一律改用 --orange-text／--orange-dark，
+    值直接取 tokens.css，不另外調色（vendor-2.html 同一組問題已一併修正）
+  ‧ 加上 GA 追蹤碼
+
+  GA 片段無法共用 fragments/site-head.html :: analytics——本頁不經 Thymeleaf，只能各自內嵌。
+  異動追蹤 ID 時要記得連同 vendor-2.html 一起改。
+-->
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>全聯福利中心可兌換商品</title>
+  <meta name="description" content="全聯 2026 運動幣加碼活動可兌換商品清單">
+  <link rel="icon" type="image/png" href="../images/sportscoin/sabo-icon.png">
+  <!-- Global site tag (gtag.js) - Google Analytics（活動方提供的現行追蹤 ID）。本頁為純靜態頁面，不經 Thymeleaf 渲染，
+       無法共用 fragments/site-head.html :: analytics，只能各自內嵌；異動 ID 時要記得同步這裡。 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZT3BSJ50TW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-ZT3BSJ50TW');
+  </script>
+  <style>
+    /* 色票取自 css/sportscoin/tokens.css。--orange 不可承載文字（白底 2.90:1），
+       文字一律用 --orange-text（白底 4.91:1）或 --orange-dark（白底 6.34:1）。 */
+    :root{--orange:#ff681b;--orange-text:#c04c08;--orange-dark:#a53f05;--brown:#3b2117;--cream:#fff8eb;--line:#eadfd1;--yellow:#ffd94e;--focus:#005fcc}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--cream);color:var(--brown);font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}
+    .site-shell{min-height:100vh;background:radial-gradient(circle at 8% 25%,rgba(255,191,98,.22),transparent 22rem),radial-gradient(circle at 94% 20%,rgba(255,217,78,.18),transparent 24rem),var(--cream)}
+    .top-action{width:min(1040px,calc(100% - 32px));margin:0 auto;padding-top:22px}
+    .page-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:10px 20px;border:2px solid var(--orange-text);border-radius:999px;background:#fff;color:var(--orange-dark);font-weight:900;text-decoration:none;box-shadow:0 7px 18px rgba(255,104,27,.12);transition:.2s}
+    .page-button:hover{color:#fff;background:var(--orange-text);transform:translateY(-1px)}
+    .page-button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+    main{width:min(1040px,calc(100% - 32px));margin:0 auto;padding:24px 0 70px}
+    .hero{position:relative;overflow:hidden;padding:20px 34px;border-radius:36px;background:linear-gradient(125deg,var(--orange),#ff8e35);color:#fff;box-shadow:0 18px 42px rgba(255,104,27,.22)}
+    .hero::after{content:"";position:absolute;right:-65px;top:-110px;width:300px;height:300px;border:46px solid rgba(255,255,255,.13);border-radius:50%}
+    .hero-copy{position:relative;z-index:1}
+    .hero h1{margin:0;font-size:clamp(32px,5vw,52px);line-height:1.12}
+    .hero p{margin:8px 0 0;font-size:18px;font-weight:700}
+    .catalog{margin-top:28px;padding:36px;border-radius:34px;background:rgba(255,255,255,.92);border:1px solid var(--line);box-shadow:0 16px 38px rgba(90,50,15,.08)}
+    .catalog h2{margin:0 0 24px;color:var(--orange-text);font-size:30px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:20px;background:#fff}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th,td{padding:17px 20px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;line-height:1.65}
+    th{background:#fff0e5;color:var(--orange-dark);font-size:17px;font-weight:900}
+    th:first-child,td:first-child{width:31%;font-weight:800}
+    tbody tr:nth-child(even){background:#fffaf4}
+    tbody tr:hover{background:#fff6df}
+    tbody tr:last-child td{border-bottom:0}
+    .notice{margin-top:25px;padding:25px 28px;border-radius:24px;background:#fff1d4;border-left:7px solid var(--yellow)}
+    .notice h2{margin:0 0 6px;font-size:18px}
+    .notice p{margin:0;line-height:1.7}
+    .site-footer{padding:28px 16px;text-align:center;border-top:1px solid var(--line);background:rgba(255,248,235,.82)}
+    .footer-row{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;font-size:15px;font-weight:600}
+    .copyright{margin-top:10px;color:#6f5a50;font-size:13px}
+    @media(max-width:700px){
+      .top-action{width:calc(100% - 24px);padding-top:14px}
+      main{width:calc(100% - 24px);padding:18px 0 48px}
+      .hero{padding:18px 20px;border-radius:27px}
+      .hero h1{font-size:32px}
+      .hero p{font-size:16px;line-height:1.65}
+      .catalog{margin-top:18px;padding:24px 14px;border-radius:26px}
+      .catalog h2{font-size:25px}
+      table{min-width:650px}
+      th,td{padding:14px 15px}
+      th:first-child,td:first-child{width:34%}
+      .footer-row{gap:8px;font-size:13px;line-height:1.7}
+      .copyright{font-size:12px;line-height:1.5}
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <div class="top-action"><a class="page-button back-button" href="../member/tasks"><span aria-hidden="true">←</span>返回兌換列表頁面</a></div>
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <h1>全聯福利中心</h1>
+          <p>以下為運動幣加碼活動可兌換商品類別</p>
+        </div>
+      </section>
+      <section class="catalog" id="products">
+        <h2>商品清單</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">類別名稱</th><th scope="col">商品名稱（列舉）</th></tr></thead>
+            <tbody>
+              <tr><td>冷藏鮮乳</td><td>光泉低脂鮮乳、林鳳營高品質鮮乳等</td></tr>
+              <tr><td>豆漿/米漿/燕麥/五穀飲</td><td>光泉無加糖鮮豆漿、統一陽光無加糖高纖豆漿等</td></tr>
+              <tr><td>素食食品(冷凍)</td><td>揚振青花椰菜粒、綠巨人纖翠綠花椰菜等</td></tr>
+              <tr><td>常溫鮮蛋</td><td>香草園洗選蛋(白)、台農洗選蛋(白)等</td></tr>
+              <tr><td>冷藏鮮蛋</td><td>大武山UP機能蛋-葉黃素、大成機能蛋-金盞花萃取物(紅蛋)等</td></tr>
+              <tr><td>肉鬆‧魚鬆‧(日式)香鬆</td><td>得意的一天極選肉鬆、胖老爹雞肉鬆等</td></tr>
+              <tr><td>一般麵製品(不含調味包)</td><td>好勁道－家常麵條、五木雞蛋麵等</td></tr>
+              <tr><td>義大利麵製品</td><td>荷卡廚坊特級義大利直麵、FINDER義大利麵-直條等</td></tr>
+              <tr><td>運動飲料／乳酸飲料</td><td>寶礦力水得、福樂超能蛋白機能凍-乳酸風味、可爾必思水語乳酸菌飲料等</td></tr>
+              <tr><td>蔬果汁/蔬菜汁/果汁類</td><td>波蜜一日蔬果100%蔬果汁、活力東勢 黃胡蘿蔔綜合蔬果汁等</td></tr>
+              <tr><td>成人奶粉</td><td>桂格雙效健護益生菌高鈣奶粉、克寧UC-II靈活高鈣奶粉等</td></tr>
+              <tr><td>沖泡榖物/麥片</td><td>桂格即沖即食大燕麥片、家樂氏Special K香脆麥米片等</td></tr>
+              <tr><td>茶葉/茶包/茶粉</td><td>天仁茗茶綠茶粉、鮮一杯南非國寶綠茶等</td></tr>
+              <tr><td>濃縮營養食品</td><td>桂格滴雞精、白蘭氏冬蟲夏草雞精等</td></tr>
+              <tr><td>維他命/礦物質</td><td>銀寶善存50+綜合維他命、克補B+鋅加強錠等</td></tr>
+              <tr><td>功能性保健食品</td><td>培恩山桑子葉黃素複方膠囊、統欣生技薑黃蜆錠等</td></tr>
+              <tr><td>運動保健食品/代餐</td><td>紅牛聰勁即溶行動三效乳清蛋白、桂格完膳營養素植物蛋白配方等</td></tr>
+              <tr><td>堅果/核仁類</td><td>萬歲牌綜合纖、盛香珍KING無調味腰果罐等</td></tr>
+              <tr><td>無糖優酪乳</td><td>林鳳營益生菌優酪乳-無加糖、統一AB無加糖優酪乳等</td></tr>
+              <tr><td>原味發酵乳</td><td>活益比菲多稀釋活性發酵乳-原味無加糖、味全LCA506活菌發酵乳等</td></tr>
+              <tr><td>無糖優格</td><td>馬修嚴選精品優格、林鳳營鮮奶優格等</td></tr>
+              <tr><td>希臘式優格/希臘優格</td><td>福樂頂級無加糖希臘式優酪、光泉頂級希臘式優酪等</td></tr>
+              <tr><td>純果汁(蔬果汁)(冷藏)</td><td>味全每日C PLUS維生素A 100%綜合果蔬汁、果汁時刻100%柳橙綜合果汁等</td></tr>
+              <tr><td>調理熟食類</td><td>善美的　秘滷牛腱心３７５ｇ等</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <aside class="notice"><h2>兌換注意事項</h2><p>實際可兌換品項、供應狀況及門市庫存，依各門市現場公告為準。</p></aside>
+    </main>
+    <footer class="site-footer">
+      <div class="footer-row"><span>客服電話：02-7752-3658</span><span>客服時間：週一至週日 09:00–18:00（12:00–13:00 暫停服務）</span></div>
+      <div class="copyright">運動部 2026©版權所有（所有圖資未經本部同意不得轉載及重製）</div>
+    </footer>
+  </div>
+  <script src="../js/sportscoin/vendor-intro-back.js"></script>
+</body>
+</html>

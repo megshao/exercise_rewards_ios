@@ -400,8 +400,8 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(app.buttons["還原"].exists, "首頁不該出現「還原」按鈕")
     }
 
-    /// 11 我的資料（上半：隱私三點聲明 + 三個遮罩欄位）
-    /// 12 我的資料（下半：安全與隱私區塊）——一個 6.9" 螢幕放不下，所以拍兩張。
+    /// 11 我的資料（上半：隱私聲明 + 三個唯讀遮罩欄位）
+    /// 12 我的資料（下半：安全與隱私區塊 + 換帳號按鈕）——一個 6.9" 螢幕放不下，所以拍兩張。
     private func captureProfile(_ app: XCUIApplication) {
         app.tabBars.buttons["首頁"].tap()
         let profileButton = app.buttons["我的資料"]
@@ -410,11 +410,28 @@ final class ScreenshotTests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["我的資料"].waitForExistence(timeout: timeout), "我的資料頁沒載入")
         _ = app.staticTexts["個資不外傳，只在登入時送給官方網站"].waitForExistence(timeout: timeout)
+
+        // 這一頁是唯讀的：三個欄位不能再是輸入框，也不該有「儲存到本機」。
+        // 個資的唯一寫入點是 Onboarding 的首次設定（見 `captureOnboardingAndLogin`）。
+        XCTAssertFalse(app.textFields["身分證號"].exists, "「我的資料」不該有可輸入的身分證號欄位")
+        XCTAssertFalse(app.textFields["手機號碼"].exists, "「我的資料」不該有可輸入的手機號碼欄位")
+        XCTAssertFalse(app.buttons["儲存到本機"].exists, "「我的資料」不該還有儲存按鈕")
+
         settle(1.2)
         capture(app, name: "11-profile")
 
-        // 往下捲到「安全與隱私」（本機資料 / 立即清除本機資料 / 離開示範模式）。
-        app.swipeUp()
+        // 往下捲到「安全與隱私」（離開示範模式 / 本機資料 / 使用統計 / 原始碼）與換帳號按鈕。
+        //
+        // 用 id 而不是標題文字定位：那顆按鈕的 label 是一個容器（圖示＋標題＋副標＋箭頭），
+        // XCUITest 會把子元素的 label 串成一長串，拿標題去查會找不到。
+        // 頁面也比先前長了（多了唯讀說明與換帳號區塊），所以捲到它真的可點為止，
+        // 這樣截圖裡也一定看得到。
+        let switchAccount = app.buttons["switchAccountButton"]
+        for _ in 0..<4 where !switchAccount.isHittable {
+            app.swipeUp()
+            settle(0.6)
+        }
+        XCTAssertTrue(switchAccount.isHittable, "捲不到換帳號用的「立即登出並清除本機資料」按鈕")
         settle(1.5)
         capture(app, name: "12-profile-security")
     }

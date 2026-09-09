@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+    :root{--bg:#f5f6f8;--card:#ffffff;--line:#ecedf1;--line2:#e0e3e9;
+      --pri:#ff5a1f;--pri-d:#e8480f;--amber:#ffc24d;--text:#1a1d24;--muted:#697485;--dim:#9aa1ac;--ok:#12a150;
+      --disp:"Baloo 2","Noto Sans TC",sans-serif;--body:"Noto Sans TC",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:var(--body);color:var(--text)}
+    .phone{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg)}
+    .lbl{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:7px;display:block}
+    .fld{width:100%;background:#fff;border:1px solid var(--line2);border-radius:14px;padding:14px 15px;
+      color:var(--text);font-size:15px;font-family:var(--body)}
+    .row{margin-bottom:16px}
+  </style>
+</helmet>
+
+<div class="phone">
+  <!-- header -->
+  <div style="padding:58px 20px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);background:#fff">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1d24" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    <div style="font-family:var(--disp);font-weight:800;font-size:20px">我的資料</div>
+  </div>
+
+  <div style="padding:18px 20px 0;height:648px;overflow:hidden">
+
+    <!-- privacy banner -->
+    <div style="background:#e6f6ee;border:1px solid #b7e5cb;border-radius:16px;
+      padding:14px 15px;display:flex;gap:11px;margin-bottom:20px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#12a150" stroke-width="1.9"
+        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px">
+        <path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
+      <div style="font-size:12.5px;color:#186c3e;line-height:1.6">
+        以下資料<b style="color:#0d5730">只加密存在這支手機</b>，不會上傳雲端、不會寫入紀錄檔。</div>
+    </div>
+
+    <div class="row"><label class="lbl">姓名</label><input class="fld" value="王小明"></div>
+    <div style="display:flex;gap:12px" class="row">
+      <div style="flex:1"><label class="lbl">身分證號</label><input class="fld" value="A12●●●●●89"></div>
+      <div style="width:150px"><label class="lbl">出生日期</label><input class="fld" value="1990-01-01"></div>
+    </div>
+    <div style="display:flex;gap:12px" class="row">
+      <div style="flex:1"><label class="lbl">手機號碼</label><input class="fld" value="0912●●●678"></div>
+    </div>
+    <div class="row"><label class="lbl">電子信箱</label><input class="fld" value="ming@mail.com"></div>
+    <div class="row"><label class="lbl">健保卡卡號 <span style="color:var(--dim)">（首次註冊用）</span></label>
+      <input class="fld" value="0000 ●●●● ●●●● 0000"></div>
+
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);margin-top:2px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa1ac" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      敏感欄位以 Face ID 解鎖後才顯示完整內容</div>
+  </div>
+
+  <!-- footer save -->
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:16px 20px 30px;background:#fff;
+    border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(17,20,28,.05)">
+    <button style="width:100%;border:none;cursor:pointer;border-radius:18px;padding:16px;
+      background:linear-gradient(120deg,#ff7a2b,#ff5109);color:#fff;font-family:var(--disp);font-weight:800;
+      font-size:16px;box-shadow:0 10px 22px rgba(255,90,31,.28)">儲存到本機</button>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

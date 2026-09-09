@@ -23,6 +23,14 @@ enum DemoMode {
     /// 是否處於示範模式（跨啟動保留，讓審查員關掉 App 再開仍在示範狀態）。
     static let storageKey = "demoModeEnabled"
 
+    /// 目前是否處於示範模式。直接讀 `UserDefaults`（與 `AppEnvironmentStore` 寫的是同一把鍵），
+    /// 給拿不到 `AppEnvironmentStore` 的畫面用——sheet 裡的 `RedeemView`／`VoucherView`
+    /// 只注入了 `appEnvironment` 與 `voucherUsage`，沒有 `envStore`。
+    /// 每次呼叫都重讀，不快取：切進示範模式後既有的 ViewModel 仍握著舊環境（見 `Telemetry.isDemoModeActive`）。
+    static var isActive: Bool {
+        UserDefaults.standard.bool(forKey: storageKey)
+    }
+
     /// 示範模式下預先填好的個資（只存在記憶體）。
     static var profile: Profile {
         Profile(idNo: idNo, birthDate: birthDate, phone: phone)
