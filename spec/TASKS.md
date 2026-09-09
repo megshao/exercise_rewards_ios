@@ -2,11 +2,11 @@
 
 命名：上架名 **Exercise Rewards**；「揮汗有禮」只作為活動說明用語，不作為 App 名稱（見 `spec/app-review-risk.md`）。
 技術：iOS 原生 SwiftUI + URLSession。
-硬約束：個資只存 Keychain（`WhenUnlockedThisDeviceOnly`）、不上雲、不寫 log、**App 自己只連 500.gov.tw**、將開源。
+硬約束：個資只存 Keychain（`WhenUnlockedThisDeviceOnly`）、不上雲、不寫 log、**App 自己只連 500.gov.tw**（1.2 起有一個唯讀例外，見下方變更（四））、將開源。
 
 > **1.0 硬約束變更（一）**：原本列在硬約束裡的「FaceID 鎖」已於 1.0 移除。裝置遺失的防線改為
 > iOS 裝置鎖屏 + Keychain `WhenUnlockedThisDeviceOnly`（裝置上鎖時連 App 自己都讀不到）
-> 加上「立即清除本機資料」。詳細理由見 `spec/PRD.md` §8.1 決策紀錄。
+> 加上「立即登出並清除本機資料」（1.2 更名，舊名「立即清除本機資料」）。詳細理由見 `spec/PRD.md` §8.1 決策紀錄。
 >
 > **1.0 硬約束變更（二）：「禁用第三方 analytics/crash SDK」已於 1.0 變更（2026-09-06）。**
 > 原本的硬約束是「不上雲、不寫 log、只連 500.gov.tw」，並在 `spec/PRD.md` §8.2 明訂禁用會外傳個資的
@@ -36,6 +36,20 @@
 > - **沒有改變的部分**：個資仍然完全不外傳，隱私標籤的 Health / Fitness 兩格仍是 Not Collected（v1.1 起理由更單純——App 根本不讀健康資料）。
 > - 完整決策紀錄與代價清單見 `spec/PRD.md` §8.2；對外文案的對應改寫見 `README.md`、`CHANGELOG.md`、
 >   `docs/privacy.html` §5、`spec/release/privacy-labels.md`、`spec/release/review-notes.md` §5b。
+>
+> **1.2 硬約束變更（四）：「App 自己只連 500.gov.tw」多了一個唯讀例外（2026-09-09）。**
+> `VendorCatalogService` 會從 `https://megshao.github.io/exercise_rewards_ios/vendor-catalog.json`
+> 下載一份公開的廠商品項目錄快照——**這是 App 自己發出的、離開 500.gov.tw 的請求**，不是 SDK 內部連線。
+>
+> - **為什麼需要**：已兌換的期別在官網已經沒有兌換頁，而品項頁連結只長在兌換頁上；在官網或別台手機兌換的期別
+>   靠官網湊不出那個路徑（見 `spec/PRD.md` §5.8 的三層解析）。
+> - **界線**：刻意**不加進** `URLSessionHTTPClient` 的主機白名單（那道白名單是防憑證外流的機制），
+>   自己開 ephemeral、無 cookie、無憑證的 session；只下載零上傳；**只在補不到時才發**
+>   （券夾的路徑解析每個 `WalletViewModel` 最多一次；品項頁內容備援在官網那一頁載入失敗後才發。兩個呼叫點共用 `VendorCatalogService` 的行程內快取，所以整個 App session 最多只抓一次——見 PRD §8.3）；
+>   示範模式走 `EmptyVendorCatalogService`，一個請求都不發。
+> - **正確敘述**：「App 自己的請求只連 500.gov.tw，唯一例外是一個唯讀、無 cookie、零上傳的公開備份檔」。
+>   **不得**再寫成無條件的「只連 500.gov.tw」。
+> - 完整規格與決策紀錄見 `spec/PRD.md` §8.3；對外文案見 `README.md`〈網路出口〉、`docs/privacy.html`。
 
 ---
 
@@ -57,12 +71,19 @@
 - [x] 1.2 **CsrfParser**：GET 頁面刮 `_csrf`（先用字串/正規式，必要時輕量 HTML parse）
 - [x] 1.3 **SessionBootstrap**：處理 HiNetCDN LBSCookie（`?_cookie_check=1`）首次握手
 - [x] 1.4 **AuthService.login**：`POST /access(idNo)` → GET `/login` → `POST /login(idNo,birthDate,phone)` → 判斷 302 `/member/tasks` 成功；區分「未註冊(導 /register)」與「三碼不符」錯誤
-- [x] 1.5 Profile 設定畫面「我的資料」（存/讀 Keychain、遮罩顯示，點擊欄位即展開明文；**1.0 起不需 FaceID**）
+- [x] 1.5 Profile 畫面「我的資料」（讀 Keychain、遮罩顯示；**1.0 起不需 FaceID**）
+  - [x] 1.5.5 **1.2：這一頁改為唯讀**——三欄改用 `ProfileValueRow` 顯示，移除「儲存到本機」按鈕、`ProfileViewModel.save()`
+    與儲存成功／失敗的 alert；遮罩與「點這裡顯示完整內容」的整頁切換保留，出生日期不遮罩。
+    個資唯一的寫入點改為 Onboarding 的首次設定。理由與代價見 `spec/PRD.md` §5.2 決策紀錄。
   - [x] 1.5.4 個資最小化：只收登入必需的身分證／生日／手機三欄；姓名／Email／健保卡卡號不再收集（`Profile` model 保留欄位但恆為空字串）
-  - [x] 1.5.1 出生日期改自製「年／月／日」三欄滾輪 sheet（民國/西元切換、預設民國、雙年份確認、換月自動夾日），不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`。Onboarding 共用同一元件
+  - [x] 1.5.1 出生日期改自製「年／月／日」三欄滾輪 sheet（民國/西元切換、預設民國、雙年份確認、換月自動夾日），不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`。**1.2 起只有 Onboarding 在用**（「我的資料」唯讀後沒有輸入元件）；
+    選完日期焦點自動移到「手機號碼」（在 sheet 的 `onDismiss` 才設，按「取消」不移動）
   - [x] 1.5.2 App 開發語言鎖 `zh-Hant`（`project.yml` developmentLanguage、CFBundleDevelopmentRegion/CFBundleLocalizations）＋注入 `Locale(zh_Hant_TW)`，介面文案不吃裝置語系
   - [~] 1.5.3 移除「設定 — 資安中心」子頁，~~Face ID 開關~~／本機資料說明／立即清除（含確認 alert、清除後回 Onboarding）與版本聲明併入本頁「安全與隱私」區塊；頁首隱私聲明改為三點明列
-    - **1.0 修正**：其中的「Face ID 開關」隨生物辨識鎖一併移除，本區塊現在只有本機資料說明、立即清除與版本／非官方聲明。
+    - **1.0 修正**：其中的「Face ID 開關」隨生物辨識鎖一併移除。
+    - **1.2 修正**：「安全與隱私」區塊現在是〔離開示範模式（僅示範模式）／本機資料說明／傳送匿名使用統計／原始碼〕四列；
+      **清除／換帳號已從這張清單移出**，改名「立即登出並清除本機資料」並獨立成「換帳號」區塊（它是這一頁唯一會改變狀態的動作）。
+      頁首隱私聲明也從三點擴充為六點（多了「為什麼不能修改」、剪貼簿、商品目錄備份檔）。見 `spec/PRD.md` §5.2／§5.9。
 - [x] 1.6 首頁 Home（一鍵登入 CTA、登入中/失敗狀態、登入態保存）
 - [x] 1.7 登出：`POST /logout` + 清 cookie/session
 
@@ -98,7 +119,21 @@
 - [ ] 推播提醒（每週上傳期開始 / 截止前 N 小時）
 - [ ] 無障礙 AA（動態字級、對比、VoiceOver）
 - [x] 單元測試（AuthService/TasksService/解析器/KeychainStore）— `swift test` 72 tests 全綠
-- [x] 資安自審（無 log 洩漏、無雲端呼叫、依賴審查）— 見送審自審報告；未結項目：`clearLocalData()` 未清 cookie、示範模式的 `MockTasksService.screenshotImageURL` 仍指向 `picsum.photos`
+- [x] 資安自審（無 log 洩漏、無雲端呼叫、依賴審查）— 見送審自審報告
+  - **已補**：`clearLocalData()` 現在會呼叫 `resetSession()` 清 cookie jar，並一併清 `VoucherUsage`／`VendorIntroStore`／遙測偏好／免責聲明同意紀錄（見 `spec/PRD.md` §5.9）。
+  - **已補**：`MockTasksService.screenshotImageURL` 改讀 bundle 內的 `DemoScreenshot.png`，示範模式不再有任何對外請求。
+  - **1.2 新增待審項**：`VendorCatalogService` 是白名單外唯一的 App 自身出口，需列入依賴／出口審查清單（見上方硬約束變更（四））。
+
+## 1.2（尚未發行）
+- [x] 「我的資料」改唯讀（1.5.5，見上）
+- [x] 「立即登出並清除本機資料」更名 + 獨立成「換帳號」區塊（1.5.3 的 1.2 修正，見上）
+- [x] 券夾：已兌換券卡「檢視券碼」→「顯示加碼券條碼結帳」；新增「查看可兌換品項」（擺在結帳鈕**上方**），開與兌換頁同一個 `VendorIntroView`
+- [x] 券夾的兌換 sheet 補 `onDismiss` 重抓（否則從券夾兌換完那一期會一直停在「可兌換」）
+- [x] 任務卡「檢視加碼券」改為只切換到券夾分頁（原本那個券碼 sheet 已移除）
+- [x] 新增 `RootTab` / `TabRouter`：券碼頁看完條碼關閉後一律導回「我的券夾」分頁（只在條碼階段才切）
+- [x] 新增 `VendorIntroStore`（`taskID → introPath`，算「本機資料」，清除與示範模式切換都要清）
+- [x] 新增 `VendorCatalogService` 離線備份（白名單外唯一的 App 自身出口，見硬約束變更（四））
+- [ ] `vendor-catalog.json` 的定期重抓／比對流程（快照會過期，見 `spec/PRD.md` §14 R8）
 
 ## 1.0 送審相關
 - [x] 移除生物辨識鎖與敏感動作再驗證（0.7 / 1.5.3 的一部分，見上）

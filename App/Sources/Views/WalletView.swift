@@ -64,7 +64,6 @@ struct WalletView: View {
                 .environmentObject(tabRouter)
                 // 兌換成功時要記下選到的廠商品項頁。
                 .environmentObject(vendorIntro)
-                .environmentObject(vendorIntro)
         }
         // 純瀏覽的廠商品項頁，與兌換頁的「兌換品項」是同一個畫面。
         .sheet(item: $introTarget) { target in

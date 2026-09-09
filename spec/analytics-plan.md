@@ -277,7 +277,7 @@
   畫面上明寫「App 會把匿名的操作紀錄與當機報告送給 Google Firebase」，勾選文字涵蓋「並同意傳送不含個資的匿名使用統計（可隨時關閉）」。
   使用者按下「同意並開始使用」時，`DisclaimerConsent.record()` 才呼叫 `Telemetry.configure()`——**那是整支 App 第一次執行 Firebase 程式碼的時機**。
 - `configure()` 三道前置條件，缺一不初始化：尚未同意免責聲明／使用者關掉開關／示範模式。
-- 使用者可隨時到「我的資料 › 安全與隱私 › 傳送匿名使用統計」關閉；「立即清除本機資料」會重置同意紀錄與遙測偏好。
+- 使用者可隨時到「我的資料 › 安全與隱私 › 傳送匿名使用統計」關閉；「立即登出並清除本機資料」會重置同意紀錄與遙測偏好。
 - **正確的敘述是「先告知 → 主動同意 → 預設開啟 → 隨時可關」，不是 opt-in。** 對使用者而言這確實是「預設會送」，
   只是送之前一定先告知並取得同意。不要用「仍然是 opt-in」這種文字遊戲。
 
@@ -344,7 +344,7 @@
 | 動作 | 要做的事 |
 |---|---|
 | Toggle 關閉 | `consent = denied` → `setAnalyticsCollectionEnabled(false)` → `Analytics.resetAnalyticsData()`（app instance ID 重生） → `setCrashlyticsCollectionEnabled(false)` → `deleteUnsentReports()` |
-| 「立即清除本機資料」 | 先送 E26 → 執行上一列全部 → `consent = undecided`（回到 Onboarding 後會再問一次，因為這等同重新安裝） |
+| 「立即登出並清除本機資料」 | 先送 E26 → 執行上一列全部 → `consent = undecided`（回到 Onboarding 後會再問一次，因為這等同重新安裝） |
 | 進入示範模式 | 收集暫停（§2.2），`consent` 不動 |
 | 離開示範模式 | 依 `consent` 恢復 |
 
@@ -400,7 +400,7 @@ Firebase 主控台端：GA4 資料保留設最短（2 個月）、關閉 Google 
 | Contact Info、Sensitive Info、User Content（照片）、Financial | 維持現有立場（`app-review-risk.md` 第 8 點：身分資料屬「與 500.gov.tw 分享」如何填由該文件決定） | — | — | — | Firebase **不**取得任何這些資料，本計畫不改變這幾格 |
 
 - **Tracking**：一律「否」。不連結 AdSupport／ATT、`NSPrivacyTracking = false`、不與資料仲介分享、事件不跨 App／網站串接。不需要 ATT 提示。
-- **「連結到使用者」的辯護**：Apple 定義「linked」為可與使用者身分連結；本 App 無帳號、不設 userID、Device ID 可由使用者重置（關閉開關或清除資料；「立即清除本機資料」還會一併重置免責聲明的同意紀錄）、IDFV 關閉。Firebase 官方對照表對 Analytics／Crashlytics 也是以「Not linked」為預設建議。
+- **「連結到使用者」的辯護**：Apple 定義「linked」為可與使用者身分連結；本 App 無帳號、不設 userID、Device ID 可由使用者重置（關閉開關或清除資料；「立即登出並清除本機資料」還會一併重置免責聲明的同意紀錄）、IDFV 關閉。Firebase 官方對照表對 Analytics／Crashlytics 也是以「Not linked」為預設建議。
 - **Review Notes** 要主動寫：「**在使用者同意首次啟動的免責聲明之前，Firebase 一行程式碼都不執行**；同意之後也不含 HealthKit 資料（見 5.1.3）」——這是把 5.1.3(i) 風險從「解釋」變成「可驗證」的關鍵一句。（原句寫的是「Firebase 預設停用」，那已經不正確。）
 
 ---

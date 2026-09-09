@@ -109,7 +109,7 @@ We want to describe this accurately rather than flatteringly. **This is not opt-
 - **Nothing Firebase-related executes until the user accepts the first-run disclaimer.** The disclaimer is a blocking screen shown before onboarding (`App/Sources/Views/DisclaimerView.swift`). It states that the app sends anonymous usage records and crash reports to Google Firebase, that no personal data is included, and that it can be turned off at any time. The mandatory checkbox text covers consent to sending anonymous, non-personal usage statistics. Tapping 「同意並開始使用」 calls `DisclaimerConsent.record()`, which calls `Telemetry.configure()` — **that call is the first line of Firebase code the app ever executes**.
 - **Why the boundary is "does it run at all", not "is the flag off":** `FirebaseApp.configure()` mints an app instance ID and emits `first_open` the moment it runs, and Firebase Installations contacts `firebaseinstallations.googleapis.com` for an installation ID **even when both collection flags are `false`**. A promise of "nothing is sent" can therefore only be kept by not initialising the SDK at all.
 - `Telemetry.configure()` has **three preconditions; if any fails, nothing is initialised**: (1) the disclaimer has not been accepted, (2) the user has switched telemetry off, (3) demo mode is active.
-- **After acceptance, the setting defaults to on.** The user can switch it off at any time at **我的資料 › 安全與隱私 › 「傳送匿名使用統計」** (My Data › Security & Privacy › "Send anonymous usage statistics"). 「立即清除本機資料」 (Clear local data) resets both the consent record and the telemetry preference, so the next cold launch shows the disclaimer again and Firebase does not run until it is accepted again.
+- **After acceptance, the setting defaults to on.** The user can switch it off at any time at **我的資料 › 安全與隱私 › 「傳送匿名使用統計」** (My Data › Security & Privacy › "Send anonymous usage statistics"). 「立即登出並清除本機資料」 (Clear local data) resets both the consent record and the telemetry preference, so the next cold launch shows the disclaimer again and Firebase does not run until it is accepted again.
 - **Four Info.plist keys still ship as `false`**: `FIREBASE_ANALYTICS_COLLECTION_ENABLED`, `FirebaseCrashlyticsCollectionEnabled`, `GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED`, `GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS`. These are the **cold-start defaults**, overwritten by `applyCollectionFlags` from the user's preference after initialisation. They are kept `false` to guarantee "no collection before `configure()` runs" — they are no longer a claim that the feature is off by default.
 
 **What a reviewer will actually observe** — stated up front, because you would find it anyway:
@@ -143,7 +143,7 @@ This is enforced by **mechanism, not discipline**. Before anything is transmitte
 
 The one row above that is not "No" is the optional telemetry, and it carries **no personal field at all** — see §5b for the exhaustive list of what it can and cannot contain.
 
-Only **three** personal fields are collected — the minimum the official sign-in form requires. The app deliberately does **not** ask for name, email, or national health insurance card number. Users can permanently erase everything from **我的資料 → 「立即清除本機資料」** (Clear local data), which wipes the Keychain, caches and cookies and returns the app to first-run state.
+Only **three** personal fields are collected — the minimum the official sign-in form requires. The app deliberately does **not** ask for name, email, or national health insurance card number. Users can permanently erase everything from **我的資料 → 「立即登出並清除本機資料」** (Clear local data), which wipes the Keychain, caches and cookies and returns the app to first-run state.
 
 ## 7. Point-by-point notes on specific guidelines
 
@@ -191,7 +191,7 @@ The app is a native SwiftUI application, not a web wrapper. It contains no in-ap
 Sign-in is to the user's existing government-service account. Per 4.8, government/electronic-ID authentication is exempt from the Sign in with Apple requirement. No third-party social login is offered.
 
 ### 5.1.1(v) — Account deletion
-The app does not create accounts, so there is no app account to delete. Users can permanently delete all locally stored data from within the app (**我的資料 → 「立即清除本機資料」**). The account itself lives on `500.gov.tw` and is managed there; our support page links to the official site's account management.
+The app does not create accounts, so there is no app account to delete. Users can permanently delete all locally stored data from within the app (**我的資料 → 「立即登出並清除本機資料」**). The account itself lives on `500.gov.tw` and is managed there; our support page links to the official site's account management.
 
 ## 8. Contact
 
@@ -244,7 +244,7 @@ Read access only, for stepCount, distanceWalkingRunning and appleExerciseTime, u
 One third-party SDK, for anonymous usage stats and crash reports. None of it runs until the user accepts the mandatory first-run disclaimer, which states plainly that the app sends anonymous usage records and crash reports to Google Firebase. After acceptance it is on by default, switchable off any time in 我的資料 → 安全與隱私. It never receives the ID number, date of birth or mobile number in any form, health data, uploaded screenshots, voucher codes or user-typed text. No ads, no IDFA, no tracking: the binary links neither AdSupport nor AppTrackingTransparency, so no ATT prompt appears. Ordering note: the disclaimer precedes onboarding and demo mode starts inside it, so a reviewer's device contacts Google once, at acceptance, and nothing after.
 
 5) STORAGE AND DELETION (5.1.1(v))
-Those three fields are stored encrypted in the iOS Keychain on device, not synced to iCloud, not written to log files. "我的資料 → 立即清除本機資料" deletes them permanently and resets the consent record. The campaign account itself is managed by the user at 500.gov.tw.
+Those three fields are stored encrypted in the iOS Keychain on device, not synced to iCloud, not written to log files. "我的資料 → 立即登出並清除本機資料" deletes them permanently and resets the consent record. The campaign account itself is managed by the user at 500.gov.tw.
 
 6) OPEN SOURCE (MIT)
 https://github.com/megshao/exercise_rewards_ios — see DemoMode.swift, Telemetry.swift, ExerciseRewardsKit/Networking and /Security.

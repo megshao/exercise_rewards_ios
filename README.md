@@ -87,7 +87,7 @@ EXIF 常含 GPS 座標，那是「你在哪裡運動」的精確位置，你按�
 三個欄位預設遮罩顯示，要點一下才展開。下面「安全與隱私」那張卡片把這個 App 的立場攤開：
 資料存在哪裡、匿名使用統計的開關與它到底送什麼、以及一鍵永久清除本機資料。
 
-那顆「立即登出並清除本機資料」是真的清乾淨：個資、登入 cookie、任務快取、已使用標記、同意紀錄
+那顆「立即登出並清除本機資料」是真的清乾淨：個資、登入 cookie、任務快取、已使用標記、廠商品項頁紀錄、同意紀錄
 與遙測偏好全部歸零，App 回到剛安裝的狀態，下次啟動會重新看到免責聲明。
 
 ## 這個 App 怎麼看待你的資料
@@ -200,7 +200,7 @@ cd App && xcodebuild test -project ExerciseRewards.xcodeproj \
 
 - **刻意不加進白名單**：`URLSessionHTTPClient` 持有登入後的 cookie jar，白名單正是防止憑證外流的機制。把 github.io 加進去，等於讓帶著 `JSESSIONID` 的 session 有機會連上第三方主機。所以它自己開一條 `ephemeral`、`httpCookieStorage = nil` 的 session，兩邊的信任邊界維持分離。
 - `fetch()` 內再驗一次 scheme 與 host（防止日後有人把 URL 改成可注入就靜默變成任意主機）、1 MB 上限、`introPath` 從 JSON 讀回來重新驗證形狀（`/intro/*.html`、擋 `..`／query／fragment）。
-- **只下載、零上傳**，檔案對所有使用者都是同一份。**而且只在需要時才抓**：本機紀錄與官網都湊不出某張已兌換券的品項頁網址時，每個 App session 最多一次（見 `WalletViewModel.needsBackup`）。在 App 內兌換過的券本來就有本機紀錄，完全不會連。
+- **只下載、零上傳**，檔案對所有使用者都是同一份。**而且只在需要時才抓**：本機紀錄與官網都湊不出某張已兌換券的品項頁網址時，每個 App session 最多一次（由 `VendorCatalogService` 的行程內快取保證，兩個呼叫點共用同一次抓取）（見 `WalletViewModel.needsBackup`）。在 App 內兌換過的券本來就有本機紀錄，完全不會連。
 - 示範模式走 `EmptyVendorCatalogService`，一個請求都不發。
 
 **為什麼不用 `AsyncImage`**：它走 `URLSession.shared`，而 `URLSession.shared` 的 cookie jar 就是 `HTTPCookieStorage.shared`——跟 App 那個 `.default` session 是**同一個 jar**。讓 cookie 不外洩的其實是 cookie 的 domain scope（`500.gov.tw`），不是「這條路徑沒有 cookie」；這個差別在 `Location` 指回官方站自己（同源）時就會現形。順帶解掉的還有 `URLCache.shared` 會把使用者的運動紀錄截圖以網址為 key 落盤到 `Library/Caches`。

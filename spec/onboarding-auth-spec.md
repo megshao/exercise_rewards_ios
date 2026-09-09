@@ -1,6 +1,6 @@
 # Onboarding 與 敏感動作驗證 規格
 
-> **狀態（1.0 送審版）**：A 節已依 1.0 實作改寫。
+> **狀態（1.0 送審版，1.2 校訂）**：A 節已依 1.0 實作改寫，並於 1.2 補上「個資唯一寫入點」與焦點行為。
 > **B／C／D 節整段不再適用**——1.0 已移除生物辨識鎖與敏感動作再驗證，
 > 兩個對應檔案（`App/Sources/Security/BiometricLock.swift`、`SensitiveAuth.swift`）已刪除，
 > `NSFaceIDUsageDescription` 也一併移除。該三節保留為**歷史決策紀錄**，不得再當作實作依據。
@@ -8,6 +8,11 @@
 ## A. 首次啟動 Onboarding（強制）— 1.0 實作
 1. 一開 App 若本機無個資 → 進 Onboarding，**強制填 3 欄位**：身分證字號、生日、手機號碼。
    - 個資最小化：姓名、email、健保卡卡號**不收集**（那三欄只有註冊才需要，而 1.0 不做註冊）。
+   - **1.2 起這裡是全 App 唯一會寫入 Keychain 個資的地方**：「我的資料」頁已改為唯讀
+     （三欄不再可編輯、沒有「儲存到本機」按鈕，理由見 `spec/PRD.md` §5.2 決策紀錄）。
+     填錯要改的正確做法是「立即登出並清除本機資料」後重新登入。
+   - **焦點行為（1.2 新增）**：出生日期滾輪按下「完成」後，焦點自動移到「手機號碼」。
+     焦點在 sheet 的 `onDismiss` 才取得（在「完成」的 action 裡設會被關閉動畫帶走）；按「取消」不移動焦點。
 2. 送出 → `AuthServicing.login`（內部即 `POST /access`(idNo) 分流 + login）：
    - `.success` → 存 Profile 到 Keychain → 進主畫面。
    - `.invalidCredentials` → 停在表單，提示「身分證／生日／手機有誤」。
@@ -21,7 +26,9 @@
 - iOS 裝置本身的鎖屏（密碼／Face ID／Touch ID）是唯一且真正的界線。
 - Keychain 屬性 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`：**裝置上鎖時連本 App 都讀不到**，
   且不同步 iCloud、不隨備份轉移到其他裝置。
-- 「我的資料 › 安全與隱私 › 立即清除本機資料」可隨時永久刪除本機個資。
+- 「我的資料 › **換帳號** › **立即登出並清除本機資料**」可隨時永久刪除本機個資。
+  （**1.2 更名並搬家**：舊名為「立即清除本機資料」，舊位置在「安全與隱私」清單內；
+  現在是「我的資料」頁上一個獨立的「換帳號」區塊，因為它自 1.2 起同時是唯一的換身分手段。見 `spec/PRD.md` §5.9。）
 
 ## B.〔歷史紀錄・1.0 已移除〕Face ID 守門點（敏感動作前重新驗證）
 
@@ -49,8 +56,10 @@
 - **絕不 log** email/手機/otp/個資。（此條**仍然有效**，且與生物辨識無關：全專案唯一 log 入口為 `SecureLog`＋`Redact`。）
 
 ## E. UI 一致性
-- 主畫面步數卡與本週任務卡等所有卡片統一滿版寬（maxWidth: .infinity），消除長短不一。
-- 生日欄位在 Onboarding 與「我的資料」共用同一元件（`BirthDateField` → `BirthDatePickerSheet`）：年／月／日三欄滾輪、民國／西元可切換（預設民國）、底部雙年份確認，不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`（詳見 PRD §5.2）。
+- 所有卡片統一滿版寬（maxWidth: .infinity），消除長短不一。（原文寫的「主畫面步數卡」已隨 v1.1 移除 HealthKit 一併消失。）
+- 生日欄位用自製元件（`BirthDateField` → `BirthDatePickerSheet`）：年／月／日三欄滾輪、民國／西元可切換（預設民國）、底部雙年份確認，不用系統日曆式 DatePicker；對外仍存 ISO `yyyy-MM-dd`（詳見 PRD §5.2）。
+  - **1.2 起只有 Onboarding 在用**：「我的資料」已改唯讀，那一頁的三欄走另一支唯讀元件 `ProfileValueRow`，沒有輸入元件。
+    刻意不給 `ProfileField`／`BirthDateField` 加 `isEditable` 旗標——遮罩邏輯綁在「聚焦」上，而唯讀情境沒有聚焦這件事（見 PRD §5.2 決策紀錄）。
 - 介面文案一律自備繁體中文、不吃裝置語系（開發語言鎖 `zh-Hant` ＋ `Locale(zh_Hant_TW)`）。
 
 ## F.〔延後至 Phase 2〕註冊全流程實測（R-register）
