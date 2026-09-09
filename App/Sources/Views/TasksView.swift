@@ -9,6 +9,8 @@ struct TasksView: View {
     /// 在券夾標記完切回這頁就不會更新，連下拉重新整理都沒用——因為下拉只重抓官網資料，
     /// 而「已使用」根本不在官網資料裡（見 `VoucherUsageStore`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 券碼頁關閉時要導回券夾，sheet 內容需要顯式注入（見 `TabRouter`）。
+    @EnvironmentObject private var tabRouter: TabRouter
     @StateObject private var viewModel = TasksViewModel()
     @State private var screenshotPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
@@ -52,6 +54,7 @@ struct TasksView: View {
             .environment(\.appEnvironment, environment)
             // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
             .environmentObject(voucherUsage)
+            .environmentObject(tabRouter)
         }
         // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
         // 不論在哪一頁寫入，這一頁都會立刻重畫。
@@ -61,6 +64,7 @@ struct TasksView: View {
             }
             .environment(\.appEnvironment, environment)
             .environmentObject(voucherUsage)
+            .environmentObject(tabRouter)
         }
         .sheet(item: $uploadPeriod, onDismiss: {
             // 上傳成功後官網會把該期改成 UNDER_REVIEW，但 App 這邊不會自己知道。

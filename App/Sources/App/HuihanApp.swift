@@ -83,17 +83,38 @@ struct RootView: View {
     }
 }
 
+/// 三個分頁的識別。`TabView` 需要可寫的 selection，見 `TabRouter`。
+enum RootTab: Hashable {
+    case home
+    case tasks
+    case wallet
+}
+
+/// 分頁選擇的單一真相來源。
+///
+/// **為什麼需要它**：券碼頁看完條碼後關閉，要一律回到「我的券夾」——而券碼頁可能是從
+/// 首頁／任務／券夾，甚至從兌換頁的結果卡（sheet 疊 sheet）打開的，深在好幾層 sheet 裡面，
+/// 沒有辦法自己改到根層的 `TabView`。所以把 selection 提到這裡，並且比照 `voucherUsage`
+/// 顯式注入每一個 sheet（這個 codebase 的既有慣例）。
+@MainActor
+final class TabRouter: ObservableObject {
+    @Published var selection: RootTab = .home
+}
+
 /// 主要 3 個分頁：首頁、任務、券夾。
 ///
 struct RootTabView: View {
+    @StateObject private var tabRouter = TabRouter()
+
     var body: some View {
-        TabView {
+        TabView(selection: $tabRouter.selection) {
             NavigationStack {
                 HomeView()
             }
             .tabItem {
                 Label("首頁", systemImage: "house.fill")
             }
+            .tag(RootTab.home)
 
             NavigationStack {
                 TasksView()
@@ -101,6 +122,7 @@ struct RootTabView: View {
             .tabItem {
                 Label("任務", systemImage: "checkmark.seal.fill")
             }
+            .tag(RootTab.tasks)
 
             NavigationStack {
                 WalletView()
@@ -108,7 +130,9 @@ struct RootTabView: View {
             .tabItem {
                 Label("券夾", systemImage: "ticket.fill")
             }
+            .tag(RootTab.wallet)
         }
+        .environmentObject(tabRouter)
     }
 }
 

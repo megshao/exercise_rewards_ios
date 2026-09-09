@@ -10,6 +10,8 @@ struct WalletView: View {
     @Environment(\.appEnvironment) private var environment
     /// 「已使用」標記的共用真相來源（見 `VoucherUsageStore`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 券碼頁關閉時要導回券夾，sheet 內容需要顯式注入（見 `TabRouter`）。
+    @EnvironmentObject private var tabRouter: TabRouter
     @StateObject private var viewModel = WalletViewModel()
     @State private var voucherPeriod: TaskPeriod?
     @State private var redeemPeriod: TaskPeriod?
@@ -40,12 +42,19 @@ struct WalletView: View {
             NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
                 .environment(\.appEnvironment, environment)
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
-        .sheet(item: $redeemPeriod) { period in
+        // 上面那句「不需要 onDismiss」只適用於券碼 sheet——它只動本機的 `voucherUsage`。
+        // 兌換動的是官網端狀態（該期變成 REDEEMED），不重抓的話這一期會一直留在
+        // 「可兌換」區塊，跟 `TasksView`／`HomeView` 的兌換 sheet 是同一個道理。
+        .sheet(item: $redeemPeriod, onDismiss: {
+            Task { await viewModel.refresh() }
+        }) { period in
             NavigationStack { RedeemView(taskID: period.id, periodIndex: period.index) }
                 .environment(\.appEnvironment, environment)
                 // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
     }
 

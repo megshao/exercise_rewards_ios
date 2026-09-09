@@ -7,6 +7,8 @@ struct HomeView: View {
     @EnvironmentObject private var envStore: AppEnvironmentStore
     /// 「已使用」標記的共用真相來源。三個分頁同時活著，各自快照會不同步（見 `VoucherUsageStore`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 券碼頁關閉時要導回券夾，sheet 內容需要顯式注入（見 `TabRouter`）。
+    @EnvironmentObject private var tabRouter: TabRouter
     @StateObject private var viewModel = HomeViewModel()
     @State private var showProfile = false
     @State private var redeemPeriod: TaskPeriod?
@@ -56,6 +58,7 @@ struct HomeView: View {
                 .environment(\.appEnvironment, environment)
                 // RedeemView 兌換成功後會再開 VoucherView，那一頁要 voucherUsage。
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
         // 不需要 onDismiss 重讀標記：`voucherUsage` 是共用的 `@Published`，
         // 在券碼頁寫入的當下這一頁就已經重畫了。
@@ -63,6 +66,7 @@ struct HomeView: View {
             NavigationStack { VoucherView(taskID: period.id, source: .wallet, periodIndex: period.index) }
                 .environment(\.appEnvironment, environment)
                 .environmentObject(voucherUsage)
+                .environmentObject(tabRouter)
         }
     }
 

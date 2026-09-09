@@ -18,6 +18,10 @@ struct RedeemView: View {
     /// 這一頁自己不用它，但兌換成功後開的 `VoucherView` 需要——sheet 的內容在這個
     /// codebase 一律顯式注入依賴（見同檔的 `.environment(\.appEnvironment, …)`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 同樣是為了兌換成功後開的 `VoucherView`——它關閉時要導回券夾。
+    @EnvironmentObject private var tabRouter: TabRouter
+    /// 券碼頁關閉時連這一層 sheet 一起收掉（見 `showVoucher` 的 `onDismiss`）。
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = RedeemViewModel()
     @State private var showVoucher = false
     @State private var introOption: RedeemOption?
@@ -72,12 +76,16 @@ struct RedeemView: View {
         } message: { option in
             Text("將兌換「\(option.vendorName)．\(option.itemName)」。兌換後不可更換，需簡訊驗證出示券碼。")
         }
-        .sheet(isPresented: $showVoucher) {
+        // 券碼頁關掉之後，這張兌換結果卡就沒有用途了（兌換已經送出，要再看券碼可以從券夾進去）。
+        // 連這一層 sheet 一起收掉，使用者才不會卡在結果卡上、得再關一次才回得到分頁。
+        // `VoucherView` 自己負責把分頁切到券夾（見它的 `onDisappear`）。
+        .sheet(isPresented: $showVoucher, onDismiss: { dismiss() }) {
             NavigationStack {
                 VoucherView(taskID: taskID, source: .redeemResult, periodIndex: periodIndex)
             }
             .environment(\.appEnvironment, environment)
             .environmentObject(voucherUsage)
+            .environmentObject(tabRouter)
         }
         // 只有 introPath 不是 nil 的品項才點得出這個 sheet（見 VendorRow）。
         .sheet(item: $introOption) { option in

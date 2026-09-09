@@ -74,6 +74,61 @@ final class RedeemFlowTests: XCTestCase {
                       "沒有進到簡訊驗證碼輸入畫面")
     }
 
+    /// 看完條碼關閉之後要落在「我的券夾」，而且兌換頁那一層 sheet 也要一起收掉。
+    ///
+    /// 刻意**從任務分頁出發**：終點是券夾，起點若也是券夾，「切到券夾」這件事就驗不出來。
+    /// 這條路是 sheet 疊 sheet（任務 → 兌換好禮 → 券碼頁），關閉時兩層都得收掉，
+    /// 否則使用者會停在已經沒有用途的兌換結果卡上。
+    func testClosingTheBarcodeLandsOnTheWallet() {
+        let app = launchDemo()
+        openRedeemPage(app)
+
+        // 兌換 → 確認 → 結果卡 → 檢視加碼券。
+        app.buttons.matching(NSPredicate(format: "label == %@", "兌換")).firstMatch.tap()
+        let alert = app.alerts["確認兌換"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout), "「確認兌換」alert 沒出現")
+        alert.buttons["確認兌換"].tap()
+        XCTAssertTrue(
+            app.staticTexts["已送出兌換，請完成簡訊驗證後檢視加碼券"].waitForExistence(timeout: timeout),
+            "兌換結果卡沒出現"
+        )
+        guard let voucherButton = frontVoucherButton(app) else {
+            return XCTFail("結果卡上沒有可點的「檢視加碼券」")
+        }
+        voucherButton.tap()
+
+        // OTP → 條碼。`MockVoucherService` 預設 `.alwaysSucceeds`，任何 6 碼都會通過。
+        let sendOtp = app.buttons["發送簡訊驗證碼"]
+        XCTAssertTrue(sendOtp.waitForExistence(timeout: timeout), "券碼頁沒載入")
+        sendOtp.tap()
+        let otpField = app.textFields["otpCodeField"]
+        XCTAssertTrue(otpField.waitForExistence(timeout: timeout), "OTP 欄位沒出現")
+        otpField.tap()
+        otpField.typeText("123456")
+        app.buttons["voucherRevealButton"].tap()
+        XCTAssertTrue(app.staticTexts["① 商品條碼"].waitForExistence(timeout: timeout), "條碼沒顯示")
+
+        // 關閉條碼頁：分頁要切到券夾，兩層 sheet 都要不見。
+        let close = app.buttons["關閉"]
+        XCTAssertTrue(close.waitForExistence(timeout: timeout), "條碼頁上找不到「關閉」")
+        close.tap()
+
+        let landed = app.navigationBars["我的券夾"].waitForExistence(timeout: timeout)
+        // 失敗時要能分辨「停在條碼頁」（tap 被通知橫幅之類的東西吃掉）、
+        // 「停在兌換結果卡」（外層 sheet 沒收掉）還是「分頁沒切過去」。
+        let bars = app.navigationBars.allElementsBoundByIndex.map(\.identifier)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "after-close"
+        shot.lifetime = .keepAlways
+        add(shot)
+        XCTAssertTrue(landed, "關閉條碼頁後沒有落在「我的券夾」；當時的 navigationBars=\(bars)")
+        XCTAssertFalse(
+            app.navigationBars.matching(
+                NSPredicate(format: "identifier BEGINSWITH %@", "兌換好禮")).firstMatch.exists,
+            "兌換頁那一層 sheet 沒有跟著收掉，使用者會卡在兌換結果卡上"
+        )
+    }
+
     // MARK: - Helpers
 
     /// 畫面上第一顆**真的可點**的「檢視加碼券」（見呼叫端關於同名元素的說明）。

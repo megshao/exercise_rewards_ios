@@ -25,6 +25,8 @@ struct VoucherView: View {
     @FocusState private var isOtpFieldFocused: Bool
     /// 本機「已使用」標記的共用真相來源。官網沒有這個狀態（見 `VoucherUsageStore`）。
     @EnvironmentObject private var voucherUsage: VoucherUsageStore
+    /// 看完條碼關閉這一頁時要導回「我的券夾」，見 `onDisappear`。
+    @EnvironmentObject private var tabRouter: TabRouter
 
     var body: some View {
         ScrollView {
@@ -54,6 +56,16 @@ struct VoucherView: View {
             // 離開畫面就丟棄倒數計時器；下次進來是全新的 VoucherView + 全新的
             // VoucherViewModel，狀態機一律從 .needsOtp 重來，不會殘留上次的券碼。
             viewModel.stopCountdown()
+
+            // 看完條碼離開這一頁，一律導回「我的券夾」——不論是從券夾、任務、首頁，
+            // 還是從兌換頁的結果卡（sheet 疊 sheet）打開的。
+            //
+            // **只在條碼階段才切分頁**：在 OTP 那兩步就關掉代表使用者放棄了，
+            // 那時把人從原本的分頁拉到券夾只會莫名其妙。
+            // 寫在 `onDisappear` 而不是「關閉」鈕裡，是因為 sheet 也可以下滑關掉。
+            if case .showing = viewModel.stage {
+                tabRouter.selection = .wallet
+            }
         }
     }
 
